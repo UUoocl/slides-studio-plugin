@@ -30,8 +30,10 @@
     </div>
     <script>
         const iframe = document.getElementById("revealIframe");
-        // iframe.postMessage( JSON.stringify({ method: 'slide', args: [ 2 ] }), '*' );
-         window.addEventListener('message', (event) => {
+
+        // iframe.contentWindow.postMessage( JSON.stringify({ method: 'slide', args: [ 2 ] }), '*' );
+
+        window.addEventListener('message', (event) => {
             console.log(event)
         });
     </script>

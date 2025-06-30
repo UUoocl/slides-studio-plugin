@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        .container {
+        position: relative;
+        width: 100%;
+        overflow: hidden;
+        padding-top: 56.25%; /* 16:9 Aspect Ratio */
+        }
+
+        .over-the-shoulder {
+        position: absolute;
+        top: 10%;
+        left: 10%;
+        bottom: 0;
+        right: 0;
+        width: 25%;
+        height: 40%;
+        border: none;
+        }
+
+        .full-screen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        width: 100%;
+        height: 100%;
+        border: none;
+        }
+
+        .side-by-side {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        width: 50%;
+        height: 100%;
+        border: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- <iframe id= "revealIframe" class="responsive-iframe" src="index.html"></iframe> -->
+        <iframe id= "revealIframe" class="over-the-shoulder" src="http://localhost:5000/"></iframe>
+    </div>
+    
+    <!-- <script src="../lib/obs-ws.js"></script>
+    <script src="../lib/obsConnect.js"></script> -->
+    <script src="../.obsidian/plugins/slides-studio/lib/obs-ws.js"></script>
+    <script src="../.obsidian/plugins/slides-studio/lib/obsConnect.js"></script>
+    <script>
+        const iframe = document.getElementById("revealIframe");
+        let slidesAttributes;
+        // iframe.contentWindow.postMessage( JSON.stringify({ method: 'slide', args: [ 2 ] }), '*' );
+        
+        window.addEventListener('message', async (event) => {
+            console.log(event)
+            var data = JSON.parse(event.data);
+            if (data.namespace === 'reveal' && data.eventName === 'ready') {
+                iframe.contentWindow.postMessage( JSON.stringify({ method: 'getCurrentSlide'}), '*' );
+                iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlides'}), '*' );
+                iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlidesAttributes'}), '*' );
+            }
+            
+            if (data.namespace === 'reveal' && data.eventName === 'slidechanged') {
+                iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlidesAttributes'}), '*' );
+                console.log("Slide Changed")
+                //iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlide', args: [data.state.indexh , data.state.indexv]}), '*' );
+                //Reveal.getSlide(indexh, indexv);
+            }
+            
+            //call back message from Reveal 
+           // {"namespace":"reveal","eventName":"callback","state":{"indexh":1,"indexv":0,"paused":false,"overview":false},"method":"getSlidesAttributes","result":[{"data-markdown":"","data-markdown-parsed":"true","class":"drop past","data-background-color":"transparent","style":"top: 0px; display: block;","hidden":"","aria-hidden":"true"},{"data-markdown":"","data-markdown-parsed":"true","class":"drop present","data-scene-entrance":"Camera Full Screen}","data-background-color":"transparent","data-camera-entrance":"Camera Upper Right}","data-slide-entrance":"over-the-shoulder}","style":"top: 0px; display: block;"},{"data-markdown":"","data-markdown-parsed":"true","class":"drop future","data-background-color":"transparent","aria-hidden":"true","hidden":"","style":"top: 0px; display: block;"},{"data-markdown":"","data-markdown-parsed":"true","class":"drop future","data-background-color":"transparent","hidden":"","aria-hidden":"true","style":"top: 0px; display: block;"},{"data-markdown":"","data-markdown-parsed":"true","class":"drop future","data-background-color":"transparent","hidden":"","aria-hidden":"true","style":"top: 0px; display: block;"}]}
+            if( data.namespace === 'reveal' && data.eventName === 'callback' && data.method === "getSlidesAttributes" ){
+                // find current slide attributes
+                slidesAttributes = data.result
+                console.log(slidesAttributes)
+
+                const currentSlide = slidesAttributes.filter(function(attribute) {
+                    return attribute.class.includes("present");
+                })[0];
+                console.log("current slide", currentSlide)
+                
+                if(Object.hasOwn(currentSlide, 'data-scene-entrance')){
+                    console.log("scene tag found")
+                    obs.call("SetCurrentProgramScene",{sceneName: currentSlide['data-scene-entrance']})
+                };
+                
+                if(Object.hasOwn(currentSlide, 'data-camera-entrance')){
+                    console.log("camera tag found")
+                    //disable this scenes cameras
+                    await disableSceneItems("Camera Position")
+                    
+                    //enable source
+                    await setSourceVisibilityByName("Camera Position", currentSlide['data-camera-entrance'],true)
+                    
+                    //disable other cameras
+                    await disableSceneItems("Camera Overlay Position")
+                    
+                };
+                
+                if(Object.hasOwn(currentSlide, 'data-camera-overlay-entrance')){
+                    console.log("camera overlay tag found")
+                    //disable this scenes cameras
+                    console.log('remove others')
+                    await disableSceneItems("Camera Overlay Position")
+                    
+                    //enable source
+                    await setSourceVisibilityByName("Camera Overlay Position", currentSlide['data-camera-overlay-entrance'],true)
+                    console.log('sourcename',currentSlide['data-camera-overlay-entrance'])
+                    
+                    //disable other cameras
+                    await disableSceneItems("Camera Position")
+                    
+                };
+                
+                if (Object.hasOwn(currentSlide, 'data-slide-entrance')){
+                    console.log("slide class tag found")
+                    console.log("class name", currentSlide['data-slide-entrance'])
+                    const className = currentSlide['data-slide-entrance']
+                    if(className !== undefined){
+                        document.getElementById("revealIframe").className = className;
+                    } 
+                };
+            }
+        });
+        
+        async function disableSceneItems(sceneName){
+            //disable all camera scene sources
+            const sceneItems = await obs.call("GetSceneItemList",{"sceneName":sceneName});
+            console.log('sceneItems',sceneItems)
+            sceneItems.sceneItems.forEach((sceneItem) => {    
+
+              obs.call("SetSceneItemEnabled", {
+                    sceneName: sceneName,
+                    sceneItemId: sceneItem.sceneItemId,
+                    sceneItemEnabled: false
+                });
+            });
+        }
+
+        async function setSourceVisibilityByName(sceneName, sourceName, visible) {
+            //Get the Scene Item Id number
+            const sceneItemId = await obs.call("GetSceneItemId", {
+                sceneName: sceneName,
+                sourceName: sourceName,
+            })
+            //Set the Source to the visible parameter value    
+            await obs.call("SetSceneItemEnabled", {
+                sceneName: sceneName,
+                sceneItemId: Number(sceneItemId.sceneItemId),
+                sceneItemEnabled: visible
+            });
+        }
+
+        async function toggleSourceVisibilityByName(sceneName, sourceName) {
+            //Get the Scene Item Id number
+            const sceneItemId = await obs.call("GetSceneItemId", {
+                sceneName: sceneName,
+                sourceName: sourceName,
+            })
+
+            const sceneItemVisible = await obs.call("GetSceneItemEnabled", {
+                sceneName: sceneName,
+                sourceItemId: sceneItemId,
+            })
+
+            //toggle Source visibility    
+            await obs.call("SetSceneItemEnabled", {
+                sceneName: sceneName,
+                sceneItemId: Number(sceneItemId.sceneItemId),
+                sceneItemEnabled: !sceneItemVisible
+            });
+        }
+
+    //     function sendToOBS(msgParam, eventName) {
+	// 	//console.log("sending message:", JSON.stringify(msgParam));
+	// 	const webSocketMessage = JSON.stringify(msgParam);
+	// 	//send results to OBS Browser Source
+	// 	obs.call("CallVendorRequest", {
+	// 		vendorName: "obs-browser",
+	// 		requestType: "emit_event",
+	// 		requestData: {
+	// 			event_name: eventName,
+	// 			event_data: { 
+	// 				webSocketMessage 
+	// 			},
+	// 		},
+	// 	});
+	// }
+    </script>
+</body>
+</html>
