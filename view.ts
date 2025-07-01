@@ -96,6 +96,17 @@ export class slidesStudioView extends ItemView{
                         //new Notice(`Inserted tag ${tag[1]}`)
                     })
                 })
+    //remove user tag
+                .addButton( item => {                
+                    item.setButtonText("🚫")
+                    .onClick(() => {
+                        userTagsSet.delete(scene)
+                        this.app.plugins.plugins['slides-studio'].settings.user_tags = Array.from(userTagsSet);
+                        this.app.plugins.plugins['slides-studio'].saveSettings() 
+                        new Notice(`deleted user tag ${scene}`)
+                        this.onOpen()          
+                    })
+                })
            });
 
         //load Slide options

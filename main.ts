@@ -29,7 +29,6 @@ interface slidesStudioPluginSettings{
 	obs: OBSWebSocket;
 }
 
-
 const DEFAULT_SETTINGS: Partial<slidesStudioPluginSettings> = {
 	websocketIP_Text: "localhost",
 	websocketPort_Text: "4455",
@@ -81,27 +80,30 @@ export default class slidesStudioPlugin extends Plugin {
 		name: 'Listening for API Messages',
 		callback: () => {
 			new Notice("Listening for API Messages")
+
+			//Send slide changed message to OBS
 			window.addEventListener('message', (event) => {
-				//get slides extended preview iframe	
 				//message data
 				//   "{\"namespace\":\"reveal\",\"eventName\":\"slidechanged\",\"state\":{\"indexh\":20,\"indexv\":0,\"paused\":false,\"overview\":false}}"
 				const data = JSON.parse(event.data);
 				
 				if (data.namespace === 'reveal' && data.eventName === 'slidechanged') {
 					//console.log("Slide Changed")
-					
+					data.state.source = "obsidian"
 					//send slide change to OBS
-					sendToOBS(data.state, "slide-changed");
-					
-					//iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlide', args: [data.state.indexh , data.state.indexv]}), '*' );
-					//Reveal.getSlide(indexh, indexv);
+					sendToOBS(data.state, "slide-changed");	
 				}
 			});
+
+			
+			//iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlide', args: [data.state.indexh , data.state.indexv]}), '*' );
+			//Reveal.getSlide(indexh, indexv);
 			
 			window.addEventListener(`reveal-slide-changed`, async function (event) {
 				//reveal event 
 				console.log("message received: ", event)
 				if(event.detail.hasOwnProperty('slideChanged')){
+					//get slides extended preview iframe	
 					const iframe = document.getElementsByTagName("iframe")[0];
 					iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.state.indexh, data.state.indexv] }), '*');
 				}
@@ -282,8 +284,6 @@ export default class slidesStudioPlugin extends Plugin {
 			}
 		});		
 
-
-
 	function sendToOBS(msgParam, eventName) {
 		//console.log("sending message:", JSON.stringify(msgParam));
 		const webSocketMessage = JSON.stringify(msgParam);
@@ -435,8 +435,8 @@ export default class slidesStudioPlugin extends Plugin {
 		callback: async() => {
 				new Notice("Adding Slide Studio files to vault");
 				
-				const srcPath = `${this.app.vault.adapter.basePath}/.obsidian/plugins/slides-studio/slide-studio`
-				const destPath = `${this.app.vault.adapter.basePath}/slides-studio`
+				const srcPath = `${this.app.vault.adapter.basePath}/.obsidian/plugins/slides-studio/slides_studio`
+				const destPath = `${this.app.vault.adapter.basePath}/slides_studio`
 				//Copy files from plugin folder to vault root
 				//recursive option used to copy directory			
 				this.app.vault.adapter.fsPromises.cp(srcPath, destPath,{recursive:true})
