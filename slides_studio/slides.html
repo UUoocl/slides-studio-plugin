@@ -27,7 +27,7 @@
 <body>
     <div class="container">
         <!-- <iframe id= "revealIframe" class="responsive-iframe" src="index.html"></iframe> -->
-        <iframe id= "revealIframe" class="responsive-iframe" src="http://localhost:5000/"></iframe>
+        <iframe id= "revealIframe" class="responsive-iframe"></iframe>
     </div>
     <script src="lib/obs-ws.js"></script>
     <script src="lib/obsConnect.js"></script>
@@ -35,6 +35,8 @@
     <script>
         let slidesAttributes;
 
+        //Add slides iframe
+        
         //Get OBS websocket connection details from Obsidian plugin settings folder
         async function getWebsocketDetailsFromObsidian(){
             await fetch('../.obsidian/plugins/slides-studio/data.json')
@@ -59,12 +61,8 @@
         
         window.addEventListener('DOMContentLoaded', (event) => {
             getWebsocketDetailsFromObsidian();
-            //use query parameter to set the server port
-            const paramsString = window.location.search;
-            const searchParams = new URLSearchParams(paramsString);
-            const port = searchParams.get("port") ? searchParams.get("port"):5000 ;
             
-            document.getElementById("revealIframe").setAttribute("src",`http://localhost:${port}/`)
+            document.getElementById("revealIframe").setAttribute("src", `http://localhost:${window.location.port}/`);
         })
 
     </script>

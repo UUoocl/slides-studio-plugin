@@ -373,7 +373,7 @@ body[data-speaker-layout="teleprompter"] #current-slide,
 
       <div class="speaker-controls-notes">
         <h4 class="label">Notes</h4>
-        <div class="value"></div>
+        <div class="value" id="notes"></div>
       </div>
     </div>
     <div id="speaker-layout" class="overlay-element interactive">
@@ -396,7 +396,7 @@ body[data-speaker-layout="teleprompter"] #current-slide,
       scroller
       
       document.addEventListener("DOMContentLoaded", async () => {
-        const slideDeck = `http://localhost:5000/`;   //?postMessageEvents=false
+        const slideDeck = `http://localhost:${window.location.port}/`;   //?postMessageEvents=false
         //clearTimeout( connectionTimeout );
         connectionStatus.style.display = "none";
         setupLayout();
@@ -422,7 +422,6 @@ body[data-speaker-layout="teleprompter"] #current-slide,
 		  var currentScroll = 0;
 		  var speed = 30;
 		  var label;
-		  var notes;
 		  var svFontSize;
 		  var svSettings;
 		  
@@ -432,7 +431,7 @@ body[data-speaker-layout="teleprompter"] #current-slide,
 			  svFontSize = svFontSize.getAttribute("data-speakerview-font-size");
 			  console.log("font size", svFontSize)
 			 } else {
-				 svFontSize = 10 //wssDetails.TeleprompterFontSize;
+				 svFontSize = 100 //wssDetails.TeleprompterFontSize;
 			 }
 			 
 			 //get speaker view notes scroll speed
@@ -477,17 +476,16 @@ body[data-speaker-layout="teleprompter"] #current-slide,
 			 function teleprompterScroll() {
 				  
 				  play = true;
-				  console.log("play",play)
 				  currentScroll = 0;
 				  label = window.document.querySelector(".overlay-element.label");
 				  notes = window.document.getElementById("speaker-controls");
+				  // notes = window.document.getElementById("speaker-controls");
 				  
 				  window.document.querySelector(".speaker-controls-notes"
           ).style.fontSize = svFontSize;
           
           
           scrollActive = scrollActive + 1;
-          console.log("what does scroll equal?")
           //if (scrollActive == 1) {
             scroller = setInterval(scroll, speed);
             console.log(scroller)
@@ -545,42 +543,42 @@ body[data-speaker-layout="teleprompter"] #current-slide,
       };
 
 
-      obs.on("CustomEvent", async function (event) {
-        if(['update-speaker-view-event','slide-event'].includes(event.eventName)){
-          let data = JSON.parse(event.detail.websocketMessage);
-          data = JSON.stringify(data);
-          data = JSON.parse(data);
+      // obs.on("CustomEvent", async function (event) {
+      //   if(['update-speaker-view-event','slide-event'].includes(event.eventName)){
+      //     let data = JSON.parse(event.detail.websocketMessage);
+      //     data = JSON.stringify(data);
+      //     data = JSON.parse(data);
           
-          handleStateMessage(data);
-        }
-        //Reveal.slide( event.detail.indexh, event.detail.indexv, event.detail.indexf ? event.detail.indexf: "0" )
-        // No need for updating the notes in case of fragment changes
-        if (data.notes) {
-          notes.classList.remove("hidden");
-          notesValue.style.whiteSpace = data.whitespace;
-          if (data.markdown) {
-            notesValue.innerHTML = marked(data.notes);
-          } else {
-            notesValue.innerHTML = data.notes;
-          }
-        } else {
-          notes.classList.add("hidden");
-        }
-        // The overview mode is only useful to the reveal.js instance
-        // where navigation occurs so we don't sync it
-        //if( data.state ) delete data.state.overview;
-      });
+      //     handleStateMessage(data);
+      //   }
+      //   //Reveal.slide( event.detail.indexh, event.detail.indexv, event.detail.indexf ? event.detail.indexf: "0" )
+      //   // No need for updating the notes in case of fragment changes
+      //   if (data.notes) {
+      //     notes.classList.remove("hidden");
+      //     notesValue.style.whiteSpace = data.whitespace;
+      //     if (data.markdown) {
+      //       notesValue.innerHTML = marked(data.notes);
+      //     } else {
+      //       notesValue.innerHTML = data.notes;
+      //     }
+      //   } else {
+      //     notes.classList.add("hidden");
+      //   }
+      //   // The overview mode is only useful to the reveal.js instance
+      //   // where navigation occurs so we don't sync it
+      //   //if( data.state ) delete data.state.overview;
+      // });
 
       /**
        * Updates the presentation in the main window to match the state
        * of the presentation in the notes window.
        */
-      const dispatchStateToMainWindow = debounce((state) => {
-        window.opener.postMessage(
-          JSON.stringify({ method: "setState", args: [state] }),
-          "*"
-        );
-      }, 500);
+      // const dispatchStateToMainWindow = debounce((state) => {
+      //   window.opener.postMessage(
+      //     JSON.stringify({ method: "setState", args: [state] }),
+      //     "*"
+      //   );
+      // }, 500);
 
       /**
        * Asynchronously calls the Reveal.js API of the main frame.
@@ -623,39 +621,33 @@ body[data-speaker-layout="teleprompter"] #current-slide,
         // Store the most recently set state to avoid circular loops
         // applying the same state
 
-        console.log("state func", data);
-        currentState = data.state;
-        console.log("state func", currentState);
-        console.log("data", data.notes);
-        // No need for updating the notes in case of fragment changes
-        if (data.notes) {
-			notes.classList.remove("hidden");
-			notesValue.style.whiteSpace = data.whitespace;
-			if (data.markdown) {
-				notesValue.innerHTML = marked(data.notes);
-			} else {
-				notesValue.innerHTML = data.notes;
-				teleprompterScroll()
-          }
-        } else {
-			notesValue.innerHTML = "";
-			clearInterval(scroller)
-          notes.classList.add("hidden");
-        }
+      //   console.log("state func", data);
+      //   currentState = data.state;
+      //   console.log("state func", currentState);
+      //   console.log("data", data.notes);
+      //   // No need for updating the notes in case of fragment changes
+      //   if (data.notes) {
+			// notes.classList.remove("hidden");
+			// notesValue.style.whiteSpace = data.whitespace;
+			// if (data.markdown) {
+			// 	notesValue.innerHTML = marked(data.notes);
+			// } else {
+			// 	notesValue.innerHTML = data.notes;
+			// 	teleprompterScroll()
+      //     }
+      //   } else {
+			// notesValue.innerHTML = "";
+			// clearInterval(scroller)
+      //     notes.classList.add("hidden");
+      //   }
 
-        // Update the note slidesnn
-        currentSlide.contentWindow.postMessage(
-          JSON.stringify({ method: "setState", args: [data.state] }),
-          "*"
-        );
-        upcomingSlide.contentWindow.postMessage(
-          JSON.stringify({ method: "setState", args: [data.state] }),
-          "*"
-        );
-        upcomingSlide.contentWindow.postMessage(
-          JSON.stringify({ method: "next" }),
-          "*"
-        );
+      //   // Update the note slidesnn
+      //   currentSlide.contentWindow.postMessage(
+      //     JSON.stringify({ method: "setState", args: [data.state] }), "*" );
+      //   upcomingSlide.contentWindow.postMessage(
+      //     JSON.stringify({ method: "setState", args: [data.state] }), "*" );
+      //   upcomingSlide.contentWindow.postMessage(
+      //     JSON.stringify({ method: "next" }),"*" );
       }
 
       // Limit to max one state update per X ms
@@ -679,15 +671,25 @@ body[data-speaker-layout="teleprompter"] #current-slide,
             return false;
           }
           switch(event.keyCode){
+            //key : 1
             case (49): setLayout("default"); break;
+            //key : 2
             case (50): setLayout("wide"); break;
+            //key : 3
             case (51): setLayout("tall"); break;
+            //key : 4
             case (52): setLayout("notes-only"); break;
+            //key : 5
             case (53): setLayout("teleprompter"); break;
+            //key : =
             case (187): updateNoteFontSize(1); break;
+            //key : -
             case (189): updateNoteFontSize(-1); break;
+            //key : 8
             case (56): updateScrollSpeed(1); break;
+            //key : 9
             case (57): scrollPause(event); break;
+            //key : 0
             case (48): updateScrollSpeed(-1); break;
           }
           currentSlide.contentWindow.postMessage(
@@ -711,7 +713,7 @@ body[data-speaker-layout="teleprompter"] #current-slide,
         upcomingSlide = document.createElement("iframe");
         upcomingSlide.setAttribute("width", 640);
         upcomingSlide.setAttribute("height", 512);
-        upcomingSlide.setAttribute("src", `${data}?postMessageEvents=false`);
+        upcomingSlide.setAttribute("src", `${data}?postMessageEvents=false?postMessage=true`);
         upcomingSlide.setAttribute("id", "upcoming-iframe");
         document.querySelector("#upcoming-slide").appendChild(upcomingSlide);
       }

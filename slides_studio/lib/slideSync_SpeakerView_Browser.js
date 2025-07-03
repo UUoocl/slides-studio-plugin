@@ -2,8 +2,15 @@ let slideState = '';
 
 //Message from Reveal Slides iFrame API
 window.addEventListener('message', async (event) => {
-    //console.log(event)
+    console.log(event)
     let data = JSON.parse(event.data);
+
+    //get notes when slides are ready
+    if (data.namespace === 'reveal' && 
+        ['ready'].includes(data.eventName)) {
+            const currentSlide_iframe = document.getElementById("current-iframe");
+            currentSlide_iframe.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes'}), '*');
+        }
     
     //on reveal slide change or pause
     if (data.namespace === 'reveal' && 
@@ -13,9 +20,27 @@ window.addEventListener('message', async (event) => {
             //if event 'state' doesn't equal settings 'state'
             if(JSON.stringify(data.state) != slideState){
                 slideState = JSON.stringify(data.state);
+                data.state.indexf = data.state.indexf ? data.state.indexf : 0;
                 //send slide change to OBS
                 sendToOBS(data.state, "slide-changed");	
+                
+                //Get slide notes
+                const currentSlide_iframe = document.getElementById("current-iframe");
+                currentSlide_iframe.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes'}), '*');
+
+                //send slide state to upcoming iFrame
+                const upcoming_iframe = document.getElementById("upcoming-iframe");
+                upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.state.indexh, data.state.indexv, data.state.indexf] }), '*');
+                upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'next'}), '*');
             }
+
+        }
+
+        //callback from get notes request
+        if( data.namespace === 'reveal' && data.eventName === 'callback' && data.method === "getSlideNotes" ){
+           console.log("slide notes", data.result)
+           notesValue.innerHTML = data.result;
+           teleprompterScroll()
         }
         
         //on overview mode
@@ -41,22 +66,21 @@ window.addEventListener('message', async (event) => {
             console.log("CUSTOMEVENT =?", event.eventData === slideState);
             const currentSlide_iframe = document.getElementById("current-iframe");
             const upcoming_iframe = document.getElementById("upcoming-iframe");
-    if(['overview-toggled','slide-changed'].includes(event.eventName)){
-        if(event.eventData != slideState){
-            console.log("update slide state");
-            const data =JSON.parse(event.eventData)
-            data.indexf = data.indexf ? data.indexf : 0;
-            if(event.eventName === 'overview-toggled'){
-                currentSlide_iframe.contentWindow.postMessage( JSON.stringify({ method: 'toggleOverview', args: [ data.overview ] }), '*' );
-            }else{
-                currentSlide_iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.indexh, data.indexv, data.indexf] }), '*');
-                // currentSlide_iframe.contentWindow.postMessage( JSON.stringify({ method: 'togglePause', args: [ data.paused ] }), '*' );
-                upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.indexh, data.indexv, data.indexf] }), '*');
-                upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'next'}), '*');
-                
-            }
-        }
-    } 
+            if(['overview-toggled','slide-changed'].includes(event.eventName)){
+                if(event.eventData != slideState){
+                    console.log("update slide state");
+                    const data =JSON.parse(event.eventData)
+                    data.indexf = data.indexf ? data.indexf : 0;
+                    if(event.eventName === 'overview-toggled'){
+                        currentSlide_iframe.contentWindow.postMessage( JSON.stringify({ method: 'toggleOverview', args: [ data.overview ] }), '*' );
+                    }else{
+                        currentSlide_iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.indexh, data.indexv, data.indexf] }), '*');
+                        // currentSlide_iframe.contentWindow.postMessage( JSON.stringify({ method: 'togglePause', args: [ data.paused ] }), '*' );
+                        upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.indexh, data.indexv, data.indexf] }), '*');
+                        upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'next'}), '*');
+                    }
+                }
+            } 
 });
 
 function sendToOBS(msgParam, eventName) {

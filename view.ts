@@ -26,7 +26,29 @@ export class slidesStudioView extends ItemView{
         container.empty();
         container.createDiv('Header')
         
-        new Setting(container).setName('Tags')
+        new Setting(container).setName('Open in Browser')
+        .setHeading()
+        .setDesc('Open the Slides in a browser window')
+        .addButton((button) =>{
+            button.setButtonText("Slides")
+            .onClick(() => {this.app.commands.executeCommandById('slides-studio:open-slides-in-browser')})
+            .setCta()
+        })
+        .addButton((button) =>{
+            button.setButtonText("Speaker View")
+            .onClick(() => {this.app.commands.executeCommandById('slides-studio:open-slide-studio-speaker-view')})
+        })
+
+        
+        new Setting(container).setName('URL for OBS')
+        .setHeading()
+        .setDesc('Copy the Slides URL, then Create a Browser Source in OBS')
+        .addButton((button) =>{
+            button.setButtonText("Copy URL for OBS Browser")
+            .onClick(() => {this.app.commands.executeCommandById('slides-studio:copy-obs-browser-source-link')})
+        })
+        
+        new Setting(container).setName('Add Tags')
         .setHeading()
         .setDesc('Refresh the view after connecting to OBS')
         .addButton((button) =>{

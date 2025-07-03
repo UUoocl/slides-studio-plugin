@@ -64,10 +64,10 @@
         
         //use query parameter to set the server port
         window.addEventListener('DOMContentLoaded', (event) => {
-            const paramsString = window.location.search;
-            const searchParams = new URLSearchParams(paramsString);
-            const port = searchParams.get("port") ? searchParams.get("port"):5000 ;
-            document.getElementById("revealIframe").setAttribute("src",`http://localhost:${port}/`)
+            // const paramsString = window.location.search;
+            // const searchParams = new URLSearchParams(paramsString);
+            // const port = searchParams.get("port") ? searchParams.get("port"):5000 ;
+            document.getElementById("revealIframe").setAttribute("src", `http://localhost:${window.location.port}/`);
         })
         
         window.addEventListener('message', async (event) => {

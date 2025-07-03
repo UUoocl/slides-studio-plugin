@@ -491,18 +491,46 @@ export default class slidesStudioPlugin extends Plugin {
 	// #endregion
 
 //	
-//	#region Open Speaker View
+//	#region Open Slides in browser
 //
 //
 	this.addCommand({
 		id: 'open-slide-studio-speaker-view',
-		name: 'Open the Slide Studio Speaker View in external browser',
+		name: 'Open the Slide Studio Speaker View in an external browser',
 		callback: async() => {
-				new Notice("Opening Speaker View");
-				const port = this.app.plugins.plugins['slides-extended'].settings.port
-				window.open(`http://localhost:${port}/slides-studio/speaker-view.html`)
+			const port = this.app.plugins.plugins['slides-extended'].settings.port
+			new Notice(`Opening Speaker View on port ${port}`);
+				// window.open(`http://localhost:${port}/slides_studio/speakerView.html`)
+				window.open(`http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/speakerView.html`)
 			}
-	})
+		})
+		
+		this.addCommand({
+			id: 'open-slides-in-browser',
+			name: 'Open the Slides in an external browser',
+			callback: async() => {
+				const port = this.app.plugins.plugins['slides-extended'].settings.port
+				new Notice(`Opening Slides on port ${port}`);
+				//window.open(`http://localhost:${port}/slides_studio/slides.html`)
+				window.open(`http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/slides.html`)
+			}
+		})
+		
+		this.addCommand({
+			id: 'copy-obs-browser-source-link',
+			name: 'Copy the Slides Url for OBS to the clipboard ',
+			callback: async() => {
+				const port = this.app.plugins.plugins['slides-extended'].settings.port
+				const obsURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/slides_studio_OBS_browser_source.html`
+				try {
+					await navigator.clipboard.writeText(obsURL);
+					new Notice('URL copied to clipboard successfully!');
+				} catch (err) {
+					console.error('Failed to copy: ', err);
+				}
+				//window.open(`http://localhost:${port}/slides_studio/slides.html`)
+			}
+		})
 	// #endregion
 
 // #region OSC Functions
