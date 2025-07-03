@@ -54,15 +54,15 @@
     
     <!-- <script src="../lib/obs-ws.js"></script>
     <script src="../lib/obsConnect.js"></script> -->
-    <script>console.log("script tag")</script>
     <script src="lib/obs-ws.js"></script>
     <script src="lib/obsConnect.js"></script>
+    <script src="lib/slideSync_OBS.js"></script>
     <script>
         const iframe = document.getElementById("revealIframe");
         let slidesAttributes;
-        let currentSlideState='';
         // iframe.contentWindow.postMessage( JSON.stringify({ method: 'slide', args: [ 2 ] }), '*' );
-
+        
+        //use query parameter to set the server port
         window.addEventListener('DOMContentLoaded', (event) => {
             const paramsString = window.location.search;
             const searchParams = new URLSearchParams(paramsString);
@@ -72,35 +72,29 @@
         
         window.addEventListener('message', async (event) => {
             console.log(event)
+            let data = JSON.parse(event.data);
             
             // Process Reveal js API messages, on ready or slide changed
-            var data = JSON.parse(event.data);
             if (data.namespace === 'reveal' && data.eventName === 'ready') {
                 // iframe.contentWindow.postMessage( JSON.stringify({ method: 'getCurrentSlide'}), '*' );
                 // iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlides'}), '*' );
                 iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlidesAttributes'}), '*' );
             }
-            
-            
-            if (data.namespace === 'reveal' && data.eventName === 'slidechanged') {
-
-                iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlidesAttributes'}), '*' );
+                        
+            if (data.namespace === 'reveal' && 
+            ['paused','resumed','fragmentshown','fragmenthidden','slidechanged'].includes(data.eventName)) {
                 console.log("Slide Changed", event)
-                currentSlideState = data.state;
-                //iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlide', args: [data.state.indexh , data.state.indexv]}), '*' );
-                //Reveal.getSlide(indexh, indexv);
+                
+                iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlidesAttributes'}), '*' );
             }
-            
+        
             //call back message from Reveal 
-            
             //If slide has an attribute, do something. 
-
             // {"namespace":"reveal","eventName":"callback","state":{"indexh":1,"indexv":0,"paused":false,"overview":false},"method":"getSlidesAttributes","result":[{"data-markdown":"","data-markdown-parsed":"true","class":"drop past","data-background-color":"transparent","style":"top: 0px; display: block;","hidden":"","aria-hidden":"true"},{"data-markdown":"","data-markdown-parsed":"true","class":"drop present","data-scene-entrance":"Camera Full Screen}","data-background-color":"transparent","data-camera-entrance":"Camera Upper Right}","data-slide-entrance":"over-the-shoulder}","style":"top: 0px; display: block;"},{"data-markdown":"","data-markdown-parsed":"true","class":"drop future","data-background-color":"transparent","aria-hidden":"true","hidden":"","style":"top: 0px; display: block;"},{"data-markdown":"","data-markdown-parsed":"true","class":"drop future","data-background-color":"transparent","hidden":"","aria-hidden":"true","style":"top: 0px; display: block;"},{"data-markdown":"","data-markdown-parsed":"true","class":"drop future","data-background-color":"transparent","hidden":"","aria-hidden":"true","style":"top: 0px; display: block;"}]}
             if( data.namespace === 'reveal' && data.eventName === 'callback' && data.method === "getSlidesAttributes" ){
                 // find current slide attributes
                 slidesAttributes = data.result
-                console.log("slidesAttributes",slidesAttributes)
-                
+                // console.log("slidesAttributes",slidesAttributes)
                 
                 const currentSlide = slidesAttributes.filter(function(attribute) {
                     switch(true){
@@ -110,73 +104,53 @@
                         case attribute.hasOwnProperty("data-auto-animate"):
                             return attribute["data-auto-animate"].includes("running");
                             break;
-                    }
-
-                })[0];
-                console.log("current slide", currentSlide)
-                
-                if(Object.hasOwn(currentSlide, 'data-scene-entrance')){
-                    console.log("scene tag found")
-                    obs.call("SetCurrentProgramScene",{sceneName: currentSlide['data-scene-entrance']})
-                };
-                
-                if(Object.hasOwn(currentSlide, 'data-camera-entrance')){
-                    console.log("camera tag found")
-                    //disable this scenes cameras
-                    await disableSceneItems("Camera Position")
+                        }   
+                        })[0];
+                        // console.log("current slide", currentSlide)
+                        
+                    if(Object.hasOwn(currentSlide, 'data-scene-entrance')){
+                        console.log("scene tag found")
+                        obs.call("SetCurrentProgramScene",{sceneName: currentSlide['data-scene-entrance']})
+                    };
                     
-                    //enable source
-                    await setSourceVisibilityByName("Camera Position", currentSlide['data-camera-entrance'],true)
+                    if(Object.hasOwn(currentSlide, 'data-camera-entrance')){
+                        console.log("camera tag found")
+                        //disable this scenes cameras
+                        await disableSceneItems("Camera Position")
+                        
+                        //enable source
+                        await setSourceVisibilityByName("Camera Position", currentSlide['data-camera-entrance'],true)
+                        
+                        //disable other cameras
+                        await disableSceneItems("Camera Overlay Position")  
+                    };
                     
-                    //disable other cameras
-                    await disableSceneItems("Camera Overlay Position")  
-                };
-                
-                if(Object.hasOwn(currentSlide, 'data-camera-overlay-entrance')){
-                    console.log("camera overlay tag found")
-                    //disable this scenes cameras
-                    console.log('remove others')
-                    await disableSceneItems("Camera Overlay Position")
+                    if(Object.hasOwn(currentSlide, 'data-camera-overlay-entrance')){
+                        console.log("camera overlay tag found")
+                        //disable this scenes cameras
+                        console.log('remove others')
+                        await disableSceneItems("Camera Overlay Position")
+                        
+                        //enable source
+                        await setSourceVisibilityByName("Camera Overlay Position", currentSlide['data-camera-overlay-entrance'],true)
+                        console.log('sourcename',currentSlide['data-camera-overlay-entrance'])
+                        
+                        //disable other cameras
+                        await disableSceneItems("Camera Position")
+                    };
                     
-                    //enable source
-                    await setSourceVisibilityByName("Camera Overlay Position", currentSlide['data-camera-overlay-entrance'],true)
-                    console.log('sourcename',currentSlide['data-camera-overlay-entrance'])
-                    
-                    //disable other cameras
-                    await disableSceneItems("Camera Position")
-                };
-                
-                if (Object.hasOwn(currentSlide, 'data-slide-entrance')){
-                    console.log("slide class tag found")
-                    console.log("class name", currentSlide['data-slide-entrance'])
-                    const className = currentSlide['data-slide-entrance']
-                    if(className !== undefined){
-                        document.getElementById("revealIframe").className = className;
-                    } 
-                };
-            }
-        });
-        
-        window.addEventListener('slide-changed', async (event) => {
-            console.log("received slide changed",JSON.parse(event.detail.webSocketMessage))
-            
-            data = JSON.parse(event.detail.webSocketMessage)
-
-            console.log(data)
-
-            iframe.contentWindow.postMessage( JSON.stringify({ method: 'slide', args: [ data.indexh, data.indexv ] }), '*' );;
-            
-            //get current slide
-            //iframe.contentWindow.postMessage( JSON.stringify({ method: 'getCurrentSlide'}), '*' );
-            
-            obs.call("BroadcastCustomEvent", {
-                eventData:{
-                    eventName:"",
-                    source: "OBS"
-                }    
-            })
-        })  
-
+                    if (Object.hasOwn(currentSlide, 'data-slide-entrance')){
+                        console.log("slide class tag found")
+                        console.log("class name", currentSlide['data-slide-entrance'])
+                        const className = currentSlide['data-slide-entrance']
+                        if(className !== undefined){
+                            document.getElementById("revealIframe").className = className;
+                        } 
+                    };
+                }
+        })
+          
+       
         async function disableSceneItems(sceneName){
             //disable all camera scene sources
             const sceneItems = await obs.call("GetSceneItemList",{"sceneName":sceneName});

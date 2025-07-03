@@ -29,39 +29,44 @@
         <!-- <iframe id= "revealIframe" class="responsive-iframe" src="index.html"></iframe> -->
         <iframe id= "revealIframe" class="responsive-iframe" src="http://localhost:5000/"></iframe>
     </div>
+    <script src="lib/obs-ws.js"></script>
+    <script src="lib/obsConnect.js"></script>
+    <script src="lib/slideSync_Browser.js"></script>
     <script>
-        const iframe = document.getElementById("revealIframe");
         let slidesAttributes;
-        // iframe.contentWindow.postMessage( JSON.stringify({ method: 'slide', args: [ 2 ] }), '*' );
-        
-        window.addEventListener('message', (event) => {
-            console.log(event)
-            var data = JSON.parse(event.data);
-            if (data.namespace === 'reveal' && data.eventName === 'ready') {
-                iframe.contentWindow.postMessage( JSON.stringify({ method: 'getCurrentSlide'}), '*' );
-                iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlides'}), '*' );
-            }
-            
-            if (data.namespace === 'reveal' && data.eventName === 'slidechanged') {
-                iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlidesAttributes'}), '*' );
-                console.log("Slide Changed")
-                iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlide', args: [data.state.indexh , data.state.indexv]}), '*' );
-                //Reveal.getSlide(indexh, indexv);
-            }
-            
-            if( data.namespace === 'reveal' && data.eventName === 'callback' && data.method === 'getSlide') {
-                console.log('getSlide', data.result)
-            }
 
-            if( data.namespace === 'reveal' && data.eventName === 'callback' && data.method ==='getSlidesAttributes') {
-                slidesAttributes = data.result // = the total number of slides
-                console.log(slidesAttributes)
-                const currentSlide = slidesAttributes.filter(function(attribute) {
-                    return attribute.class.includes("present");
-                });
-                console.log(currentSlide)
-            }
-        });
+        //Get OBS websocket connection details from Obsidian plugin settings folder
+        async function getWebsocketDetailsFromObsidian(){
+            await fetch('../.obsidian/plugins/slides-studio/data.json')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json(); // Parses the JSON response into a JavaScript object
+            })
+            .then(data => {
+                const wssDetails = {IP:data.websocketIP_Text,
+                    PORT: data.websocketPort_Text,
+                    PW: data.websocketPW_Text,
+                }
+                connectOBS(wssDetails);
+            })
+            .catch(error => {
+                console.error('Error fetching JSON:', error);
+            });
+        }
+        
+        
+        window.addEventListener('DOMContentLoaded', (event) => {
+            getWebsocketDetailsFromObsidian();
+            //use query parameter to set the server port
+            const paramsString = window.location.search;
+            const searchParams = new URLSearchParams(paramsString);
+            const port = searchParams.get("port") ? searchParams.get("port"):5000 ;
+            
+            document.getElementById("revealIframe").setAttribute("src",`http://localhost:${port}/`)
+        })
+
     </script>
 </body>
 </html>

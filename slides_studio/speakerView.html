@@ -332,7 +332,9 @@ body[data-speaker-layout="teleprompter"] #current-slide,
 	  
 	  
 	  </style>
-    <script src="../../websocketDetails.js"></script>
+    <script src="lib/obs-ws.js"></script>
+    <script src="lib/obsConnect.js"></script>
+    <script src="lib/slideSync_Browser.js"></script>
   </head>
   
   <body>
@@ -379,7 +381,7 @@ body[data-speaker-layout="teleprompter"] #current-slide,
       <select class="speaker-layout-dropdown"></select>
     </div>
     <script>
-      console.log(wssDetails)
+      //console.log(wssDetails)
       var notes,
       notesValue,
       currentState,
@@ -393,7 +395,7 @@ body[data-speaker-layout="teleprompter"] #current-slide,
       scroller
       
       document.addEventListener("DOMContentLoaded", async () => {
-        const slideDeck = `../../${wssDetails.FileName}`;
+        const slideDeck = `http://localhost:5000/`;   //?postMessageEvents=false
         //clearTimeout( connectionTimeout );
         connectionStatus.style.display = "none";
         setupLayout();
@@ -429,7 +431,7 @@ body[data-speaker-layout="teleprompter"] #current-slide,
 			  svFontSize = svFontSize.getAttribute("data-speakerview-font-size");
 			  console.log("font size", svFontSize)
 			 } else {
-				 svFontSize = wssDetails.TeleprompterFontSize;
+				 svFontSize = 10 //wssDetails.TeleprompterFontSize;
 			 }
 			 
 			 //get speaker view notes scroll speed
@@ -437,7 +439,7 @@ body[data-speaker-layout="teleprompter"] #current-slide,
 			 if (speed) {
 				 speed = Number(speed.getAttribute("data-speakerview-speed"));
 			 } else {
-				 speed = wssDetails.TeleprompterSpeed;
+				 speed = 50 //wssDetails.TeleprompterSpeed;
 			 }
 
 			 label = window.document.querySelector(".overlay-element.label");

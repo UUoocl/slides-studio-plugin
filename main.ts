@@ -57,6 +57,7 @@ export default class slidesStudioPlugin extends Plugin {
 		await this.loadSettings();
 		let obs = this.settings.obs;
 		obs = new OBSWebSocket();
+		let slideState = '';
 		
 		//this.settings.obs = new OBSWebSocket();
 		// this.app.plugins.plugins['slides-studio'].settings.scenes = [];
@@ -68,49 +69,66 @@ export default class slidesStudioPlugin extends Plugin {
 			this.openView();
 		})
 
-    this.addSettingTab(new slidesStudioSettingsTab(this.app, this))
+		this.addSettingTab(new slidesStudioSettingsTab(this.app, this))
 
 		new Notice("Enabled slides studio plugin")	
-		
-	//
-	// #region Listen for Slides Extended Messages
-	//
-	this.addCommand({
-		id: 'listen-for-event-messages',
-		name: 'Listening for API Messages',
-		callback: () => {
-			new Notice("Listening for API Messages")
 
-			//Send slide changed message to OBS
-			window.addEventListener('message', (event) => {
-				//message data
-				//   "{\"namespace\":\"reveal\",\"eventName\":\"slidechanged\",\"state\":{\"indexh\":20,\"indexv\":0,\"paused\":false,\"overview\":false}}"
-				const data = JSON.parse(event.data);
+		//
+		// #region Listen for Slides Extended Messages
+		//
+		this.addCommand({
+			id: 'listen-for-event-messages',
+			name: 'Listening for API Messages',
+			callback: () => {
+				new Notice("Listening for API Messages")
 				
-				if (data.namespace === 'reveal' && data.eventName === 'slidechanged') {
-					//console.log("Slide Changed")
-					data.state.source = "obsidian"
-					//send slide change to OBS
-					sendToOBS(data.state, "slide-changed");	
-				}
-			});
-
-			
+				//On message from Slides iframe API, send new Slides state to OBS
+				window.addEventListener('message', (event) => {
+					//message data
+					//   "{\"namespace\":\"reveal\",\"eventName\":\"slidechanged\",\"state\":{\"indexh\":20,\"indexv\":0,\"paused\":false,\"overview\":false}}"
+					console.log(event)
+					const data = JSON.parse(event.data);
+					
+					if (data.namespace === 'reveal' && 
+						['paused','resumed','fragmentshown','fragmenthidden','slidechanged'].includes(data.eventName)) {
+							console.log("Slide Changed", event)
+							//data.state.source = "obsidian"
+							//if event 'state' doesn't equal settings 'state'
+							if(JSON.stringify(data.state) != slideState){
+								slideState = JSON.stringify(data.state);
+								//send slide change to OBS
+								sendToOBS(data.state, "slide-changed");	
+							}
+						}
+						
+					if (data.namespace === 'reveal' && 
+						['overviewhidden','overviewshown'].includes(data.eventName)) {
+							console.log("Overview Changed", event)	
+							//if event 'state' doesn't equal settings 'state'
+							if(JSON.stringify(data.state) != slideState){
+								slideState = JSON.stringify(data.state);
+								//send slide change to OBS
+								sendToOBS(data.state, "overview-changed");	
+							}
+						}
+					});
 			//iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlide', args: [data.state.indexh , data.state.indexv]}), '*' );
 			//Reveal.getSlide(indexh, indexv);
 			
-			window.addEventListener(`reveal-slide-changed`, async function (event) {
-				//reveal event 
-				console.log("message received: ", event)
-				if(event.detail.hasOwnProperty('slideChanged')){
-					//get slides extended preview iframe	
-					const iframe = document.getElementsByTagName("iframe")[0];
-					iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.state.indexh, data.state.indexv] }), '*');
-				}
-			})
+			// window.addEventListener(`reveal-slide-changed`, async function (event) {
+			// 	//reveal event 
+			// 	console.log("message received: ", event)
+			// 	if(event.detail.hasOwnProperty('slideChanged')){
+			// 		//get slides extended preview iframe	
+			// 		const iframe = document.getElementsByTagName("iframe")[0];
+			// 		iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.state.indexh, data.state.indexv] }), '*');
+			// 	}
+			// })
 		}
 	})
 
+	//run this command on load 
+			this.app.commands.executeCommandById('slides-studio:listen-for-event-messages')
 	// #endregion
 	
 	//
@@ -209,7 +227,6 @@ export default class slidesStudioPlugin extends Plugin {
 
 		obs.on("CustomEvent", function (event) {
 			console.log("Message from OBS",event);
-			console.log(`looking for OSC - out`)
 			if (event.event_name === `OSC-out`) {
 				const message = new Message(event.address);
 				if (Object.hasOwn(event, "arg1")) {
@@ -282,7 +299,36 @@ export default class slidesStudioPlugin extends Plugin {
 						break;
 				}
 			}
-		});		
+
+			if (['overview-toggled', 'slide-changed'].includes(event.eventName)) {
+				console.log("1iframe", event, slideState)
+				console.log("eventname type", event.eventData, typeof event.eventData)
+
+				if (event.eventData != slideState) {
+					//get Slides Extended Iframe
+					let iframeDiv = document.getElementsByClassName("reveal-preview-view")[0]
+					console.log("iframe Parent", iframeDiv)
+					const iframe = iframeDiv.getElementsByTagName('iframe')[0];
+					console.log("2iframe", iframe)
+					
+					const data = event.eventData
+					console.log("Event data", data)
+					data.indexf = data.indexf ? data.indexf : 0;
+					console.log("fragment number",data.indexf)
+
+					console.log("event Name slide changed", event.eventName === 'slide-changed')
+					if (event.eventName === 'overview-toggled') {
+						iframe.contentWindow.postMessage(JSON.stringify({ method: 'toggleOverview', args: [data.overview] }), '*');
+					} 
+
+					if(event.eventName === 'slide-changed') {
+						iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.indexh, data.indexv, data.indexf] }), '*');
+						iframe.contentWindow.postMessage( JSON.stringify({ method: 'togglePause', args: [ data.paused ] }), '*' );
+        
+					}
+				}
+			}
+		});		 
 
 	function sendToOBS(msgParam, eventName) {
 		//console.log("sending message:", JSON.stringify(msgParam));
