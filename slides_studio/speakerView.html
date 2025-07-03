@@ -334,7 +334,7 @@ body[data-speaker-layout="teleprompter"] #current-slide,
 	  </style>
     <script src="lib/obs-ws.js"></script>
     <script src="lib/obsConnect.js"></script>
-    <script src="lib/slideSync_Browser.js"></script>
+    <script src="lib/slideSync_SpeakerView_Browser.js"></script>
   </head>
   
   <body>
@@ -381,7 +381,8 @@ body[data-speaker-layout="teleprompter"] #current-slide,
       <select class="speaker-layout-dropdown"></select>
     </div>
     <script>
-      //console.log(wssDetails)
+
+      console.log("Iframe SpeakerView")
       var notes,
       notesValue,
       currentState,
@@ -544,18 +545,14 @@ body[data-speaker-layout="teleprompter"] #current-slide,
       };
 
 
-      window.addEventListener("update-speaker-view-event", function (event) {
-        let data = JSON.parse(event.detail.websocketMessage);
-        data = JSON.stringify(data);
-        data = JSON.parse(data);
-        
-        handleStateMessage(data);
-      });
-
-      window.addEventListener("slide-event", function (event) {
-        console.log("event", event.detail.websocketMessage);
-        var data = JSON.parse(event.detail.websocketMessage);
-        console.log("data:", data);
+      obs.on("CustomEvent", async function (event) {
+        if(['update-speaker-view-event','slide-event'].includes(event.eventName)){
+          let data = JSON.parse(event.detail.websocketMessage);
+          data = JSON.stringify(data);
+          data = JSON.parse(data);
+          
+          handleStateMessage(data);
+        }
         //Reveal.slide( event.detail.indexh, event.detail.indexv, event.detail.indexf ? event.detail.indexf: "0" )
         // No need for updating the notes in case of fragment changes
         if (data.notes) {
@@ -569,7 +566,6 @@ body[data-speaker-layout="teleprompter"] #current-slide,
         } else {
           notes.classList.add("hidden");
         }
-
         // The overview mode is only useful to the reveal.js instance
         // where navigation occurs so we don't sync it
         //if( data.state ) delete data.state.overview;
@@ -715,7 +711,7 @@ body[data-speaker-layout="teleprompter"] #current-slide,
         upcomingSlide = document.createElement("iframe");
         upcomingSlide.setAttribute("width", 640);
         upcomingSlide.setAttribute("height", 512);
-        upcomingSlide.setAttribute("src", data);
+        upcomingSlide.setAttribute("src", `${data}?postMessageEvents=false`);
         upcomingSlide.setAttribute("id", "upcoming-iframe");
         document.querySelector("#upcoming-slide").appendChild(upcomingSlide);
       }
