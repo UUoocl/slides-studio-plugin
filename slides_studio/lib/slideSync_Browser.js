@@ -5,6 +5,13 @@ const iframe = document.getElementById("revealIframe");
 window.addEventListener('message', async (event) => {
     //console.log(event)
     let data = JSON.parse(event.data);
+
+    //remove speakerview hotkey
+    if (data.namespace === 'reveal' && 
+    ['ready'].includes(data.eventName)) {
+        const iframe = document.getElementById("revealIframe");
+        iframe.contentWindow.postMessage(JSON.stringify({ method: 'removeKeyBinding', args: [83] }), '*');
+    }
     
     //on reveal slide change or pause
     if (data.namespace === 'reveal' && 

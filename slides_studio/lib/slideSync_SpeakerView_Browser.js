@@ -10,6 +10,7 @@ window.addEventListener('message', async (event) => {
         ['ready'].includes(data.eventName)) {
             const currentSlide_iframe = document.getElementById("current-iframe");
             currentSlide_iframe.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes'}), '*');
+            currentSlide_iframe.contentWindow.postMessage(JSON.stringify({ method: 'removeKeyBinding', args: [83] }), '*');
         }
     
     //on reveal slide change or pause
