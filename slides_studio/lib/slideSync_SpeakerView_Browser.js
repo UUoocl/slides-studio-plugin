@@ -27,8 +27,10 @@ window.addEventListener('message', async (event) => {
                 
                 //Get slide notes
                 const currentSlide_iframe = document.getElementById("current-iframe");
+                
+                if('slidechanged' === data.eventName){
                 currentSlide_iframe.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes'}), '*');
-
+                }
                 //send slide state to upcoming iFrame
                 const upcoming_iframe = document.getElementById("upcoming-iframe");
                 upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.state.indexh, data.state.indexv, data.state.indexf] }), '*');
@@ -39,19 +41,17 @@ window.addEventListener('message', async (event) => {
 
         //callback from get notes request
         if( data.namespace === 'reveal' && data.eventName === 'callback' && data.method === "getSlideNotes" ){
-           console.log("slide notes", data.result)
-           notesValue.innerHTML = data.result;
-           teleprompterScroll()
+            //send slide notes to notes iFrame
+            const notes_iframe = document.getElementById("notes-iframe");
+            notes_iframe.contentWindow.postMessage(JSON.stringify({ namespace:"teleprompter", method: 'updateNotes', data: `${JSON.stringify(data.result)}` }), '*');
         }
         
         //on overview mode
         if (data.namespace === 'reveal' && 
             ['overviewhidden','overviewshown'].includes(data.eventName)) {
-                console.log("overview Changed", event)
                 
                 //Send CustomEvent to OBS webSocket clients
                 slideState = data.state;
-                console.log("sending custom message", slideState)
                 obs.call("BroadcastCustomEvent", {
                     eventData:{
                         eventName:"overview-toggled",
@@ -63,13 +63,10 @@ window.addEventListener('message', async (event) => {
         
         //Custom Event message from OBS
         obs.on("CustomEvent", async function (event) {
-            console.log("CUSTOMEVENT ",event.eventData, "var",slideState);
-            console.log("CUSTOMEVENT =?", event.eventData === slideState);
             const currentSlide_iframe = document.getElementById("current-iframe");
             const upcoming_iframe = document.getElementById("upcoming-iframe");
             if(['overview-toggled','slide-changed'].includes(event.eventName)){
                 if(event.eventData != slideState){
-                    console.log("update slide state");
                     const data =JSON.parse(event.eventData)
                     data.indexf = data.indexf ? data.indexf : 0;
                     if(event.eventName === 'overview-toggled'){
