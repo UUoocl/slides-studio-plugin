@@ -39,15 +39,16 @@ export class slidesStudioView extends ItemView{
             .onClick(() => {this.app.commands.executeCommandById('slides-studio:open-slide-studio-speaker-view')})
         })
 
-  //moved to Settings page      
+        
+        //moved to Settings page      
         // new Setting(container).setName('URL for OBS')
         // .setHeading()
         // .setDesc('Copy the Slides URL, then Create a Browser Source in OBS')
         // .addButton((button) =>{
-        //     button.setButtonText("Copy URL for OBS Browser")
-        //     .onClick(() => {this.app.commands.executeCommandById('slides-studio:copy-obs-browser-source-link')})
-        // })
-        
+            //     button.setButtonText("Copy URL for OBS Browser")
+            //     .onClick(() => {this.app.commands.executeCommandById('slides-studio:copy-obs-browser-source-link')})
+            // })
+            
         new Setting(container).setName('Add Tags')
         .setHeading()
         .setDesc('Use the buttons below to insert tags into notes.  Tags will be inserted at the current cursor position')
@@ -56,6 +57,23 @@ export class slidesStudioView extends ItemView{
             .onClick(() => {this.addTagButtons(tagsContainer)})
         })
         
+        //add a data-id number for the selected slide
+        new Setting(container).setName('Slide Id')
+        .setHeading()
+        .setDesc('Add an Id tag')
+        .addButton((button) =>{
+            button.setButtonText("Id")
+            .onClick(() => {
+                const lastLeaf = this.app.workspace.getMostRecentLeaf()
+                const lastLeafWorkspace = this.app.workspace.getLeafById(lastLeaf?.id)
+                this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
+                lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
+                this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-id="${Date.now()}" -->
+`)
+                this.app.commands.executeCommandById('slides-studio:add-slide-id')})
+            .setCta()
+        })
+
         const tagsContainer = container.createDiv('tags')
         this.addTagButtons(tagsContainer)
     }
@@ -74,7 +92,7 @@ export class slidesStudioView extends ItemView{
         const slides = Array.from(new Set(this.app.plugins.plugins['slides-studio'].settings.slide_tags));
         //const slidesSet = new Set(slides);
         
-        new Setting(container).setName("Slides").setHeading()
+        new Setting(container).setName("Slides Position").setHeading()
         slides.forEach(scene => {
             new Setting(container).setName(scene)
             .addButton((item) =>{
@@ -107,7 +125,7 @@ export class slidesStudioView extends ItemView{
                 
                 //load Camera options
                 const cameras =  Array.from(new Set(this.app.plugins.plugins['slides-studio'].settings.camera_tags));
-                new Setting(container).setName("Cameras").setHeading()
+                new Setting(container).setName("Camera Position").setHeading()
                 cameras.forEach(scene => {
                     new Setting(container).setName(scene)
                     .addButton((item) =>{

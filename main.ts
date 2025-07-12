@@ -13,8 +13,6 @@ import { Client, Server, Message } from 'node-osc';
 import { OBSWebSocket } from 'obs-websocket-js';
 
 
-// Remember to rename these classes and interfaces!
-
 interface slidesStudioPluginSettings{
 	websocketIP_Text: string;
 	websocketPort_Text: string;
@@ -475,6 +473,7 @@ export default class slidesStudioPlugin extends Plugin {
 //  Files to be used with the Slides Extended web server
 // 	localhost:5000/slides-studio/speaker-view.html
 //
+//  OBE.  accessing plugin files directly. 
 	this.addCommand({
 		id: 'add-slide-studio-speaker-view',
 		name: 'Add Slide Studio Speaker View to vault',

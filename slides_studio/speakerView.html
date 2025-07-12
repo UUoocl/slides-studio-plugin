@@ -368,9 +368,9 @@ body[data-speaker-layout="teleprompter"] #current-slide,
       lastRevealApiCallId = 0,
       connected = false,
       scroller
+      const slideDeck = `http://localhost:${window.location.port}/`;   //?postMessageEvents=false
       
       document.addEventListener("DOMContentLoaded", async () => {
-        const slideDeck = `http://localhost:${window.location.port}/`;   //?postMessageEvents=false
         //clearTimeout( connectionTimeout );
         connectionStatus.style.display = "none";
         setupLayout();
@@ -437,6 +437,7 @@ body[data-speaker-layout="teleprompter"] #current-slide,
 
       var SPEAKER_LAYOUTS = {
 		'teleprompter': 'Teleprompter',
+		'studio': 'Studio',
         default: "Default",
         wide: "Wide",
         tall: "Tall",
@@ -454,7 +455,7 @@ body[data-speaker-layout="teleprompter"] #current-slide,
           setupIframes(data);
           setupKeyboard();
           //setupNotes();
-          setupTimer();
+          //setupTimer();
           //setupHeartbeat();
         }
       }
@@ -498,6 +499,8 @@ body[data-speaker-layout="teleprompter"] #current-slide,
             case (52): setLayout("notes-only"); break;
             //key : 5
             case (53): setLayout("teleprompter"); break;
+            //key : 6
+            case (54): setLayout("studio"); break;
             //key : =
             case (187): 
               notes_iframe.contentWindow.postMessage(JSON.stringify({ namespace:"teleprompter", method: 'teleprompterChangeRequest', functionName: "increaseFont", value: 1 }), '*');
@@ -530,21 +533,21 @@ body[data-speaker-layout="teleprompter"] #current-slide,
        * Creates the preview iframes.
        */
       function setupIframes(data) {
-        currentSlide = document.createElement("iframe");
+        const currentSlide = document.createElement("iframe");
         currentSlide.setAttribute("width", 1280);
         currentSlide.setAttribute("height", 1024);
         currentSlide.setAttribute("src", data);
         currentSlide.setAttribute("id", "current-iframe");
         document.querySelector("#current-slide").appendChild(currentSlide);
 
-        upcomingSlide = document.createElement("iframe");
+        const upcomingSlide = document.createElement("iframe");
         upcomingSlide.setAttribute("width", 640);
         upcomingSlide.setAttribute("height", 512);
         upcomingSlide.setAttribute("src", `${data}?postMessageEvents=false?postMessage=true`);
         upcomingSlide.setAttribute("id", "upcoming-iframe");
         document.querySelector("#upcoming-slide").appendChild(upcomingSlide);
         
-        notesIframe = document.createElement("iframe");
+        const notesIframe = document.createElement("iframe");
         notesIframe.setAttribute("width",'100%')
         notesIframe.setAttribute("height",'100%')
         notesIframe.setAttribute("src",`${data}.obsidian/plugins/slides-studio/slides_studio/teleprompter.html`)
@@ -594,16 +597,26 @@ body[data-speaker-layout="teleprompter"] #current-slide,
       function setLayout(value) {
         console.log(SPEAKER_LAYOUTS)
         var title = SPEAKER_LAYOUTS[value];
-console.log("set layout called", value, title)
+        
         layoutLabel.innerHTML = "Layout" + (title ? ": " + title : "");
         layoutDropdown.value = value;
-
-        document.body.setAttribute("data-speaker-layout", value);
-
+        
+        console.log("set layout called", value, title)
+        value = layoutDropdown.value.toLowerCase();
         // Persist locally
         if (supportsLocalStorage()) {
           window.localStorage.setItem("reveal-speaker-layout", value);
         }
+
+        if(['studio','teleprompter'].includes(value)){
+          const notesIframe = document.getElementById("notes-iframe");
+          console.log(value, notesIframe)
+
+          if(notesIframe){notesIframe.setAttribute("src",`${slideDeck}.obsidian/plugins/slides-studio/slides_studio/${value}.html`)}
+
+          value = 'teleprompter'
+        }
+        document.body.setAttribute("data-speaker-layout", value);
       }
 
       /**
