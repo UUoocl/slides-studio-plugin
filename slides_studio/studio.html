@@ -42,200 +42,130 @@
    
 </head>
 <body>
-    <div id="slides-container" class="container" hidden>
-        <iframe src="" class="responsive-iframe" id="slidesDeck"></iframe>
-    </div>
-  
-    <div id="slidesTable" hidden>
-        <h3>Slides settings</h3>
-        <form>
-            <input class="form-button" type="button" value="Load Slides Settings" id ="slideTableButton"/>
-        </form>
-    </div>
-  
-    <div id="slidesLocation">
-        <h3>Open a Slides deck</h3>
-        <form>
-            <div>
-                <label for="configName">Enter the URL or Path to a Slides deck:</label>
-            </div>
-            <input class= "slide-location" type="text" id="location" name="locationName" list="configNameValues"
-                placeholder="https://slides.com/username/deck-id/" />
-            <datalist id="slideLocations">
-            </datalist>
-            <div id="openSlidesButton">
-                <input class="form-button" type="button" value="Open Slides" />
-            </div>
-        </form>
-    </div>
-  
-    <div id="connectToOBS" hidden>
-        <h3>Open OBS</h3>
-        <form class="form-grid" id="obsData">
-            <label for="configName">Enter a configuration name:</label>
-            <input type="text" id="configName" name="configName" list="configNameValues"
-                placeholder="UUinsome" />
-            <datalist id="configNameValues">
 
-            </datalist>
-            <label for="obsName" id="obsNameLabel">Enter OBS app name:</label>
-            <input type="text" id="obsName" name="obsName" value="OBS" />
-            <label for="profileName">Enter OBS Profile name:</label>
-            <input type="text" id="profileName" name="profileName" value="720vc" />
-            <label for="collectionName">Enter OBS Collection name:</label>
-            <input type="text" id="collectionName" name="collectionName" value="UUinsome" />
-            <label for="IP">Enter IP address or "localhost":</label>
-            <input type="text" id="IP" name="IP" value="localhost" disabled/>
-            <label for="Port">Enter Port Number:</label>
-            <input type="text" id="Port" name="Port" value="4455" />
-            <label for="PW">Enter Password:</label>
-            <input type="password" id="PW" name="PW" value="" />
-            <label for="virtualCameraOn">Start Virtual Camera:</label>
-            <input type="checkbox" id="virtualCameraOn" name="virtualCameraOn" disabled unchecked />
-            <label for="Debug">Debug mode:</label>
-            <input type="checkbox" id="Debug" name="Debug" />
-            <p></p><div id="openOBSbutton">
-                <input class="form-button" type="button" value="Open OBS" />
-            </div>
-        </form>
-
-        <div><button id="copyCommand" class="form-button">Copy Command</button><input type="text" id="obsOpenCommand"/></div>
-        
-        <div id="srvr">
-            <h3>Connect to the OBS WebSocket Server</h3>
-            <form class="form-grid">
-                <p></p><input class="form-button" type="button" id="WSconnectButton" value="Connect" />
-            </form>
-        </div>
+    <form>
+        <label for="slideDeckId">slide deck name</label> 
+        <input class= "slide-location" type="text" id="slideDeckId" name="slideDeckId"
+        placeholder="deck-id" />
+        <button type="button" id="slideDeckIdLoadButton" class="form-button">Load</button>
+    </form>
+        <div id="slidesTable">
+            <h3>Slides settings</h3>
     </div>
-
-    <script src='lib/obs-ws.js'></script>
-    <script src='lib/obsOpen.js'></script>
-    
+ 
     <script type="text/javascript" src="https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js"></script>
-    
-    <!-- <script src='lib/slideChangedMessages.js'></script> -->
-    <script src='lib/getOBSData.js'></script>
-    <script src='lib/getSlideDataV2.js'></script>
     <script src='lib/setupTable.js'></script>
-    <script src='lib/sendSelectedRowToOBS.js'></script>
-
+ 
     <script>
         let slideDeckId;
         const iframe = document.getElementById("slidesDeck");
-        let slideState = {};
+        let slideStateObj = {};
+        let slidesArray;
+        let dropDownOptions = {};
+        
+        window.addEventListener("DOMContentLoaded", (event) => {
+            console.log("studio iframe page is fully loaded");
+            //get OBS details from parent
+            getOBSdata();
+            getSlidesData();
+        })
+        
+        function getOBSdata(){
+            sendMessageToParent({namespace: "tabulator", message: "obs-data"}, window.location.origin)
+        }
 
-        window.addEventListener("load", (event) => {
-            console.log("page is fully loaded");
-            if (localStorage.getItem("wssDetails")) {
-                const wssDetails = JSON.parse(window.localStorage.getItem('wssDetails'))
-                document.getElementById("IP").value = wssDetails?.IP;
-                document.getElementById("Port").value = wssDetails?.PORT;
-                document.getElementById("PW").value = wssDetails?.PW;
-            }
+        function getSlidesData(){
+            sendMessageToParent({namespace: "tabulator", message: "slides-data"}, window.location.origin)
+        }
 
-            //add button event listeners
-            document
-                .getElementById("openSlidesButton")
-                .addEventListener('click', setSlides);
+        function sendMessageToParent(message, origin) {
+            // Send the message to the parent window
+            window.parent.postMessage(JSON.stringify(message), origin);
+        }
+
+        //messages from parent window
+        window.addEventListener("message", async (event) => {
+            if (event.origin === window.location.origin) {
+                console.log(event)
+                let data = JSON.parse(event.data);
+                console.log(data)
+
+                //select row on slide change
+                if (data.namespace === "speakerview" && data.message === "change-row") {
+                    console.log("chnage row", data)
+                    let stateString;
+                    
+                    stateString = `${data.state.indexh},${data.state.indexv}`;
+                    
+                    console.log(stateString)
+                    
+                    table.selectRow(0)
+                    
+                    let row = table.searchData("slideState", "=", stateString);
+                    let rowComponent = table.searchRows("slideState", "=", stateString);
+                    console.log(row[0])
+                    // console.log(rowComponent[0].getIndex())
+                    console.log(rowComponent[0].getPosition())
+                    table.deselectRow();
+                    table.selectRow(table.getRowFromPosition(rowComponent[0].getPosition()));
+                    table.scrollToRow(rowComponent[0], "top")
+                    
+                    //select fragment
+                    if (data.state.hasOwnProperty("indexf")) {
+                        stateString = `${data.state.indexh},${data.state.indexv},${data.state.indexf}`;
+                        let children = rowComponent[0].getTreeChildren()
+                        console.log(children)
+                        console.log(children[0]._row.data.slideState, stateString)
+                        console.log(children[0]._row.data.slideState === stateString)
+                        const fragmentRow = children.filter(row => row._row.data.slideState === stateString)
+                        console.log(fragmentRow)
+                        table.selectRow(table.getRowFromPosition(fragmentRow[0].getPosition()));
+                        const rowData = fragmentRow[0].getData();
+                        filterRowData(rowData);
+                    } else {
+                        const rowData = rowComponent[0].getData();
+                        filterRowData(rowData);
+                    }
+
+                }
             
-            document
-                .getElementById("configName")
-                .addEventListener('change', configSelected);
-
-            document
-                .getElementById("openOBSbutton")
-                .addEventListener('click', openOBS);
-
-            document
-                .getElementById("obsData")
-                .addEventListener('change', obsLaunchCommand);
-
-            document
-                .getElementById("copyCommand")
-                .addEventListener('click', (e) => {
-                    console.log(e)
-                    copyCode(e.target.id, "obsOpenCommand", e.target.innerText)
-                });
-
-            document
-                .getElementById("WSconnectButton")
-                .addEventListener("click", wsConnect);
-
-            document
-                .getElementById("slideTableButton")
-                .addEventListener("click", loadTable);
-
-            //obsLaunchCommand();
+            //slide data from speakerView
+            if(data.namespace === "speakerview" && data.message === "slides-data-response"){
+                console.log("slide data response arrived")
+                slidesArray = data.slidesData    
+                console.log(slidesArray)
+                loadTable();
+            }  
+            
+            //obs data from speakerView
+            if(data.namespace === "speakerview" && data.message === "obs-data-response"){
+                console.log("obs data response arrived")
+                dropDownOptions = { ... data.obsData }   
+                console.log(JSON.stringify(dropDownOptions))
+                loadTable();
+            }  
+        }
         })
 
+            document
+                .getElementById("slideDeckId")
+                .addEventListener('change', updateSlideName);
+
+            document
+                .getElementById("slideDeckIdLoadButton")
+                .addEventListener('click', loadSavedTable);
+
         //button functions            
-        function setSlides() {
-            slideDeckId = document.getElementById("location").value.split("/deck-")[1];
-            iframe
-                .setAttribute("src",`${document.getElementById("location").value}/fullscreen?postMessageEvents=true`)
-            
-            document.getElementById("slides-container").hidden=false;
-            document.getElementById("connectToOBS").hidden=false;
-            if (obs.connected == true) { sendToOBS({ url: `${document.getElementById("location").value}/fullscreen?postMessageEvents=true` }, "setSource") };
-
+        function updateSlideName() {
+            slideDeckId = document.getElementById("slideDeckId").value;
+            console.log("SlideID", slideDeckId)
         }
 
-        function slidesMessage(event){
-            console.log(event)
+        function loadSavedTable() {
+            let localSavedTable = localStorage.getItem(slideDeckId);
+            localSavedTable = JSON.parse(localSavedTable)
+            loadTable();
         }
-        
-        function openOBS() {
-            let slideHREF = window.location.href;
-            // "path":"${slideHREF}",
-            let inputArray = JSON.stringify(`{"obsName":"${document.getElementById("obsName").value}","profileName":"${document.getElementById("profileName").value}","collectionName":"${document.getElementById("collectionName").value}","ip":"${document.getElementById("IP").value}","port":"${document.getElementById("Port").value}","password":"${document.getElementById("PW").value}"}`)
-            console.log(inputArray)
-            if (document.getElementById("Debug").checked) {
-                window.open(`shortcuts://run-shortcut?name=INPUT-Open_OBS_Profile-Collection-WebSocket-DEBUG&input=text&text=${inputArray}`, "_self");
-            } else {
-                window.open(`shortcuts://run-shortcut?name=INPUT-Open_OBS_Profile-Collection-WebSocket&input=text&text=${inputArray}`, "_self");
-            }
-        }
-
-        obs.on("Identified", async (data) => {
-            console.log("OBS WebSocket successfully identified", data);
-
-            document.getElementById("WSconnectButton").style.background = "#00ff00";
-
-            //send websocket server connection details to OBS browser sources
-            const wssDetails = JSON.parse(window.localStorage.getItem('wssDetails'))
-            console.log(wssDetails);
-
-            await obs.call("CallVendorRequest", {
-                vendorName: "obs-browser",
-                requestType: "emit_event",
-                requestData: {
-                    event_name: "ws-details",
-                    event_data: { wssDetails },
-                },
-            });
-            
-            // sendToOBS(wssDetails, "ws-details");
-            sendToOBS({ url: `${document.getElementById("location").value}/fullscreen?postMessageEvents=true` }, "setSource");
-
-        });
-
-    function sendToOBS(msgParam, eventName, eventDetailName) {
-        //console.log("sending message:", JSON.stringify(msgParam));
-        const webSocketMessage = JSON.stringify(msgParam);
-        //send results to OBS Browser Source
-        obs.call("CallVendorRequest", {
-            vendorName: "obs-browser",
-            requestType: "emit_event",
-            requestData: {
-                event_name: eventName,
-                event_data: { 
-                    webSocketMessage 
-                },
-            },
-        });
-    }
-
     </script>
 
 </body>

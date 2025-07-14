@@ -2,7 +2,7 @@ let slideState = '';
 
 //Message from Reveal Slides iFrame API
 window.addEventListener('message', async (event) => {
-    console.log(event)
+    // console.log(event)
     let data = JSON.parse(event.data);
 
     //get notes when slides are ready
@@ -14,14 +14,14 @@ window.addEventListener('message', async (event) => {
         }
     
     //on reveal slide change or pause
-    if (data.namespace === 'reveal' && 
+    if (data.namespace === 'reveal' && slidesLoaded == true &&
         ['paused','resumed','fragmentshown','fragmenthidden','slidechanged'].includes(data.eventName)) {
             console.log("Slide Changed", event)
             
             //if event 'state' doesn't equal settings 'state'
             if(JSON.stringify(data.state) != slideState){
                 slideState = JSON.stringify(data.state);
-                data.state.indexf = data.state.indexf ? data.state.indexf : 0;
+                data.state.indexf = data.state.indexf ?? 0;
                 //send slide change to OBS
                 sendToOBS(data.state, "slide-changed");	
                 
@@ -35,6 +35,11 @@ window.addEventListener('message', async (event) => {
                 const upcoming_iframe = document.getElementById("upcoming-iframe");
                 upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.state.indexh, data.state.indexv, data.state.indexf] }), '*');
                 upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'next'}), '*');
+                
+                //send slide state to notes iFrame
+                const state = JSON.parse(slideState);
+                notesIframe.contentWindow.postMessage(JSON.stringify({ namespace: 'speakerview', message: 'change-row', state: state }), window.location.origin);
+
             }
 
         }
@@ -63,6 +68,8 @@ window.addEventListener('message', async (event) => {
         
         //Custom Event message from OBS
         obs.on("CustomEvent", async function (event) {
+            console.log(event)
+            console.log(typeof event.eventData)
             const currentSlide_iframe = document.getElementById("current-iframe");
             const upcoming_iframe = document.getElementById("upcoming-iframe");
             if(['overview-toggled','slide-changed'].includes(event.eventName)){
@@ -82,7 +89,7 @@ window.addEventListener('message', async (event) => {
 });
 
 function sendToOBS(msgParam, eventName) {
-    //console.log("sending message:", JSON.stringify(msgParam));
+    console.log("sending message:", JSON.stringify(msgParam));
     const webSocketMessage = JSON.stringify(msgParam);
     //send results to OBS Browser Source
     obs.call("CallVendorRequest", {

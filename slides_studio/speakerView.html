@@ -327,14 +327,12 @@ body[data-speaker-layout="teleprompter"] #current-slide,
         body[data-speaker-layout="default"] #speaker-controls {
           font-size: 12px;
         }
-      }
-	  
-	  
-	  
+      }  
 	  </style>
+   
     <script src="lib/obs-ws.js"></script>
     <script src="lib/obsConnect.js"></script>
-    <script src="lib/slideSync_SpeakerView_Browser.js"></script>
+
   </head>
   
   <body>
@@ -346,9 +344,8 @@ body[data-speaker-layout="teleprompter"] #current-slide,
     <div id="upcoming-slide">
       <span class="overlay-element label">Upcoming</span>
     </div>
-    <div id="speaker-controls" >
-      
-      </div>
+    <div id="speaker-controls" >  
+    </div>
     </div>
     <div id="speaker-layout" class="overlay-element interactive">
       <span class="speaker-layout-label"></span>
@@ -357,11 +354,12 @@ body[data-speaker-layout="teleprompter"] #current-slide,
     <script>
 
       console.log("Iframe SpeakerView")
-      var notes,
+      let notes,
       notesValue,
       currentState,
       currentSlide,
       upcomingSlide,
+      notesIframe,
       layoutLabel,
       layoutDropdown,
       pendingCalls = {},
@@ -370,18 +368,41 @@ body[data-speaker-layout="teleprompter"] #current-slide,
       scroller
       const slideDeck = `http://localhost:${window.location.port}/`;   //?postMessageEvents=false
       
+      //Get OBS websocket connection details from Obsidian plugin settings folder
+      async function getWebsocketDetailsFromObsidian(){
+          await fetch('../data.json')
+          .then(response => {
+              if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+              }
+              return response.json(); // Parses the JSON response into a JavaScript object
+          })
+          .then(data => {
+              const wssDetails = {IP:data.websocketIP_Text,
+                  PORT: data.websocketPort_Text,
+                  PW: data.websocketPW_Text,
+              }
+              connectOBS(wssDetails);
+          })
+          .catch(error => {
+              console.error('Error fetching JSON:', error);
+          });
+      }
+  
       document.addEventListener("DOMContentLoaded", async () => {
+        await getWebsocketDetailsFromObsidian();
         //clearTimeout( connectionTimeout );
         connectionStatus.style.display = "none";
+        layoutLabel
         setupLayout();
         handleConnectMessage(slideDeck);
         window.document.getElementById("speaker-controls").focus();
 	});
-	/*
-	*speaker view settings
-	*/
+
+	//
+	//#region speaker view settings
+	//
    
-	
 //#region teleprompter layout  
 		   window.document.getElementById("speaker-controls").focus();
 		   window.document.getElementById("speaker-controls").scrollTo(0, 0);
@@ -432,7 +453,7 @@ body[data-speaker-layout="teleprompter"] #current-slide,
 
 //#endregion
 			
-///////////connection functions
+// connection functions
 			var connectionStatus = document.querySelector("#connection-status");
 
       var SPEAKER_LAYOUTS = {
@@ -533,24 +554,24 @@ body[data-speaker-layout="teleprompter"] #current-slide,
        * Creates the preview iframes.
        */
       function setupIframes(data) {
-        const currentSlide = document.createElement("iframe");
+        currentSlide = document.createElement("iframe");
         currentSlide.setAttribute("width", 1280);
         currentSlide.setAttribute("height", 1024);
-        currentSlide.setAttribute("src", data);
+        currentSlide.setAttribute("src", `${data}?postMessageEvents=true`);
         currentSlide.setAttribute("id", "current-iframe");
         document.querySelector("#current-slide").appendChild(currentSlide);
 
-        const upcomingSlide = document.createElement("iframe");
+        upcomingSlide = document.createElement("iframe");
         upcomingSlide.setAttribute("width", 640);
         upcomingSlide.setAttribute("height", 512);
         upcomingSlide.setAttribute("src", `${data}?postMessageEvents=false?postMessage=true`);
         upcomingSlide.setAttribute("id", "upcoming-iframe");
         document.querySelector("#upcoming-slide").appendChild(upcomingSlide);
         
-        const notesIframe = document.createElement("iframe");
+        notesIframe = document.createElement("iframe");
         notesIframe.setAttribute("width",'100%')
         notesIframe.setAttribute("height",'100%')
-        notesIframe.setAttribute("src",`${data}.obsidian/plugins/slides-studio/slides_studio/teleprompter.html`)
+        notesIframe.setAttribute("src",`${data}.obsidian/plugins/slides-studio/slides_studio/${layoutDropdown.value}.html`)
         notesIframe.setAttribute("id", "notes-iframe");
         document.getElementById("speaker-controls").appendChild(notesIframe);
       }
@@ -609,7 +630,6 @@ body[data-speaker-layout="teleprompter"] #current-slide,
         }
 
         if(['studio','teleprompter'].includes(value)){
-          const notesIframe = document.getElementById("notes-iframe");
           console.log(value, notesIframe)
 
           if(notesIframe){notesIframe.setAttribute("src",`${slideDeck}.obsidian/plugins/slides-studio/slides_studio/${value}.html`)}
@@ -672,6 +692,12 @@ body[data-speaker-layout="teleprompter"] #current-slide,
           }
         };
       }
+
+//#endregion
+    
     </script>
+    <script src="lib/getOBSData.js"></script>
+    <script src="lib/getSlideDataV3.js"></script>
+    <script src="lib/slideSync_SpeakerView_Browser.js"></script>
   </body>
 </html>

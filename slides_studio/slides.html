@@ -39,7 +39,7 @@
         
         //Get OBS websocket connection details from Obsidian plugin settings folder
         async function getWebsocketDetailsFromObsidian(){
-            await fetch('../.obsidian/plugins/slides-studio/data.json')
+            await fetch('../data.json')
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
