@@ -29,26 +29,11 @@ export class slidesStudioView extends ItemView{
         new Setting(container).setName('Open Slides Studio')
         .setHeading()
         .setDesc('Open the Slides Studio Page in a browser.  Chrome browser is recommended')
-        // .addButton((button) =>{
-        //     button.setButtonText("Slides")
-        //     .onClick(() => {this.app.commands.executeCommandById('slides-studio:open-slides-in-browser')})
-        //     .setCta()
-        // })
         .addButton((button) =>{
             button.setButtonText("Open")
             .onClick(() => {this.app.commands.executeCommandById('slides-studio:open-slide-studio-speaker-view')})
             .setCta()
         })
-
-        
-        //moved to Settings page      
-        // new Setting(container).setName('URL for OBS')
-        // .setHeading()
-        // .setDesc('Copy the Slides URL, then Create a Browser Source in OBS')
-        // .addButton((button) =>{
-            //     button.setButtonText("Copy URL for OBS Browser")
-            //     .onClick(() => {this.app.commands.executeCommandById('slides-studio:copy-obs-browser-source-link')})
-            // })
             
         new Setting(container).setName('Add Tags')
         .setHeading()
@@ -82,16 +67,11 @@ export class slidesStudioView extends ItemView{
     async addTagButtons(container){
         
         this.app.commands.executeCommandById('slides-studio:get-obs-scene-tags')
-        //new Setting(container).setName('refreshing slide tags')
-        
+      
         container.empty()
-        
-        //load Slide options
-        
-        
+            
         //load Slide options
         const slides = Array.from(new Set(this.app.plugins.plugins['slides-studio'].settings.slide_tags));
-        //const slidesSet = new Set(slides);
         
         new Setting(container).setName("Slides Position").setHeading()
         slides.forEach(scene => {
@@ -107,21 +87,8 @@ export class slidesStudioView extends ItemView{
                     lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
                     this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-slide-position="${scene}" -->
 `)
-                        //new Notice(`Inserted tag ${tag[1]}`)
                     })
                 })
-                // .addButton( item => {                
-                //     item.setButtonText("Exit")
-                //     .onClick(() => {
-                //         const lastLeaf = this.app.workspace.getMostRecentLeaf()
-                //         const lastLeafWorkspace = this.app.workspace.getLeafById(lastLeaf?.id)
-                //         this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
-                //         lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
-                //         this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-slide-exit="${scene}" -->
-                //             `)              
-                //             //new Notice(`Inserted tag ${tag[1]}`)
-                //         })
-                //     })
                 });
                 
                 //load Camera options
@@ -140,22 +107,9 @@ export class slidesStudioView extends ItemView{
                             lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
                             this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-camera-position="${scene}" -->
 `)
-                                //new Notice(`Inserted tag ${tag[1]}`)
                             })
                         })
-                        // .addButton( item => {                
-                        //     item.setButtonText("Exit")
-                        //     .onClick(() => {
-                        //         const lastLeaf = this.app.workspace.getMostRecentLeaf()
-                        //         const lastLeafWorkspace = this.app.workspace.getLeafById(lastLeaf?.id)
-                        //         this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
-                        //         lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
-                        //         this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-camera-exit="${scene}" -->
-                        //             `)              
-                        //             //new Notice(`Inserted tag ${tag[1]}`)
-                        //         })
-                        //     })
-                        });
+                         });
                         
                         //load Camera Overlay options
                         const cameras_overlay =  Array.from(new Set(this.app.plugins.plugins['slides-studio'].settings.camera_overlay_tags));
@@ -173,21 +127,8 @@ export class slidesStudioView extends ItemView{
                                     lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
                                     this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-camera-position="${scene}" -->
 `)
-                                        //new Notice(`Inserted tag ${tag[1]}`)
                                     })
                                 })
-                                // .addButton( item => {                
-                                //     item.setButtonText("Exit")
-                                //     .onClick(() => {
-                                //         const lastLeaf = this.app.workspace.getMostRecentLeaf()
-                                //         const lastLeafWorkspace = this.app.workspace.getLeafById(lastLeaf?.id)
-                                //         this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
-                                //         lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
-                                //         this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-camera-overlay-exit="${scene}" -->
-                                //             `)              
-                                //             //new Notice(`Inserted tag ${tag[1]}`)
-                                //         })
-                                //     })
                                 });
                                 
                                 //load scenes
@@ -206,22 +147,8 @@ export class slidesStudioView extends ItemView{
                                             lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
                                             this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-scene = "${scene}}" -->
 `)
-                                                //new Notice(`Inserted tag ${tag[1]}`)
                                             })
                                         })
-                                        //Add a button that will indicate if the tag is applied when the slide changes or after the transition completes
-                                        // .addButton( item => {                
-                                        //     item.setButtonText("Exit")
-                                        //     .onClick(() => {
-                                        //         const lastLeaf = this.app.workspace.getMostRecentLeaf()
-                                        //         const lastLeafWorkspace = this.app.workspace.getLeafById(lastLeaf?.id)
-                                        //         this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
-                                        //         lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
-                                        //         this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-scene-exit="${scene}" -->
-                                        //             `)              
-                                        //             //new Notice(`Inserted tag ${tag[1]}`)
-                                        //         })
-                                        //     })
                                         });
                                         
                                         
@@ -281,22 +208,8 @@ export class slidesStudioView extends ItemView{
                                                             const dataTag = userTag.split(":")
                                                             this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-${dataTag[0]} = "${dataTag[1]}" -->
 `)
-                                                            //new Notice(`Inserted tag ${tag[1]}`)
                                                             })
                                                         })
-                                        //                 .addButton( item => {                
-                                        //                     item.setButtonText("Exit")
-                                        //                     .onClick(() => {
-                                        //                         const lastLeaf = this.app.workspace.getMostRecentLeaf()
-                                        //                         const lastLeafWorkspace = this.app.workspace.getLeafById(lastLeaf?.id)
-                                        //                         this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
-                                        //                         lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
-                                        //                         const dataTag = userTag.split(":")
-                                        //                         this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-${dataTag[0]}-exit="${dataTag[1]}" -->
-                                        // `)              
-                                        //                         //new Notice(`Inserted tag ${tag[1]}`)
-                                        //                     })
-                                        //                 })
                                             //remove user tag
                                                         .addButton( item => {                
                                                             item.setButtonText("🚫")

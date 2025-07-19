@@ -3,7 +3,6 @@ const iframe = document.getElementById("revealIframe");
 
 //Message from Reveal Slides iFrame API
 window.addEventListener('message', async (event) => {
-    //console.log(event)
     let data = JSON.parse(event.data);
 
     //remove speakerview hotkey
@@ -63,7 +62,6 @@ obs.on("CustomEvent", async function (event) {
 });
 
 function sendToOBS(msgParam, eventName) {
-    //console.log("sending message:", JSON.stringify(msgParam));
     const webSocketMessage = JSON.stringify(msgParam);
     //send results to OBS Browser Source
     obs.call("CallVendorRequest", {

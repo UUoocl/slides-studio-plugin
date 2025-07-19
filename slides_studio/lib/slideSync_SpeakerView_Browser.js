@@ -15,7 +15,6 @@ window.addEventListener('message', async (event) => {
         return;
     }
 
-    // console.log(event)
     //read the message data
     let data = JSON.parse(event.data);
 
@@ -100,25 +99,8 @@ window.addEventListener('message', async (event) => {
         
         //Custom Event message from OBS
         obs.on("CustomEvent", async function (event) {
-            console.log(event)
-            console.log(typeof event.eventData)
-            // const currentSlide_iframe = document.getElementById("current-iframe");
-            // const upcoming_iframe = document.getElementById("upcoming-iframe");
-            // if(['overview-toggled','slide-changed'].includes(event.eventName)){
-            //     if(event.eventData != slideState){
-            //         const data =JSON.parse(event.eventData)
-            //         data.indexf = data.indexf ? data.indexf : 0;
-            //         if(event.eventName === 'overview-toggled'){
-            //             currentSlide_iframe.contentWindow.postMessage( JSON.stringify({ method: 'toggleOverview', args: [ data.overview ] }), '*' );
-            //         }else{
-            //             currentSlide_iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.indexh, data.indexv, data.indexf] }), '*');
-            //             // currentSlide_iframe.contentWindow.postMessage( JSON.stringify({ method: 'togglePause', args: [ data.paused ] }), '*' );
-            //             upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.indexh, data.indexv, data.indexf] }), '*');
-            //             upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'next'}), '*');
-            //         }
-            //     }
-            // } 
-});
+            //do something with message from OBS
+        });
 
 function sendToOBS(msgParam, eventName) {
     console.log("sending message:", JSON.stringify(msgParam));

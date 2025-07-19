@@ -54,48 +54,6 @@ function loadTable() {
                 }
             }
 
-            //navigate to slide
-            // function gotoSlide (){
-            //     console.log(cell)    
-            //     iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [0,0]}), 'https://slides.com');
-            // }
-
-            table.on("tableBuilt", function () {
-                //table.setSort({ column : "slideState", dir:"asc"});
-                // setCurrentScene("");
-            })
-
-            // function setVisibility(e,cell){
-            //     if(!debounce){
-            //         debounce = true;
-            //         const rowData = cell.getData();
-            //         let cellVisibility = cell.getValue() == !true ? true : false;
-            //         if(rowData.type === "Scene"){
-            //             setCurrentScene(rowData.name);
-            //         }
-            //         cell.setValue(cellVisibility)
-            //         rowData.visibility = cellVisibility
-            //         table.deselectRow();
-            //         table.selectRow(table.getRowFromPosition(cell.getRow().getPosition()));
-            //         // postData({ 
-            //         //     "type": rowData.type, 
-            //         //     "visibility": `${cellVisibility}`,
-            //         //     "name": rowData.name,
-            //         //     "itemID": rowData.itemID})
-            //         postData(rowData)
-            //     }
-            // }
-
-            // function setCurrentScene(sceneName){
-            //     let scenes = table.searchData("type", "=", "Scene");
-            //     scenes.forEach( (scene) => {
-            //         if(scene.name !== sceneName){
-            //             scene.visibility = "";
-            //         }
-            //     })
-            //     table.updateData(scenes)
-            // }
-
             //Table row Clicked
             table.on("rowClick", function (e, row) {
                 console.log("e=index", row.getPosition())
@@ -104,7 +62,6 @@ function loadTable() {
                 console.log("table", table)
                 table.deselectRow();
                 table.selectRow(table.getRowFromPosition(row.getPosition()));
-                //rowChanged(row)
             });
         }
         

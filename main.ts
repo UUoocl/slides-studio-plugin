@@ -2,16 +2,13 @@ import { Notice, Plugin, Platform, WorkspaceLeaf } from 'obsidian';
 import { slidesStudioSettingsTab } from 'settings';
 import { SLIDES_STUDIO_VIEW_TYPE, slidesStudioView } from 'view';
 
-// import { execSync } from 'node:child_process';
 import path from 'node:path'; 
-// import util from 'util';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 const execAsync = promisify(exec); 
 
 import { Client, Server, Message } from 'node-osc';
 import { OBSWebSocket } from 'obs-websocket-js';
-
 
 interface slidesStudioPluginSettings{
 	websocketIP_Text: string;
@@ -56,10 +53,10 @@ export default class slidesStudioPlugin extends Plugin {
 		let obs = this.settings.obs;
 		obs = new OBSWebSocket();
 		let slideState = '';
-		
-		//this.settings.obs = new OBSWebSocket();
-		// this.app.plugins.plugins['slides-studio'].settings.scenes = [];
-		// this.app.plugins.plugins['slides-studio'].settings.cameras = [];
+
+		//clear settings value
+		this.app.plugins.plugins['slides-studio'].settings.scenes = [];
+		this.app.plugins.plugins['slides-studio'].settings.cameras = [];
 	
 		this.registerView(SLIDES_STUDIO_VIEW_TYPE, (leaf) => new slidesStudioView(leaf))
 
@@ -71,66 +68,6 @@ export default class slidesStudioPlugin extends Plugin {
 
 		new Notice("Enabled slides studio plugin")	
 
-		//
-		// #region ❌Listen for Slides Extended Messages
-		// 7/16 This command is no longer needed
-		//
-		
-	// 	this.addCommand({
-	// 		id: 'listen-for-event-messages',
-	// 		name: 'Listening for API Messages',
-	// 		callback: () => {
-	// 			new Notice("Listening for API Messages")
-				
-	// 			//On message from Slides iframe API, send new Slides state to OBS
-	// 			window.addEventListener('message', (event) => {
-	// 				//message data
-	// 				//   "{\"namespace\":\"reveal\",\"eventName\":\"slidechanged\",\"state\":{\"indexh\":20,\"indexv\":0,\"paused\":false,\"overview\":false}}"
-	// 				console.log(event)
-	// 				const data = JSON.parse(event.data);
-					
-	// 				if (data.namespace === 'reveal' && 
-	// 					['paused','resumed','fragmentshown','fragmenthidden','slidechanged'].includes(data.eventName)) {
-	// 						console.log("Slide Changed", event)
-	// 						//data.state.source = "obsidian"
-	// 						//if event 'state' doesn't equal settings 'state'
-	// 						if(JSON.stringify(data.state) != slideState){
-	// 							slideState = JSON.stringify(data.state);
-	// 							//send slide change to OBS
-	// 							sendToOBS(data.state, "slide-changed");	
-	// 						}
-	// 					}
-						
-	// 				if (data.namespace === 'reveal' && 
-	// 					['overviewhidden','overviewshown'].includes(data.eventName)) {
-	// 						console.log("Overview Changed", event)	
-	// 						//if event 'state' doesn't equal settings 'state'
-	// 						if(JSON.stringify(data.state) != slideState){
-	// 							slideState = JSON.stringify(data.state);
-	// 							//send slide change to OBS
-	// 							sendToOBS(data.state, "overview-changed");	
-	// 						}
-	// 					}
-	// 				});
-	// 		//iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlide', args: [data.state.indexh , data.state.indexv]}), '*' );
-	// 		//Reveal.getSlide(indexh, indexv);
-			
-	// 		// window.addEventListener(`reveal-slide-changed`, async function (event) {
-	// 		// 	//reveal event 
-	// 		// 	console.log("message received: ", event)
-	// 		// 	if(event.detail.hasOwnProperty('slideChanged')){
-	// 		// 		//get slides extended preview iframe	
-	// 		// 		const iframe = document.getElementsByTagName("iframe")[0];
-	// 		// 		iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.state.indexh, data.state.indexv] }), '*');
-	// 		// 	}
-	// 		// })
-	// 	}
-	// })
-	// #endregion 
-
-	//run this command on load 
-			//this.app.commands.executeCommandById('slides-studio:listen-for-event-messages')
-	// #endregion
 	
 	//
 	// #region ✅Connect to OBS Websocket connection
@@ -165,8 +102,6 @@ export default class slidesStudioPlugin extends Plugin {
 			)
 			console.log(`Connected to server ${obsWebSocketVersion} (using RPC ${negotiatedRpcVersion})`);
 			new Notice("Connected to OBS WebSocket Server");
-			// item.setButtonText('disconnect');
-			// item.removeCta
 		} catch (error) {
 			new Notice("Failed to connect to OBS WebSocket Server")
 			console.error("Failed to connect", error.code, error.message);
@@ -227,7 +162,7 @@ export default class slidesStudioPlugin extends Plugin {
 	});
 	// #endregion Connect to OBS Websocket connection
 
-	// #region ✅handle websocket custom events from OBS
+	// #region ✅ Handle websocket custom events from OBS
 		obs.on("CustomEvent", function (event) {
 			console.log("Message from OBS",event);
 			
@@ -240,27 +175,27 @@ export default class slidesStudioPlugin extends Plugin {
 				}
 				if (Object.hasOwn(event, "arg2")) {
 					message.append(event.arg2);
-					//console.log(message);
+				
 				}
 				if (Object.hasOwn(event, "arg3")) {
 					message.append(event.arg3);
-					//console.log(message);
+				
 				}
 				if (Object.hasOwn(event, "arg4")) {
 					message.append(event.arg4);
-					//console.log(message);
+				
 				}
 				if (Object.hasOwn(event, "arg5")) {
 					message.append(event.arg5);
-					//console.log(message);
+				
 				}
 				if (Object.hasOwn(event, "arg6")) {
 					message.append(event.arg6);
-					//console.log(message);
+				
 				}
 				if (Object.hasOwn(event, "arg7")) {
 					message.append(event.arg7);
-					//console.log(message);
+				
 				}
 				console.log(`message to OSC device - ${event.osc_name}`, message);
 				
@@ -304,42 +239,12 @@ export default class slidesStudioPlugin extends Plugin {
 						break;
 				}
 			}
-
-			//Message from OBS browser source - reveal slide deck
-			// if (['overview-toggled', 'slide-changed'].includes(event.eventName)) {
-			// 	console.log("1iframe", event, slideState)
-			// 	console.log("eventname type", event.eventData, typeof event.eventData)
-
-			// 	if (event.eventData != slideState) {
-			// 		//get Slides Extended Iframe
-			// 		let iframeDiv = document.getElementsByClassName("reveal-preview-view")[0]
-			// 		console.log("iframe Parent", iframeDiv)
-			// 		const iframe = iframeDiv.getElementsByTagName('iframe')[0];
-			// 		console.log("2iframe", iframe)
-					
-			// 		const data = event.eventData
-			// 		console.log("Event data", data)
-			// 		data.indexf = data.indexf ? data.indexf : 0;
-			// 		console.log("fragment number",data.indexf)
-
-			// 		console.log("event Name slide changed", event.eventName === 'slide-changed')
-			// 		if (event.eventName === 'overview-toggled') {
-			// 			iframe.contentWindow.postMessage(JSON.stringify({ method: 'toggleOverview', args: [data.overview] }), '*');
-			// 		} 
-
-			//  if(event.eventName === 'slide-changed') {
-			// 			iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.indexh, data.indexv, data.indexf] }), '*');
-			// 			iframe.contentWindow.postMessage( JSON.stringify({ method: 'togglePause', args: [ data.paused ] }), '*' );
-        
-			// 		}
-			// 	}
-			// }
 		});		 
 		// #endregion Handle websocket custom event message from OBS
 
 	function sendToOBS(msgParam, eventName) {
-		//console.log("sending message:", JSON.stringify(msgParam));
 		const webSocketMessage = JSON.stringify(msgParam);
+	
 		//send results to OBS Browser Source
 		obs.call("CallVendorRequest", {
 			vendorName: "obs-browser",
@@ -355,7 +260,7 @@ export default class slidesStudioPlugin extends Plugin {
 	// #endregion
 
 //		
-// #region ✅Open OBS feature
+// #region ✅ Open OBS feature
 // 
 //
 //	Execute a command line to Open OBS
@@ -392,15 +297,11 @@ export default class slidesStudioPlugin extends Plugin {
 		
 					execAsync(commandString, (error, stdout, stderr) => {
 					  if (error) {
-						  //console.error(`execAsync error: ${error}`);
 						  return;
 					  }
-					  //console.log(`stdout: ${stdout}`);
-					  //console.error(`stderr: ${stderr}`);
 					});
 				  }
-				//console.log(commandString)
-
+	
 				}
 			}
 		)
@@ -408,17 +309,16 @@ export default class slidesStudioPlugin extends Plugin {
 // #endregion
 
 //	
-//	#region ✅I. Get Scenes from OBS feature
-//  1. populate the settings 
+//	#region ✅ Get Scenes from OBS feature
+//  1. populate the OBS tag options 
 
 		this.addCommand({
 			id: 'get-obs-scene-tags',
 			name: 'Get OBS tags',
 			callback: async() => {
-		//this.addRibbonIcon("image-down","get OBS Scene Options", async () =>{
 			new Notice("Getting OBS Tags");
 			
-		//create Scene Template Notes
+		//create Scene tag options
 			const sceneList = await obs.call("GetSceneList");
 			const excludeList = ['Set Camera','Slides', '----------SETTINGS----------', '----------SCENES----------', '----------SOURCES----------', '----------OPTIONS----------'];
 			sceneList.scenes.forEach(async (scene, index) => {
@@ -442,7 +342,7 @@ export default class slidesStudioPlugin extends Plugin {
 				//}	
 			});
 				
-		//create Camera Template Notes
+		//create Camera tag options
 			let cameraSources = await obs.call("GetSceneItemList", { sceneName: "Camera Position" });
 			console.log(cameraSources)
 			cameraSources.sceneItems.forEach(async(source, index) => {
@@ -454,49 +354,9 @@ export default class slidesStudioPlugin extends Plugin {
 			cameraSources.sceneItems.forEach(async(source, index) => {
 				this.app.plugins.plugins['slides-studio'].settings.camera_overlay_tags.push(source.sourceName)
 			});
-			//End of get scene function
-		 //obs.disconnect();
 		return
 		}})
-
-		// this.addCommand({
-		// 	id: 'insert-entrance-tag',
-		// 	name: 'Insert slide entrance tag',
-		// 	editorCallback: (editor: Editor, view: MarkdownView) => {
-		// 		new UUhimsyEntranceSuggest(this.app).open();
-		// 	}
-		// });
-
-		// this.addCommand({
-		// 	id: 'insert-exit-tag',
-		// 	name: 'Insert slide exit tag',
-		// 	editorCallback: (editor: Editor, view: MarkdownView) => {
-		// 		new UUhimsyExitSuggest(this.app).open();
-		// 	}
-		// });
 // #endregion
-
-//	
-//	#region ❌Copy Slides Studio Webpages from plugin folder to vault
-//
-//  Files to be used with the Slides Extended web server
-// 	localhost:5000/slides-studio/speaker-view.html
-//
-//  7/16 OBE.  accessing plugin files directly. 
-	// this.addCommand({
-	// 	id: 'add-slide-studio-speaker-view',
-	// 	name: 'Add Slide Studio Speaker View to vault',
-	// 	callback: async() => {
-	// 			new Notice("Adding Slide Studio files to vault");
-				
-	// 			const srcPath = `${this.app.vault.adapter.basePath}/.obsidian/plugins/slides-studio/slides_studio`
-	// 			const destPath = `${this.app.vault.adapter.basePath}/slides_studio`
-	// 			//Copy files from plugin folder to vault root
-	// 			//recursive option used to copy directory			
-	// 			this.app.vault.adapter.fsPromises.cp(srcPath, destPath,{recursive:true})
-	// 		}
-	// })
-	// #endregion
 
 //	
 //	#region ✅Open Slides Studio in browser
@@ -508,20 +368,7 @@ export default class slidesStudioPlugin extends Plugin {
 		callback: async() => {
 			const port = this.app.plugins.plugins['slides-extended'].settings.port
 			new Notice(`Opening Speaker View on port ${port}`);
-				// window.open(`http://localhost:${port}/slides_studio/speakerView.html`)
 				window.open(`http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/speakerView.html`)
-				//add option to append exported deck parameter
-			}
-		})
-		
-		this.addCommand({
-			id: 'open-slides-in-browser',
-			name: 'Open the Slides in an external browser',
-			callback: async() => {
-				const port = this.app.plugins.plugins['slides-extended'].settings.port
-				new Notice(`Opening Slides on port ${port}`);
-				//window.open(`http://localhost:${port}/slides_studio/slides.html`)
-				window.open(`http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/slides.html`)
 			}
 		})
 		
@@ -537,7 +384,6 @@ export default class slidesStudioPlugin extends Plugin {
 				} catch (err) {
 					console.error('Failed to copy: ', err);
 				}
-				//window.open(`http://localhost:${port}/slides_studio/slides.html`)
 			}
 		})
 	// #endregion

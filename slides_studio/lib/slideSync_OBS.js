@@ -44,25 +44,9 @@ window.addEventListener('slide-changed', async (event) => {
     console.log("received slide changed: ",data);
     const slidesState = data.slideState.split(",").map(value => Number(value))
     console.log("slide state: ",slidesState);
-    // // //if event 'state' doesn't equal settings 'state'
-    // // if(JSON.stringify(data) != slideState){
-
-    // //     slideState = JSON.stringify(data);
-        
-    // //     data.indexf = data.indexf ? data.indexf : 0;
-    //     console.log(slideState, JSON.stringify(data))
-        const iframe = document.getElementById("revealIframe")
-        iframe.contentWindow.postMessage( JSON.stringify({ method: 'slide', args: slidesState }), '*' );
-        // iframe.contentWindow.postMessage( JSON.stringify({ method: 'togglePause', args: [ data.paused ] }), '*' );
-        // //Send CustomEvent to OBS webSocket clients
-        // obs.call("BroadcastCustomEvent", {
-        //     eventData:{
-        //         eventName:"slide-changed",
-        //         eventData: slideState,
-        //     }    
-        // });
-    // }
-
+    const iframe = document.getElementById("revealIframe")
+    iframe.contentWindow.postMessage( JSON.stringify({ method: 'slide', args: slidesState }), '*' );
+    
     processTags(data)
 })
 
