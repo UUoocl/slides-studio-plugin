@@ -50,7 +50,7 @@
         <button type="button" id="slideDeckIdLoadButton" class="form-button">Load</button>
     </form>
         <div id="slidesTable">
-            <h3>Slides settings</h3>
+            <h3>Slides tags</h3>
     </div>
  
     <script type="text/javascript" src="https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js"></script>
@@ -58,7 +58,7 @@
  
     <script>
         let slideDeckId;
-        const iframe = document.getElementById("slidesDeck");
+        // const iframe = document.getElementById("slidesDeck");
         let slideStateObj = {};
         let slidesArray;
         let dropDownOptions = {};
@@ -85,50 +85,53 @@
 
         //messages from parent window
         window.addEventListener("message", async (event) => {
-            if (event.origin === window.location.origin) {
-                console.log(event)
-                let data = JSON.parse(event.data);
-                console.log(data)
-
-                //select row on slide change
-                if (data.namespace === "speakerview" && data.message === "change-row") {
-                    console.log("chnage row", data)
-                    let stateString;
-                    
-                    stateString = `${data.state.indexh},${data.state.indexv}`;
-                    
-                    console.log(stateString)
-                    
-                    table.selectRow(0)
-                    
-                    let row = table.searchData("slideState", "=", stateString);
-                    let rowComponent = table.searchRows("slideState", "=", stateString);
-                    console.log(row[0])
-                    // console.log(rowComponent[0].getIndex())
-                    console.log(rowComponent[0].getPosition())
-                    table.deselectRow();
-                    table.selectRow(table.getRowFromPosition(rowComponent[0].getPosition()));
-                    table.scrollToRow(rowComponent[0], "top")
-                    
-                    //select fragment
-                    if (data.state.hasOwnProperty("indexf")) {
-                        stateString = `${data.state.indexh},${data.state.indexv},${data.state.indexf}`;
-                        let children = rowComponent[0].getTreeChildren()
-                        console.log(children)
-                        console.log(children[0]._row.data.slideState, stateString)
-                        console.log(children[0]._row.data.slideState === stateString)
-                        const fragmentRow = children.filter(row => row._row.data.slideState === stateString)
-                        console.log(fragmentRow)
-                        table.selectRow(table.getRowFromPosition(fragmentRow[0].getPosition()));
-                        const rowData = fragmentRow[0].getData();
-                        filterRowData(rowData);
-                    } else {
-                        const rowData = rowComponent[0].getData();
-                        filterRowData(rowData);
-                    }
-
-                }
             
+            if (event.origin !== window.location.origin) {
+                return;
+            }
+            
+            console.log(event)
+            let data = JSON.parse(event.data);
+            console.log(data)
+
+            //select row on slide change
+            if (data.namespace === "speakerview" && data.message === "change-row") {
+                console.log("chnage row", data)
+                let stateString;
+                let rowData = undefined;
+                
+                stateString = `${data.state.indexh},${data.state.indexv}`;
+                
+                console.log("go to row ", stateString)
+                
+                let row = table.searchData("slideState", "=", stateString);
+                let rowComponent = table.searchRows("slideState", "=", stateString);
+                console.log("found row", row[0])
+                // console.log(rowComponent[0].getIndex())
+                console.log(rowComponent[0].getPosition())
+                table.deselectRow();
+                table.selectRow(table.getRowFromPosition(rowComponent[0].getPosition()));
+                table.scrollToRow(rowComponent[0], "top")
+                
+                //select fragment
+                if (data.state.hasOwnProperty("indexf") && data.state.indexf > -1) {
+                    stateString = `${data.state.indexh},${data.state.indexv},${data.state.indexf}`;
+                    let children = rowComponent[0].getTreeChildren()
+                    console.log(children)
+                    const fragmentRow = children.filter(row => row._row.data.slideState === stateString)
+                    console.log("fragment row", fragmentRow)
+                    table.selectRow(table.getRowFromPosition(fragmentRow[0].getPosition()));
+                    console.log("fragment get row", table.getSelectedRows())
+                    rowData = table.getSelectedRows()[1].getData();
+                } else {
+                    rowData = rowComponent[0].getData();
+                }
+                // rowData.namespace = "tabulator";
+                // rowData.eventName = "rowSelected";
+                // sendMessageToParent(rowData, window.location.origin)
+                filterRowData(rowData)
+            }
+        
             //slide data from speakerView
             if(data.namespace === "speakerview" && data.message === "slides-data-response"){
                 console.log("slide data response arrived")
@@ -144,8 +147,8 @@
                 console.log(JSON.stringify(dropDownOptions))
                 loadTable();
             }  
-        }
-        })
+        
+    })
 
             document
                 .getElementById("slideDeckId")
@@ -166,6 +169,25 @@
             localSavedTable = JSON.parse(localSavedTable)
             loadTable();
         }
+
+    function filterRowData(rowData){
+        //slide navigation
+        console.log("send this", rowData);
+
+        const filteredRowData = {}
+        // Filter the object to only keys with values
+        filteredRowData.row = Object.fromEntries(
+            Object.entries(rowData).filter(([key, value]) => value !== undefined && `${value}`.length > 0)
+        );
+        filteredRowData.namespace = "tabulator";
+        filteredRowData.eventName = "rowSelected";
+       // filteredRowData.state = slideState;
+        
+        console.log("filtered", filteredRowData)
+        sendMessageToParent( filteredRowData, window.location.origin)
+    }
+    
+    
     </script>
 
 </body>

@@ -310,7 +310,6 @@ body[data-speaker-layout="teleprompter"] #current-slide,
                     font-size: 1.25em;
                }
 
-
       @media screen and (max-width: 1080px) {
         body[data-speaker-layout="default"] #speaker-controls {
           font-size: 16px;
@@ -329,7 +328,7 @@ body[data-speaker-layout="teleprompter"] #current-slide,
         }
       }  
 	  </style>
-   
+ 
     <script src="lib/obs-ws.js"></script>
     <script src="lib/obsConnect.js"></script>
 
@@ -345,12 +344,17 @@ body[data-speaker-layout="teleprompter"] #current-slide,
       <span class="overlay-element label">Upcoming</span>
     </div>
     <div id="speaker-controls" >  
-    </div>
+      <div id = "studio-table" >
+      </div>
+      <div id="teleprompter">
+
+      </div>
     </div>
     <div id="speaker-layout" class="overlay-element interactive">
       <span class="speaker-layout-label"></span>
       <select class="speaker-layout-dropdown"></select>
     </div>
+
     <script>
 
       console.log("Iframe SpeakerView")
@@ -360,14 +364,31 @@ body[data-speaker-layout="teleprompter"] #current-slide,
       currentSlide,
       upcomingSlide,
       notesIframe,
+      studioIframe,
       layoutLabel,
       layoutDropdown,
       pendingCalls = {},
       lastRevealApiCallId = 0,
       connected = false,
-      scroller
-      const slideDeck = `http://localhost:${window.location.port}/`;   //?postMessageEvents=false
+      scroller,
+      slideDeck = `http://localhost:${window.location.port}/`,
+      deckName;
       
+      document.addEventListener("DOMContentLoaded", async () => {
+      //exported slide parameter
+        let params = new URLSearchParams(document.location.search);
+        deckName = params.get("deck") ?? ''; 
+        console.log("deck",slideDeck)
+
+        await getWebsocketDetailsFromObsidian();
+        //clearTimeout( connectionTimeout );
+        connectionStatus.style.display = "none";
+        layoutLabel
+        setupLayout();
+        handleConnectMessage(slideDeck);
+        window.document.getElementById("speaker-controls").focus();
+      });
+
       //Get OBS websocket connection details from Obsidian plugin settings folder
       async function getWebsocketDetailsFromObsidian(){
           await fetch('../data.json')
@@ -378,9 +399,10 @@ body[data-speaker-layout="teleprompter"] #current-slide,
               return response.json(); // Parses the JSON response into a JavaScript object
           })
           .then(data => {
-              const wssDetails = {IP:data.websocketIP_Text,
-                  PORT: data.websocketPort_Text,
-                  PW: data.websocketPW_Text,
+              const wssDetails = {
+                IP:data.websocketIP_Text,
+                PORT: data.websocketPort_Text,
+                PW: data.websocketPW_Text,
               }
               connectOBS(wssDetails);
           })
@@ -389,15 +411,6 @@ body[data-speaker-layout="teleprompter"] #current-slide,
           });
       }
   
-      document.addEventListener("DOMContentLoaded", async () => {
-        await getWebsocketDetailsFromObsidian();
-        //clearTimeout( connectionTimeout );
-        connectionStatus.style.display = "none";
-        layoutLabel
-        setupLayout();
-        handleConnectMessage(slideDeck);
-        window.document.getElementById("speaker-controls").focus();
-	});
 
 	//
 	//#region speaker view settings
@@ -457,8 +470,8 @@ body[data-speaker-layout="teleprompter"] #current-slide,
 			var connectionStatus = document.querySelector("#connection-status");
 
       var SPEAKER_LAYOUTS = {
-		'teleprompter': 'Teleprompter',
-		'studio': 'Studio',
+		    'teleprompter': 'Teleprompter',
+		    'studio': 'Studio',
         default: "Default",
         wide: "Wide",
         tall: "Tall",
@@ -557,23 +570,30 @@ body[data-speaker-layout="teleprompter"] #current-slide,
         currentSlide = document.createElement("iframe");
         currentSlide.setAttribute("width", 1280);
         currentSlide.setAttribute("height", 1024);
-        currentSlide.setAttribute("src", `${data}?postMessageEvents=true`);
+        currentSlide.setAttribute("src", `${data}${deckName}?postMessageEvents=true`);
         currentSlide.setAttribute("id", "current-iframe");
         document.querySelector("#current-slide").appendChild(currentSlide);
 
         upcomingSlide = document.createElement("iframe");
         upcomingSlide.setAttribute("width", 640);
         upcomingSlide.setAttribute("height", 512);
-        upcomingSlide.setAttribute("src", `${data}?postMessageEvents=false?postMessage=true`);
+        upcomingSlide.setAttribute("src", `${data}${deckName}?postMessageEvents=false?postMessage=true`);
         upcomingSlide.setAttribute("id", "upcoming-iframe");
         document.querySelector("#upcoming-slide").appendChild(upcomingSlide);
         
         notesIframe = document.createElement("iframe");
         notesIframe.setAttribute("width",'100%')
         notesIframe.setAttribute("height",'100%')
-        notesIframe.setAttribute("src",`${data}.obsidian/plugins/slides-studio/slides_studio/${layoutDropdown.value}.html`)
+        notesIframe.setAttribute("src",`${data}.obsidian/plugins/slides-studio/slides_studio/teleprompter.html`)
         notesIframe.setAttribute("id", "notes-iframe");
-        document.getElementById("speaker-controls").appendChild(notesIframe);
+        document.getElementById("teleprompter").appendChild(notesIframe);
+
+        studioIframe = document.createElement("iframe");
+        studioIframe.setAttribute("width",'100%')
+        studioIframe.setAttribute("height",'100%')
+        studioIframe.setAttribute("src",`${data}.obsidian/plugins/slides-studio/slides_studio/studio.html`)
+        studioIframe.setAttribute("id", "studio-iframe");
+        document.getElementById("studio-table").appendChild(studioIframe);
       }
 
       /**
@@ -629,13 +649,19 @@ body[data-speaker-layout="teleprompter"] #current-slide,
           window.localStorage.setItem("reveal-speaker-layout", value);
         }
 
-        if(['studio','teleprompter'].includes(value)){
-          console.log(value, notesIframe)
+        const tagTable = document.getElementById("studio-table")
+        const teleprompter = document.getElementById("teleprompter")
+        if(value === "teleprompter"){
+          teleprompter.hidden = false;
+          tagTable.hidden = true;
+        }
 
-          if(notesIframe){notesIframe.setAttribute("src",`${slideDeck}.obsidian/plugins/slides-studio/slides_studio/${value}.html`)}
-
+        if(value === "studio"){
+          teleprompter.hidden = true;
+          tagTable.hidden = false;
           value = 'teleprompter'
         }
+      
         document.body.setAttribute("data-speaker-layout", value);
       }
 

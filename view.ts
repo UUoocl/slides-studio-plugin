@@ -26,17 +26,18 @@ export class slidesStudioView extends ItemView{
         container.empty();
         container.createDiv('Header')
         
-        new Setting(container).setName('Open in Browser')
+        new Setting(container).setName('Open Slides Studio')
         .setHeading()
-        .setDesc('Open the Slides in a browser window')
+        .setDesc('Open the Slides Studio Page in a browser.  Chrome browser is recommended')
+        // .addButton((button) =>{
+        //     button.setButtonText("Slides")
+        //     .onClick(() => {this.app.commands.executeCommandById('slides-studio:open-slides-in-browser')})
+        //     .setCta()
+        // })
         .addButton((button) =>{
-            button.setButtonText("Slides")
-            .onClick(() => {this.app.commands.executeCommandById('slides-studio:open-slides-in-browser')})
-            .setCta()
-        })
-        .addButton((button) =>{
-            button.setButtonText("Speaker View")
+            button.setButtonText("Open")
             .onClick(() => {this.app.commands.executeCommandById('slides-studio:open-slide-studio-speaker-view')})
+            .setCta()
         })
 
         
@@ -62,7 +63,7 @@ export class slidesStudioView extends ItemView{
         .setHeading()
         .setDesc('Add an Id tag')
         .addButton((button) =>{
-            button.setButtonText("Id")
+            button.setButtonText("Add")
             .onClick(() => {
                 const lastLeaf = this.app.workspace.getMostRecentLeaf()
                 const lastLeafWorkspace = this.app.workspace.getLeafById(lastLeaf?.id)
@@ -96,7 +97,7 @@ export class slidesStudioView extends ItemView{
         slides.forEach(scene => {
             new Setting(container).setName(scene)
             .addButton((item) =>{
-                item.setButtonText("Entrance")
+                item.setButtonText("Add")
                 .setCta()
                 .onClick(() => {
                     const lastLeaf = this.app.workspace.getMostRecentLeaf()
@@ -104,23 +105,23 @@ export class slidesStudioView extends ItemView{
                     
                     this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
                     lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
-                    this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-slide-entrance="${scene}" -->
-                        `)
+                    this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-slide-position="${scene}" -->
+`)
                         //new Notice(`Inserted tag ${tag[1]}`)
                     })
                 })
-                .addButton( item => {                
-                    item.setButtonText("Exit")
-                    .onClick(() => {
-                        const lastLeaf = this.app.workspace.getMostRecentLeaf()
-                        const lastLeafWorkspace = this.app.workspace.getLeafById(lastLeaf?.id)
-                        this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
-                        lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
-                        this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-slide-exit="${scene}" -->
-                            `)              
-                            //new Notice(`Inserted tag ${tag[1]}`)
-                        })
-                    })
+                // .addButton( item => {                
+                //     item.setButtonText("Exit")
+                //     .onClick(() => {
+                //         const lastLeaf = this.app.workspace.getMostRecentLeaf()
+                //         const lastLeafWorkspace = this.app.workspace.getLeafById(lastLeaf?.id)
+                //         this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
+                //         lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
+                //         this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-slide-exit="${scene}" -->
+                //             `)              
+                //             //new Notice(`Inserted tag ${tag[1]}`)
+                //         })
+                //     })
                 });
                 
                 //load Camera options
@@ -129,7 +130,7 @@ export class slidesStudioView extends ItemView{
                 cameras.forEach(scene => {
                     new Setting(container).setName(scene)
                     .addButton((item) =>{
-                        item.setButtonText("Entrance")
+                        item.setButtonText("Add")
                         .setCta()
                         .onClick(() => {
                             const lastLeaf = this.app.workspace.getMostRecentLeaf()
@@ -137,23 +138,23 @@ export class slidesStudioView extends ItemView{
                             
                             this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
                             lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
-                            this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-camera-entrance="${scene}" -->
-                                `)
+                            this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-camera-position="${scene}" -->
+`)
                                 //new Notice(`Inserted tag ${tag[1]}`)
                             })
                         })
-                        .addButton( item => {                
-                            item.setButtonText("Exit")
-                            .onClick(() => {
-                                const lastLeaf = this.app.workspace.getMostRecentLeaf()
-                                const lastLeafWorkspace = this.app.workspace.getLeafById(lastLeaf?.id)
-                                this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
-                                lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
-                                this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-camera-exit="${scene}" -->
-                                    `)              
-                                    //new Notice(`Inserted tag ${tag[1]}`)
-                                })
-                            })
+                        // .addButton( item => {                
+                        //     item.setButtonText("Exit")
+                        //     .onClick(() => {
+                        //         const lastLeaf = this.app.workspace.getMostRecentLeaf()
+                        //         const lastLeafWorkspace = this.app.workspace.getLeafById(lastLeaf?.id)
+                        //         this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
+                        //         lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
+                        //         this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-camera-exit="${scene}" -->
+                        //             `)              
+                        //             //new Notice(`Inserted tag ${tag[1]}`)
+                        //         })
+                        //     })
                         });
                         
                         //load Camera Overlay options
@@ -162,7 +163,7 @@ export class slidesStudioView extends ItemView{
                         cameras_overlay.forEach(scene => {
                             new Setting(container).setName(scene)
                             .addButton((item) =>{
-                                item.setButtonText("Entrance")
+                                item.setButtonText("Add")
                                 .setCta()
                                 .onClick(() => {
                                     const lastLeaf = this.app.workspace.getMostRecentLeaf()
@@ -170,23 +171,23 @@ export class slidesStudioView extends ItemView{
                                     
                                     this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
                                     lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
-                                    this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-camera-overlay-entrance="${scene}" -->
-                                        `)
+                                    this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-camera-position="${scene}" -->
+`)
                                         //new Notice(`Inserted tag ${tag[1]}`)
                                     })
                                 })
-                                .addButton( item => {                
-                                    item.setButtonText("Exit")
-                                    .onClick(() => {
-                                        const lastLeaf = this.app.workspace.getMostRecentLeaf()
-                                        const lastLeafWorkspace = this.app.workspace.getLeafById(lastLeaf?.id)
-                                        this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
-                                        lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
-                                        this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-camera-overlay-exit="${scene}" -->
-                                            `)              
-                                            //new Notice(`Inserted tag ${tag[1]}`)
-                                        })
-                                    })
+                                // .addButton( item => {                
+                                //     item.setButtonText("Exit")
+                                //     .onClick(() => {
+                                //         const lastLeaf = this.app.workspace.getMostRecentLeaf()
+                                //         const lastLeafWorkspace = this.app.workspace.getLeafById(lastLeaf?.id)
+                                //         this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
+                                //         lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
+                                //         this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-camera-overlay-exit="${scene}" -->
+                                //             `)              
+                                //             //new Notice(`Inserted tag ${tag[1]}`)
+                                //         })
+                                //     })
                                 });
                                 
                                 //load scenes
@@ -195,7 +196,7 @@ export class slidesStudioView extends ItemView{
                                 scenes.forEach(scene => {
                                     new Setting(container).setName(scene)
                                     .addButton((item) =>{
-                                        item.setButtonText("Entrance")
+                                        item.setButtonText("Add")
                                         .setCta()
                                         .onClick(() => {
                                             const lastLeaf = this.app.workspace.getMostRecentLeaf()
@@ -203,23 +204,24 @@ export class slidesStudioView extends ItemView{
                                             
                                             this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
                                             lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
-                                            this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-scene-entrance="${scene}}" -->
-                                                `)
+                                            this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-scene = "${scene}}" -->
+`)
                                                 //new Notice(`Inserted tag ${tag[1]}`)
                                             })
                                         })
-                                        .addButton( item => {                
-                                            item.setButtonText("Exit")
-                                            .onClick(() => {
-                                                const lastLeaf = this.app.workspace.getMostRecentLeaf()
-                                                const lastLeafWorkspace = this.app.workspace.getLeafById(lastLeaf?.id)
-                                                this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
-                                                lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
-                                                this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-scene-exit="${scene}" -->
-                                                    `)              
-                                                    //new Notice(`Inserted tag ${tag[1]}`)
-                                                })
-                                            })
+                                        //Add a button that will indicate if the tag is applied when the slide changes or after the transition completes
+                                        // .addButton( item => {                
+                                        //     item.setButtonText("Exit")
+                                        //     .onClick(() => {
+                                        //         const lastLeaf = this.app.workspace.getMostRecentLeaf()
+                                        //         const lastLeafWorkspace = this.app.workspace.getLeafById(lastLeaf?.id)
+                                        //         this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
+                                        //         lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
+                                        //         this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-scene-exit="${scene}" -->
+                                        //             `)              
+                                        //             //new Notice(`Inserted tag ${tag[1]}`)
+                                        //         })
+                                        //     })
                                         });
                                         
                                         
@@ -227,10 +229,10 @@ export class slidesStudioView extends ItemView{
                                                 const userTags = this.app.plugins.plugins['slides-studio'].settings.user_tags;
                                                 const userTagsSet = new Set(userTags);
                                                 new Setting(container).setName("User Tags").setHeading()
-                                                new Setting(container)
-                                                .setName("Create a new tag")
                                                 .setClass("slide-studio-new-user-tag")
                                                 .setDesc("data-user-tag={tag value}")
+                                                new Setting(container)
+                                                .setName("Create a new tag")
                                                 .addText((item) => {    
                                                     item.setPlaceholder("key")
                                                     item.onChange(
@@ -238,9 +240,9 @@ export class slidesStudioView extends ItemView{
                                                             this.app.plugins.plugins['slides-studio'].settings.newTagKey = value;
                                                             //set description using DOM element values
                                                             let settingEl: HTMLElement = document.querySelector(".slide-studio-new-user-tag");
-                                                            const tagValue = settingEl.getElementsByTagName("input")[1].value
+                                                            const tagValue = this.app.plugins.plugins['slides-studio'].settings.newTagValue
                                                             console.log(tagValue)
-                                                            settingEl.querySelector(".setting-item-description").innerHTML =`data-${value.replace(" ","-")} : ${tagValue}`
+                                                            settingEl.querySelector(".setting-item-description").innerHTML =`data-${value.replace(" ","-")} : ${tagValue.replace(" ","-")}`
                                                         })
                                                     })
                                                 .addText((item) => {    
@@ -256,7 +258,7 @@ export class slidesStudioView extends ItemView{
                                                     })
                                                 })
                                                 .addButton( item => {                
-                                                    item.setButtonText("Add")
+                                                    item.setButtonText("Create Tag")
                                                     .onClick(() => {
                                                         const newTag = `${this.app.plugins.plugins['slides-studio'].settings.newTagKey.replace(" ","-")}:${this.app.plugins.plugins['slides-studio'].settings.newTagValue}`
                                                         userTagsSet.add(newTag)
@@ -268,7 +270,7 @@ export class slidesStudioView extends ItemView{
                                                 userTags.forEach(userTag => {
                                                     new Setting(container).setName(userTag)
                                                     .addButton((item) =>{
-                                                    item.setButtonText("Entrance")
+                                                    item.setButtonText("Add")
                                                         .setCta()
                                                         .onClick(() => {
                                                             const lastLeaf = this.app.workspace.getMostRecentLeaf()
@@ -277,24 +279,24 @@ export class slidesStudioView extends ItemView{
                                                             this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
                                                             lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
                                                             const dataTag = userTag.split(":")
-                                                            this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-${dataTag[0]}-entrance = "${dataTag[1]}" -->
-                                        `)
+                                                            this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-${dataTag[0]} = "${dataTag[1]}" -->
+`)
                                                             //new Notice(`Inserted tag ${tag[1]}`)
                                                             })
                                                         })
-                                                        .addButton( item => {                
-                                                            item.setButtonText("Exit")
-                                                            .onClick(() => {
-                                                                const lastLeaf = this.app.workspace.getMostRecentLeaf()
-                                                                const lastLeafWorkspace = this.app.workspace.getLeafById(lastLeaf?.id)
-                                                                this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
-                                                                lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
-                                                                const dataTag = userTag.split(":")
-                                                                this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-${dataTag[0]}-exit="${dataTag[1]}" -->
-                                        `)              
-                                                                //new Notice(`Inserted tag ${tag[1]}`)
-                                                            })
-                                                        })
+                                        //                 .addButton( item => {                
+                                        //                     item.setButtonText("Exit")
+                                        //                     .onClick(() => {
+                                        //                         const lastLeaf = this.app.workspace.getMostRecentLeaf()
+                                        //                         const lastLeafWorkspace = this.app.workspace.getLeafById(lastLeaf?.id)
+                                        //                         this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
+                                        //                         lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
+                                        //                         const dataTag = userTag.split(":")
+                                        //                         this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-${dataTag[0]}-exit="${dataTag[1]}" -->
+                                        // `)              
+                                        //                         //new Notice(`Inserted tag ${tag[1]}`)
+                                        //                     })
+                                        //                 })
                                             //remove user tag
                                                         .addButton( item => {                
                                                             item.setButtonText("🚫")

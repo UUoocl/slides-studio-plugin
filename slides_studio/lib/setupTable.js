@@ -4,6 +4,9 @@ function loadTable() {
             // const tableData = slidesArray;
             const tableData = JSON.parse(localStorage.getItem(slideDeckId)) ?? slidesArray;
             console.log(tableData)
+            console.log(typeof table)
+           table = undefined;
+           console.log(typeof table)
             table = new Tabulator("#slidesTable", {
                 layout:"fitDataStretch",
                 height: "500px",
@@ -16,16 +19,10 @@ function loadTable() {
                 ],
                 columns: [
                     { title: "Index", field: "slideState",  responsive: 0,
-                        cellClick: function gotoSlide(e, cell){
-                            let cellValues = cell.getValue()
-                            console.log(cellValues)
-                            cellValues = cellValues.split(",")
-                            console.log(cellValues)
-                            if(cellValues.length === 3){
-                                window.parent.postMessage(JSON.stringify({ method: 'table-slide-selected', args: [Number(cellValues[0]),Number(cellValues[1]),Number(cellValues[2])]}), window.location.origin);
-                            }else{
-                                window.parent.postMessage(JSON.stringify({ method: 'table-fragment-row', args: [Number(cellValues[0]),Number(cellValues[1])]}), window.location.origin);
-                            }
+                        cellClick: function gotoSlide(e,cell){
+                            let rowValues = cell.getRow().getData();
+                            console.log(rowValues)
+                            filterRowData(rowValues, window.location.origin);
                         },
                         sorter:"alphanum",
                     }, 

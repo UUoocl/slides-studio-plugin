@@ -1,4 +1,4 @@
-let slideState = '';
+//let slideState = '';
 
 //Message from Reveal Slides iFrame API
 window.addEventListener('message', async (event) => {
@@ -40,28 +40,30 @@ window.addEventListener('message', async (event) => {
 
 //Message from OBS WebSocket Client
 window.addEventListener('slide-changed', async (event) => {
-    console.log("received slide changed: ",event.detail.webSocketMessage);
     let data = JSON.parse(event.detail.webSocketMessage);
-    
-    //if event 'state' doesn't equal settings 'state'
-    if(JSON.stringify(data) != slideState){
+    console.log("received slide changed: ",data);
+    const slidesState = data.slideState.split(",").map(value => Number(value))
+    console.log("slide state: ",slidesState);
+    // // //if event 'state' doesn't equal settings 'state'
+    // // if(JSON.stringify(data) != slideState){
 
-        slideState = JSON.stringify(data);
+    // //     slideState = JSON.stringify(data);
         
-        data.indexf = data.indexf ? data.indexf : 0;
-        console.log(slideState, JSON.stringify(data))
-        
-        iframe.contentWindow.postMessage( JSON.stringify({ method: 'slide', args: [ data.indexh, data.indexv, data.indexf ] }), '*' );
-        iframe.contentWindow.postMessage( JSON.stringify({ method: 'togglePause', args: [ data.paused ] }), '*' );
-        
-        //Send CustomEvent to OBS webSocket clients
-        obs.call("BroadcastCustomEvent", {
-            eventData:{
-                eventName:"slide-changed",
-                eventData: slideState,
-            }    
-        });
-    }
+    // //     data.indexf = data.indexf ? data.indexf : 0;
+    //     console.log(slideState, JSON.stringify(data))
+        const iframe = document.getElementById("revealIframe")
+        iframe.contentWindow.postMessage( JSON.stringify({ method: 'slide', args: slidesState }), '*' );
+        // iframe.contentWindow.postMessage( JSON.stringify({ method: 'togglePause', args: [ data.paused ] }), '*' );
+        // //Send CustomEvent to OBS webSocket clients
+        // obs.call("BroadcastCustomEvent", {
+        //     eventData:{
+        //         eventName:"slide-changed",
+        //         eventData: slideState,
+        //     }    
+        // });
+    // }
+
+    processTags(data)
 })
 
 //Message from OBS WebSocket Client
@@ -84,4 +86,11 @@ window.addEventListener('overview-changed', async (event) => {
             }    
         });
     }
+})
+
+//update slide deck URL
+window.addEventListener('set-slides-studio-url', async (event) => {
+    let data = JSON.parse(event.detail.webSocketMessage);
+    console.log(data)
+    document.getElementById("revealIframe").setAttribute("src", data.url);
 })

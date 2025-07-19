@@ -49,7 +49,7 @@
 <body>
     <div class="container">
         <!-- <iframe id= "revealIframe" class="responsive-iframe" src="index.html"></iframe> -->
-        <iframe id= "revealIframe" class="over-the-shoulder" src="http://localhost:5000/"></iframe>
+        <iframe id= "revealIframe" class="side-by-side" src="http://localhost:5000/"></iframe>
     </div>
     
     <!-- <script src="../lib/obs-ws.js"></script>
@@ -58,99 +58,62 @@
     <script src="lib/obsConnect.js"></script>
     <script src="lib/slideSync_OBS.js"></script>
     <script>
-        const iframe = document.getElementById("revealIframe");
-        let slidesAttributes;
         // iframe.contentWindow.postMessage( JSON.stringify({ method: 'slide', args: [ 2 ] }), '*' );
         
         //use query parameter to set the server port
-        window.addEventListener('DOMContentLoaded', (event) => {
+        window.addEventListener('DOMContentLoaded', async(event) => {
             // const paramsString = window.location.search;
             // const searchParams = new URLSearchParams(paramsString);
             // const port = searchParams.get("port") ? searchParams.get("port"):5000 ;
             document.getElementById("revealIframe").setAttribute("src", `http://localhost:${window.location.port}/`);
         })
         
-        window.addEventListener('message', async (event) => {
-            console.log(event)
-            let data = JSON.parse(event.data);
+  async function processTags(currentSlide) {
+        // console.log("current slide", currentSlide)
+
+        if (Object.hasOwn(currentSlide, 'scenes')) {
+            console.log("scene tag found")
+            obs.call("SetCurrentProgramScene", { sceneName: currentSlide['scenes'] })
+        };
+
+        if (Object.hasOwn(currentSlide, 'cameraPosition')){ 
+           if(currentSlide.cameraPosition.includes("Full")) {
+            console.log("camera tag found")
+            console.log("camera tag found")
+            //disable this scenes cameras
+            await disableSceneItems("Camera Position")
             
-            // Process Reveal js API messages, on ready or slide changed
-            if (data.namespace === 'reveal' && data.eventName === 'ready') {
-                // iframe.contentWindow.postMessage( JSON.stringify({ method: 'getCurrentSlide'}), '*' );
-                // iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlides'}), '*' );
-                iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlidesAttributes'}), '*' );
+            //enable source
+            await setSourceVisibilityByName("Camera Position", currentSlide['cameraPosition'], true)
+            
+            //disable other cameras
+            await disableSceneItems("Camera Overlay Position")
             }
-                        
-            if (data.namespace === 'reveal' && 
-            ['paused','resumed','fragmentshown','fragmenthidden','slidechanged'].includes(data.eventName)) {
-                console.log("Slide Changed", event)
-                
-                iframe.contentWindow.postMessage( JSON.stringify({ method: 'getSlidesAttributes'}), '*' );
+            else{
+            console.log("camera overlay tag found")
+            //disable this scenes cameras
+            console.log('remove others')
+            await disableSceneItems("Camera Overlay Position")
+
+            //enable source
+            await setSourceVisibilityByName("Camera Overlay Position", currentSlide['cameraPosition'], true)
+            console.log('sourcename', currentSlide['cameraPosition'])
+
+            //disable other cameras
+            await disableSceneItems("Camera Position")
+            };
+        };
+
+        if (Object.hasOwn(currentSlide, 'slidePosition')) {
+            console.log("slide class tag found")
+            console.log("class name", currentSlide['data-slide-entrance'])
+            const className = currentSlide['slidePosition']
+            if (className !== undefined) {
+                document.getElementById("revealIframe").className = className;
             }
-        
-            //call back message from Reveal 
-            //If slide has an attribute, do something. 
-            // {"namespace":"reveal","eventName":"callback","state":{"indexh":1,"indexv":0,"paused":false,"overview":false},"method":"getSlidesAttributes","result":[{"data-markdown":"","data-markdown-parsed":"true","class":"drop past","data-background-color":"transparent","style":"top: 0px; display: block;","hidden":"","aria-hidden":"true"},{"data-markdown":"","data-markdown-parsed":"true","class":"drop present","data-scene-entrance":"Camera Full Screen}","data-background-color":"transparent","data-camera-entrance":"Camera Upper Right}","data-slide-entrance":"over-the-shoulder}","style":"top: 0px; display: block;"},{"data-markdown":"","data-markdown-parsed":"true","class":"drop future","data-background-color":"transparent","aria-hidden":"true","hidden":"","style":"top: 0px; display: block;"},{"data-markdown":"","data-markdown-parsed":"true","class":"drop future","data-background-color":"transparent","hidden":"","aria-hidden":"true","style":"top: 0px; display: block;"},{"data-markdown":"","data-markdown-parsed":"true","class":"drop future","data-background-color":"transparent","hidden":"","aria-hidden":"true","style":"top: 0px; display: block;"}]}
-            if( data.namespace === 'reveal' && data.eventName === 'callback' && data.method === "getSlidesAttributes" ){
-                // find current slide attributes
-                slidesAttributes = data.result
-                // console.log("slidesAttributes",slidesAttributes)
-                
-                const currentSlide = slidesAttributes.filter(function(attribute) {
-                    switch(true){
-                        case attribute.hasOwnProperty("class"):
-                            return attribute.class.includes("present");
-                            break;
-                        case attribute.hasOwnProperty("data-auto-animate"):
-                            return attribute["data-auto-animate"].includes("running");
-                            break;
-                        }   
-                        })[0];
-                        // console.log("current slide", currentSlide)
-                        
-                    if(Object.hasOwn(currentSlide, 'data-scene-entrance')){
-                        console.log("scene tag found")
-                        obs.call("SetCurrentProgramScene",{sceneName: currentSlide['data-scene-entrance']})
-                    };
-                    
-                    if(Object.hasOwn(currentSlide, 'data-camera-entrance')){
-                        console.log("camera tag found")
-                        //disable this scenes cameras
-                        await disableSceneItems("Camera Position")
-                        
-                        //enable source
-                        await setSourceVisibilityByName("Camera Position", currentSlide['data-camera-entrance'],true)
-                        
-                        //disable other cameras
-                        await disableSceneItems("Camera Overlay Position")  
-                    };
-                    
-                    if(Object.hasOwn(currentSlide, 'data-camera-overlay-entrance')){
-                        console.log("camera overlay tag found")
-                        //disable this scenes cameras
-                        console.log('remove others')
-                        await disableSceneItems("Camera Overlay Position")
-                        
-                        //enable source
-                        await setSourceVisibilityByName("Camera Overlay Position", currentSlide['data-camera-overlay-entrance'],true)
-                        console.log('sourcename',currentSlide['data-camera-overlay-entrance'])
-                        
-                        //disable other cameras
-                        await disableSceneItems("Camera Position")
-                    };
-                    
-                    if (Object.hasOwn(currentSlide, 'data-slide-entrance')){
-                        console.log("slide class tag found")
-                        console.log("class name", currentSlide['data-slide-entrance'])
-                        const className = currentSlide['data-slide-entrance']
-                        if(className !== undefined){
-                            document.getElementById("revealIframe").className = className;
-                        } 
-                    };
-                }
-        })
-          
-       
+        };
+    }
+     
         async function disableSceneItems(sceneName){
             //disable all camera scene sources
             const sceneItems = await obs.call("GetSceneItemList",{"sceneName":sceneName});
