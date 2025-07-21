@@ -1,8 +1,3 @@
-//Slides object
-let slidesArray = []
-let slidesLoaded = false;
-let tableLoaded = false;
-
 //Messages from iframes in this page 
 window.addEventListener('message', async (event) => {
     //console.log(event)
@@ -29,8 +24,6 @@ window.addEventListener('message', async (event) => {
         slidesArray = [];
 
         currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [0,0]}), window.location.origin);
-        // currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'getSlidesAttributes' }), window.location.origin);
-        //currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'isLastSlide'}), 'https://slides.com');
         
         //Get slide 1 attributes when deck is ready
         const iframe = document.getElementById('current-iframe'); 
@@ -65,10 +58,6 @@ window.addEventListener('message', async (event) => {
 
     if (data.namespace === 'reveal' && slidesLoaded === false && tableLoaded === false &&
         ['fragmentshown','fragmenthidden','slidechanged'].includes(data.eventName)) {
-        
-        // slideState = data.state;
-        // slideState.indexf = data.state.indexf ?? '';
-        // console.log( slideState )
 
         //Get slides attributes
         const iframe = document.getElementById('current-iframe'); 
@@ -173,7 +162,3 @@ async function getSlideDataAttributeValue(element, dataAttribute){
 async function getFragmentDataAttributeValue(element, dataAttribute){
    return element ? element.getAttribute(dataAttribute): "";
 }
-
-// function getSlide(){
-//     console.log("calling get slide")
-//     currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'getSlides'}), '*');

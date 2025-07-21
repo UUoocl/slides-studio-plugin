@@ -360,7 +360,6 @@ body[data-speaker-layout="teleprompter"] #current-slide,
       console.log("Iframe SpeakerView")
       let notes,
       notesValue,
-      currentState,
       currentSlide,
       upcomingSlide,
       notesIframe,
@@ -371,21 +370,27 @@ body[data-speaker-layout="teleprompter"] #current-slide,
       lastRevealApiCallId = 0,
       connected = false,
       scroller,
-      slideDeck = `http://localhost:${window.location.port}/`,
+      slideDeck,
       deckName;
+
+      let slidesArray = []
+      let slidesLoaded = false;
+      let tableLoaded = false;
       
       document.addEventListener("DOMContentLoaded", async () => {
-      //exported slide parameter
+        //slide parameter
         let params = new URLSearchParams(document.location.search);
-        deckName = params.get("deck") ?? ''; 
-        console.log("deck",slideDeck)
-
+        
+        //check search parameter for slides location
+        slideDeck = params.get('deckId') ? `https://slides.com/${params.get('user')}/${params.get('deckId')}/fullscreen` : `http://localhost:${window.location.port}/`,
+        deckName = params.get("vaultFolder") ?? ''; 
+        
         await getWebsocketDetailsFromObsidian();
         //clearTimeout( connectionTimeout );
         connectionStatus.style.display = "none";
         layoutLabel
         setupLayout();
-        handleConnectMessage(slideDeck);
+        handleConnectMessage();
         window.document.getElementById("speaker-controls").focus();
       });
 
@@ -410,7 +415,6 @@ body[data-speaker-layout="teleprompter"] #current-slide,
               console.error('Error fetching JSON:', error);
           });
       }
-  
 
 	//
 	//#region speaker view settings
@@ -482,22 +486,19 @@ body[data-speaker-layout="teleprompter"] #current-slide,
        * Called when the main window is trying to establish a
        * connection.
        */
-      function handleConnectMessage(data) {
+      function handleConnectMessage() {
         if (connected === false) {
           connected = true;
 
-          setupIframes(data);
+          setupIframes();
           setupKeyboard();
-          //setupNotes();
-          //setupTimer();
-          //setupHeartbeat();
         }
       }
 
       /**
        * Called when the main window sends an updated state.
        */
-      function handleStateMessage(data) {
+      function handleStateMessage() {
 
       }
 
@@ -566,32 +567,32 @@ body[data-speaker-layout="teleprompter"] #current-slide,
       /**
        * Creates the preview iframes.
        */
-      function setupIframes(data) {
+      function setupIframes() {
         currentSlide = document.createElement("iframe");
         currentSlide.setAttribute("width", 1280);
         currentSlide.setAttribute("height", 1024);
-        currentSlide.setAttribute("src", `${data}${deckName}?postMessageEvents=true`);
+        currentSlide.setAttribute("src", `${slideDeck}${deckName}?postMessageEvents=true`);
         currentSlide.setAttribute("id", "current-iframe");
         document.querySelector("#current-slide").appendChild(currentSlide);
 
         upcomingSlide = document.createElement("iframe");
         upcomingSlide.setAttribute("width", 640);
         upcomingSlide.setAttribute("height", 512);
-        upcomingSlide.setAttribute("src", `${data}${deckName}?postMessageEvents=false?postMessage=true`);
+        upcomingSlide.setAttribute("src", `${slideDeck}${deckName}?postMessageEvents=false?postMessage=true`);
         upcomingSlide.setAttribute("id", "upcoming-iframe");
         document.querySelector("#upcoming-slide").appendChild(upcomingSlide);
         
         notesIframe = document.createElement("iframe");
         notesIframe.setAttribute("width",'100%')
         notesIframe.setAttribute("height",'100%')
-        notesIframe.setAttribute("src",`${data}.obsidian/plugins/slides-studio/slides_studio/teleprompter.html`)
+        notesIframe.setAttribute("src",`http://localhost:${window.location.port}/.obsidian/plugins/slides-studio/slides_studio/teleprompter.html`)
         notesIframe.setAttribute("id", "notes-iframe");
         document.getElementById("teleprompter").appendChild(notesIframe);
 
         studioIframe = document.createElement("iframe");
         studioIframe.setAttribute("width",'100%')
         studioIframe.setAttribute("height",'100%')
-        studioIframe.setAttribute("src",`${data}.obsidian/plugins/slides-studio/slides_studio/studio.html`)
+        studioIframe.setAttribute("src",`http://localhost:${window.location.port}/.obsidian/plugins/slides-studio/slides_studio/studio.html`)
         studioIframe.setAttribute("id", "studio-iframe");
         document.getElementById("studio-table").appendChild(studioIframe);
       }
@@ -724,6 +725,7 @@ body[data-speaker-layout="teleprompter"] #current-slide,
     </script>
     <script src="lib/getOBSData.js"></script>
     <script src="lib/getSlideDataV3.js"></script>
+    <script src="lib/getSlideDataV2.js"></script>
     <script src="lib/slideSync_SpeakerView_Browser.js"></script>
   </body>
 </html>

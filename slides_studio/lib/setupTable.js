@@ -1,7 +1,6 @@
 let table;
 function loadTable() {
             //get local storage slide deck attributes first
-            // const tableData = slidesArray;
             const tableData = JSON.parse(localStorage.getItem(slideDeckId)) ?? slidesArray;
             console.log(tableData)
             console.log(typeof table)
@@ -22,7 +21,7 @@ function loadTable() {
                         cellClick: function gotoSlide(e,cell){
                             let rowValues = cell.getRow().getData();
                             console.log(rowValues)
-                            filterRowData(rowValues, window.location.origin);
+                            filterRowData(rowValues);
                         },
                         sorter:"alphanum",
                     }, 

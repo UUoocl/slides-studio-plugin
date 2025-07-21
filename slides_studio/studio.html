@@ -102,12 +102,12 @@
                 
                 stateString = `${data.state.indexh},${data.state.indexv}`;
                 
-                console.log("go to row ", stateString)
+                console.log("go to row ", stateString, typeof stateString)
                 
                 let row = table.searchData("slideState", "=", stateString);
                 let rowComponent = table.searchRows("slideState", "=", stateString);
                 console.log("found row", row[0])
-                // console.log(rowComponent[0].getIndex())
+                console.log(rowComponent)
                 console.log(rowComponent[0].getPosition())
                 table.deselectRow();
                 table.selectRow(table.getRowFromPosition(rowComponent[0].getPosition()));
@@ -137,7 +137,8 @@
                 console.log("slide data response arrived")
                 slidesArray = data.slidesData    
                 console.log(slidesArray)
-                loadTable();
+                //loadTable();
+                getOBSdata();
             }  
             
             //obs data from speakerView
