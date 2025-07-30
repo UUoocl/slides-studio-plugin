@@ -155,6 +155,17 @@ export default class slidesStudioPlugin extends Plugin {
 		
 		//Get Source Names
 		this.app.commands.executeCommandById('slides-studio:get-obs-scene-tags')
+
+		//Set OBS Browser source slides URL.
+		const port = this.app.plugins.plugins['slides-extended'].settings.port
+		const speakerViewURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/slides_studio_OBS_browser_source.html`
+		console.log("slides studio browser source URL", speakerViewURL);
+			obs.call("SetInputSettings", {
+				inputName: "slides",
+				inputSettings: {
+					url: speakerViewURL,
+        	},
+    	});
 	});
 	
 	obs.on("error", (err) => {

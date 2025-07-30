@@ -23,6 +23,7 @@
 	},
 	"dependencies": {
 		"node-osc": "^9.1.4",
-		"obs-websocket-js": "^5.0.6"
+		"obs-websocket-js": "^5.0.6",
+		"tabulator-tables": "^6.3.1"
 	}
 }
