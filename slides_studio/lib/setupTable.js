@@ -33,10 +33,16 @@ function loadTable() {
                 values: dropDownOptions.slidePosition},
                 cellEdited: saveTableToLocalStorage
             },
-            {title:"camera Position", field:"cameraPosition", editor:"list", editorParams:{
+            {title:"Camera Position", field:"cameraPosition", editor:"list", editorParams:{
                 //Value Options (You should use ONE of these per editor)
                 values: dropDownOptions.cameraPosition},
                 cellEdited: saveTableToLocalStorage
+            },
+            {
+                title:"Camera Shape", field:"shapeMask", editor:"list", editorParams:{
+                    //Value Options (You should use ONE of these per editor)
+                    values: dropDownOptions.shapeMask},
+                    cellEdited: saveTableToLocalStorage
             },
             {title:"Scenes", field:"scenes", editor:"list", editorParams:{
                 //Value Options (You should use ONE of these per editor)

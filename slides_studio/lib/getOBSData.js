@@ -17,7 +17,7 @@ obs.on("Identified", async (data) => {
         const excludeList = ['Set Camera','Slides', '----------SETTINGS----------', '----------SCENES----------', '----------SOURCES----------', '----------OPTIONS----------'];
         sceneList.scenes.forEach(async (scene, index) => {
             //console.log("scene ", scene, !excludeList.includes(scene.sceneName));
-            if(!excludeList.includes(scene.sceneName)){
+            if(scene.sceneName.startsWith("Scene")){
                 const sceneName = scene.sceneName;
                 //  console.log(sceneName)
                 dropDownOptions.scenes.push(sceneName);
@@ -30,17 +30,14 @@ obs.on("Identified", async (data) => {
         cameraSources.sceneItems.forEach(async(source, index) => {
             dropDownOptions.cameraPosition.push(source.sourceName)
         });
-        
-        cameraSources = await obs.call("GetSceneItemList", { sceneName: "Camera Overlay Position" });
-        cameraSources.sceneItems.forEach(async(source, index) => {
-            dropDownOptions.cameraPosition.push(source.sourceName)
-        });
-        //console.log("camera Sources", cameraSources)
-        
+
         //get Camera Field of View options
         
         //get Slide Position tag options
         dropDownOptions.slidePosition = ["over-the-shoulder","full-screen","side-by-side"]
+
+        //get Slide Position tag options
+        dropDownOptions.shapeMask = ["","cicle","square","pulse"]
         
         if(slidesArray.length > 0){
             document.getElementById("slidesTable").hidden = false;

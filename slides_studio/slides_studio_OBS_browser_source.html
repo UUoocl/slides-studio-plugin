@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Slide Studio</title>
     <style>
         .container {
         position: relative;
@@ -77,31 +77,12 @@
         };
 
         if (Object.hasOwn(currentSlide, 'cameraPosition')){ 
-           if(currentSlide.cameraPosition.includes("Full")) {
-            console.log("camera tag found")
             console.log("camera tag found")
             //disable this scenes cameras
             await disableSceneItems("Camera Position")
             
             //enable source
             await setSourceVisibilityByName("Camera Position", currentSlide['cameraPosition'], true)
-            
-            //disable other cameras
-            await disableSceneItems("Camera Overlay Position")
-            }
-            else{
-            console.log("camera overlay tag found")
-            //disable this scenes cameras
-            console.log('remove others')
-            await disableSceneItems("Camera Overlay Position")
-
-            //enable source
-            await setSourceVisibilityByName("Camera Overlay Position", currentSlide['cameraPosition'], true)
-            console.log('sourcename', currentSlide['cameraPosition'])
-
-            //disable other cameras
-            await disableSceneItems("Camera Position")
-            };
         };
 
         if (Object.hasOwn(currentSlide, 'slidePosition')) {
