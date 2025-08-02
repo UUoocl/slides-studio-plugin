@@ -63,10 +63,6 @@ function loadTable() {
     
     //Table row Clicked
     table.on("rowClick", function (e, row) {
-        console.log("e=index", row.getPosition())
-        console.log("e", e)
-        console.log("row", row)
-        console.log("table", table)
         table.deselectRow();
         table.selectRow(table.getRowFromPosition(row.getPosition()));
         selectedRowNumber = row.getPosition();
