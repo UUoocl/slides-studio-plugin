@@ -166,6 +166,25 @@ export default class slidesStudioPlugin extends Plugin {
 					url: speakerViewURL,
         	},
     	});
+
+		//Set the localhost path for the camera shape masks
+		const cameraMaskURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/cameraShape_`;
+		let cameraMasks = await obs.call("GetSceneItemList", {
+			sceneName: "Camera Shape",
+		})
+		console.log("Camera Masks", cameraMasks);
+		//Set the camera mask SVGs to the Camera Shape scene items
+		cameraMasks.sceneItems.forEach(async (source, index) => {
+			console.log("Camera Shape Source", source);
+			if(source.inputKind === "browser_source"){
+				await obs.call("SetInputSettings", {
+					inputName: source.sourceName,
+					inputSettings: {
+						url: cameraMaskURL + source.sourceName + ".html",
+					},
+				});
+			}
+		});
 	});
 	
 	obs.on("error", (err) => {
@@ -361,7 +380,7 @@ export default class slidesStudioPlugin extends Plugin {
 				this.app.plugins.plugins['slides-studio'].settings.camera_tags.push(source.sourceName)
 			});
 
-			cameraSources = await obs.call("GetSceneItemList", { sceneName: "Camera Overlay Position" });
+			cameraSources = await obs.call("GetSceneItemList", { sceneName: "Camera Position" });
 			cameraSources.sceneItems.forEach(async(source, index) => {
 				this.app.plugins.plugins['slides-studio'].settings.camera_overlay_tags.push(source.sourceName)
 			});

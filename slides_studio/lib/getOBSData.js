@@ -1,7 +1,7 @@
 const dropDownOptions = {
     scenes:[],
     cameraPosition:[],
-    cameraFOV:[],
+    shapeMask:[],
     slidePosition:[]
 }
 
@@ -30,15 +30,22 @@ obs.on("Identified", async (data) => {
         cameraSources.sceneItems.forEach(async(source, index) => {
             dropDownOptions.cameraPosition.push(source.sourceName)
         });
-
-        //get Camera Field of View options
         
         //get Slide Position tag options
-        dropDownOptions.slidePosition = ["over-the-shoulder","full-screen","side-by-side"]
-
-        //get Slide Position tag options
-        dropDownOptions.shapeMask = ["","cicle","square","pulse"]
+        const slideSources = await obs.call("GetSceneItemList", { sceneName: "Slide Position" });
+        //console.log(cameraSources)
+        slideSources.sceneItems.forEach(async(source, index) => {
+            dropDownOptions.slidePosition.push(source.sourceName)
+        });
         
+        //get Camera Shape tag options
+        const shapeSources = await obs.call("GetSceneItemList", { sceneName: "Camera Shape" });
+        console.log("shapreSources", shapeSources)
+        shapeSources.sceneItems.forEach(async(source, index) => {
+            dropDownOptions.shapeMask.push(source.sourceName)
+        });
+                // dropDownOptions.shapeMask = ["","cicle","square","pulse"]
+        console.log("dropDownOptions", dropDownOptions)
         if(slidesArray.length > 0){
             document.getElementById("slidesTable").hidden = false;
         }

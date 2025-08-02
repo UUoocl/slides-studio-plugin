@@ -5,51 +5,52 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Slide Studio</title>
     <style>
+        :root {
+            --top: 0;
+            --left: 0;
+            --bottom: 0;
+            --right: 0;
+            --width: 100%;
+            --height: 100%;
+            --border-style: solid;
+            --border-width: 0px;
+            --border-radius: 24px;
+            --transform-perspective: 1500px;
+            --transform-rotate-y: 15deg;
+            --filter-opacity: 100%; 
+            --filter-drop-shadow-color: rgba(0, 0, 0, 50.5);
+            --filter-drop-shadow-offset-x: 30px;
+            --filter-drop-shadow-offset-y: 21px;
+            --filter-drop-shadow-blur: 40px;
+        }
+        
         .container {
-        position: relative;
-        width: 100%;
-        overflow: hidden;
-        padding-top: 56.25%; /* 16:9 Aspect Ratio */
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio */
         }
-
-        .over-the-shoulder {
-        position: absolute;
-        top: 10%;
-        left: 10%;
-        bottom: 0;
-        right: 0;
-        width: 25%;
-        height: 40%;
-        border: none;
-        }
-
-        .full-screen {
-        position: absolute;
-        top: 0;
-        left: 0;
-        bottom: 0;
-        right: 0;
-        width: 100%;
-        height: 100%;
-        border: none;
-        }
-
-        .side-by-side {
-        position: absolute;
-        top: 0;
-        left: 0;
-        bottom: 0;
-        right: 0;
-        width: 50%;
-        height: 100%;
-        border: none;
+        
+        .slide-position {
+            position: absolute;
+            top: var(--top);
+            left: var(--left);
+            bottom: var(--bottom);
+            right: var(--right);
+            width: var(--width);
+            height: var(--height);
+            border-style: var(--border-style);
+            border-width: var(--border-width);
+            border-radius: var(--border-radius);
+            transform: perspective(var(--transform-perspective)) rotateY(var(--transform-rotate-y));
+            filter: opacity(var(--filter-opacity)) drop-shadow(var(--filter-drop-shadow-color) var(--filter-drop-shadow-offset-x) var(--filter-drop-shadow-offset-y) var(--filter-drop-shadow-blur));
         }
     </style>
 </head>
 <body>
     <div class="container">
         <!-- <iframe id= "revealIframe" class="responsive-iframe" src="index.html"></iframe> -->
-        <iframe id= "revealIframe" class="side-by-side" src="http://localhost:5000/"></iframe>
+        <iframe id= "revealIframe" class="slide-position" src="http://localhost:5000/"></iframe>
     </div>
     
     <!-- <script src="../lib/obs-ws.js"></script>
@@ -85,15 +86,55 @@
             await setSourceVisibilityByName("Camera Position", currentSlide['cameraPosition'], true)
         };
 
+        if (Object.hasOwn(currentSlide, 'shapeMask')){ 
+            console.log("camera mask found")
+            //disable this scenes cameras
+            await disableSceneItems("Camera Shape")
+            
+            //enable source
+            await setSourceVisibilityByName("Camera Shape", currentSlide['shapeMask'], true)
+        };
+
         if (Object.hasOwn(currentSlide, 'slidePosition')) {
             console.log("slide class tag found")
             console.log("class name", currentSlide['data-slide-entrance'])
             const className = currentSlide['slidePosition']
-            if (className !== undefined) {
-                document.getElementById("revealIframe").className = className;
-            }
+            setSlidePositionCSS(className);
         };
     }
+
+        async function setSlidePositionCSS(className) {
+            const slidePosition = document.querySelector(':root');
+            // const slidePosition = document.getElementById("revealIframe");
+            document.getElementById("revealIframe").className = "slide-position";
+            settings = await obs.call("GetInputSettings", {
+                inputName: className,
+            });
+            console.log("Settings", settings);
+            cssSettings = JSON.parse(`{${settings.inputSettings.text}}`)
+            console.log("cssSettings", typeof cssSettings, cssSettings);
+            
+            if (cssSettings) {
+                slidePosition.style.setProperty('--top', cssSettings.top || '0');
+                slidePosition.style.setProperty('--left', cssSettings.left || '0');
+                slidePosition.style.setProperty('--bottom', cssSettings.bottom || '0');
+                slidePosition.style.setProperty('--right', cssSettings.right || '0');
+                slidePosition.style.setProperty('--width', cssSettings.width || '100%');
+                slidePosition.style.setProperty('--height', cssSettings.height || '100%');
+                slidePosition.style.setProperty('--border-style', cssSettings.borderStyle || 'solid');
+                slidePosition.style.setProperty('--border-width', cssSettings.borderWidth || '0px');
+                slidePosition.style.setProperty('--border-radius', cssSettings.borderRadius || '24px');
+                slidePosition.style.setProperty('--transform-perspective', cssSettings.transformPerspective || '1500px');
+                slidePosition.style.setProperty('--transform-rotate-y', cssSettings.transformRotateY || '15deg');
+                slidePosition.style.setProperty('--filter-opacity', cssSettings.filterOpacity || '100%');
+                slidePosition.style.setProperty('--filter-drop-shadow-color', cssSettings.filterDropShadowColor || 'rgba(0, 0, 0, 50.5)');
+                slidePosition.style.setProperty('--filter-drop-shadow-offset-x', cssSettings.filterDropShadowOffsetX || '30px');
+                slidePosition.style.setProperty('--filter-drop-shadow-offset-y', cssSettings.filterDropShadowOffsetY || '21px');
+                slidePosition.style.setProperty('--filter-drop-shadow-blur', cssSettings.filterDropShadowBlur || '40px');
+            } else {
+                console.warn("No CSS settings found for class:", className);
+            }
+        }
      
         async function disableSceneItems(sceneName){
             //disable all camera scene sources

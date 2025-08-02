@@ -180,7 +180,7 @@
         const filteredRowData = {}
         // Filter the object to only keys with values
         filteredRowData.row = Object.fromEntries(
-            Object.entries(rowData).filter(([key, value]) => value !== undefined && `${value}`.length > 0)
+            Object.entries(rowData).filter(([key, value]) => value != undefined && `${value}`.length > 0)
         );
         filteredRowData.namespace = "tabulator";
         filteredRowData.eventName = "rowSelected";
