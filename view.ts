@@ -111,10 +111,10 @@ export class slidesStudioView extends ItemView{
                         })
                          });
                         
-                        //load Camera Overlay options
-                        const cameras_overlay =  Array.from(new Set(this.app.plugins.plugins['slides-studio'].settings.camera_overlay_tags));
-                        new Setting(container).setName("Camera Overlay").setHeading()
-                        cameras_overlay.forEach(scene => {
+                        //load Camera Shapes options
+                        const cameras_shapes =  Array.from(new Set(this.app.plugins.plugins['slides-studio'].settings.camera_shape_tags));
+                        new Setting(container).setName("Camera Shapes").setHeading()
+                        cameras_shapes.forEach(scene => {
                             new Setting(container).setName(scene)
                             .addButton((item) =>{
                                 item.setButtonText("Add")
@@ -125,7 +125,7 @@ export class slidesStudioView extends ItemView{
                                     
                                     this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
                                     lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
-                                    this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-camera-position="${scene}" -->
+                                    this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-camera-shape="${scene}" -->
 `)
                                     })
                                 })
@@ -145,7 +145,7 @@ export class slidesStudioView extends ItemView{
                                             
                                             this.app.workspace.setActiveLeaf(lastLeafWorkspace,true,true);
                                             lastLeaf?.setEphemeralState(lastLeaf?.getEphemeralState())
-                                            this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-scene = "${scene}}" -->
+                                            this.app.workspace.activeEditor?.editor?.replaceSelection(`<!-- slide data-scene="${scene}" -->
 `)
                                             })
                                         })

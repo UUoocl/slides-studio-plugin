@@ -18,7 +18,7 @@ interface slidesStudioPluginSettings{
 	slide_tags: string[];
 	scene_tags: string[];
 	camera_tags: string[];
-	camera_overlay_tags: string[];
+	camera_shape_tags: string[];
 	newTag: string;
 	user_tags: string[];
 	obs: OBSWebSocket;
@@ -29,10 +29,10 @@ const DEFAULT_SETTINGS: Partial<slidesStudioPluginSettings> = {
 	websocketPort_Text: "4455",
 	websocketPW_Text: "password",
 	slidesPort_Text: "5000",
-	slide_tags: ['over-the-shoulder','full-screen', 'side-by-side'],
+	slide_tags: [],
 	scene_tags: [],
 	camera_tags: [],
-	camera_overlay_tags: [],
+	camera_shape_tags: [],
 	user_tags: [],
 	newTag: "",
 };
@@ -168,19 +168,19 @@ export default class slidesStudioPlugin extends Plugin {
     	});
 
 		//Set the localhost path for the camera shape masks
-		const cameraMaskURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/cameraShape_`;
-		let cameraMasks = await obs.call("GetSceneItemList", {
+		const cameraShapeURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/cameraShapes/cameraShape_`;
+		let cameraShapes = await obs.call("GetSceneItemList", {
 			sceneName: "Camera Shape",
 		})
-		console.log("Camera Masks", cameraMasks);
+		console.log("Camera Masks", cameraShapes);
 		//Set the camera mask SVGs to the Camera Shape scene items
-		cameraMasks.sceneItems.forEach(async (source, index) => {
+		cameraShapes.sceneItems.forEach(async (source, index) => {
 			console.log("Camera Shape Source", source);
 			if(source.inputKind === "browser_source"){
 				await obs.call("SetInputSettings", {
 					inputName: source.sourceName,
 					inputSettings: {
-						url: cameraMaskURL + source.sourceName + ".html",
+						url: cameraShapeURL + source.sourceName + ".html",
 					},
 				});
 			}
@@ -348,42 +348,36 @@ export default class slidesStudioPlugin extends Plugin {
 			callback: async() => {
 			new Notice("Getting OBS Tags");
 			
-		//create Scene tag options
+		//get Scene tag options
 			const sceneList = await obs.call("GetSceneList");
-			const excludeList = ['Set Camera','Slides', '----------SETTINGS----------', '----------SCENES----------', '----------SOURCES----------', '----------OPTIONS----------'];
 			sceneList.scenes.forEach(async (scene, index) => {
-				console.log("scene ", scene, !excludeList.includes(scene.sceneName));
-				if(!excludeList.includes(scene.sceneName)){
+				if(scene.sceneName.startsWith("Scene")){
 					const sceneName = scene.sceneName;
-					console.log(sceneName)
+					//  console.log(sceneName)
 					this.settings.scene_tags.push(sceneName);
-				}
-				// find scenes starting with "scene"
-				// if (scene.sceneName.startsWith("scene|||")) {
-				// 	const sceneName = scene.sceneName.split("|||");
-					
-					// let fileName = `Scene - ${sceneName[1]}`;
-					// let existing = await this.app.vault.adapter.exists(normalizePath(`_slide_Tags/${fileName}`));
-					// if (!existing) {
-					// 	await this.app.vault.create(`_slide_Tags/${fileName}.md`, 
-					// 		``,
-					// 	);		
-					// }
-				//}	
+            	}
 			});
 				
-		//create Camera tag options
+		//get Camera Position tag options
 			let cameraSources = await obs.call("GetSceneItemList", { sceneName: "Camera Position" });
-			console.log(cameraSources)
+			//console.log(cameraSources)
 			cameraSources.sceneItems.forEach(async(source, index) => {
-				console.log(cameraSources)
 				this.app.plugins.plugins['slides-studio'].settings.camera_tags.push(source.sourceName)
 			});
-
-			cameraSources = await obs.call("GetSceneItemList", { sceneName: "Camera Position" });
-			cameraSources.sceneItems.forEach(async(source, index) => {
-				this.app.plugins.plugins['slides-studio'].settings.camera_overlay_tags.push(source.sourceName)
+			
+		//get Slide Position tag options
+	        const slideSources = await obs.call("GetSceneItemList", { sceneName: "Slide Position" });
+			//console.log(cameraSources)
+        	slideSources.sceneItems.forEach(async(source, index) => {
+				this.app.plugins.plugins['slides-studio'].settings.slide_tags.push(source.sourceName)
 			});
+			
+			//get Camera Shape tag options
+        	const shapeSources = await obs.call("GetSceneItemList", { sceneName: "Camera Shape" });
+        	console.log("shapreSources", shapeSources)
+        	shapeSources.sceneItems.forEach(async(source, index) => {
+				this.app.plugins.plugins['slides-studio'].settings.camera_shape_tags.push(source.sourceName)
+        	});
 		return
 		}})
 // #endregion

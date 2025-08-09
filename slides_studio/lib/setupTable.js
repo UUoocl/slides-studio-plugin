@@ -39,14 +39,24 @@ function loadTable() {
                 cellEdited: saveTableToLocalStorage
             },
             {
-                title:"Camera Shape", field:"shapeMask", editor:"list", editorParams:{
+                title:"Camera Shape", field:"cameraShape", editor:"list", editorParams:{
                     //Value Options (You should use ONE of these per editor)
-                    values: dropDownOptions.shapeMask},
+                    values: dropDownOptions.cameraShape},
                     cellEdited: saveTableToLocalStorage
             },
-            {title:"Scenes", field:"scenes", editor:"list", editorParams:{
+            {title:"Scene", field:"scene", editor:"list", editorParams:{
                 //Value Options (You should use ONE of these per editor)
-                values: dropDownOptions.scenes},
+                values: dropDownOptions.scene,
+                },
+                cellEdited: saveTableToLocalStorage
+            },
+            {title:"remoteScene", field:"remoteScene", editor:"list", editorParams:{
+                //Value Options (You should use ONE of these per editor)
+                values: ["backStage"],
+                autocomplete:true,
+                listOnEmpty:true,
+                freetext:true,
+                },
                 cellEdited: saveTableToLocalStorage
             }
         ],

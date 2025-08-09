@@ -44,6 +44,14 @@
             border-radius: var(--border-radius);
             transform: perspective(var(--transform-perspective)) rotateY(var(--transform-rotate-y));
             filter: opacity(var(--filter-opacity)) drop-shadow(var(--filter-drop-shadow-color) var(--filter-drop-shadow-offset-x) var(--filter-drop-shadow-offset-y) var(--filter-drop-shadow-blur));
+            transition:
+                width 0.5s, 
+                height 0.5s,
+                top 0.5s,
+                left 0.5s,
+                bottom 0.5s,
+                right 0.5s,
+                filter 0.5s;
         }
     </style>
 </head>
@@ -72,9 +80,9 @@
   async function processTags(currentSlide) {
         // console.log("current slide", currentSlide)
 
-        if (Object.hasOwn(currentSlide, 'scenes')) {
+        if (Object.hasOwn(currentSlide, 'scene')) {
             console.log("scene tag found")
-            obs.call("SetCurrentProgramScene", { sceneName: currentSlide['scenes'] })
+            obs.call("SetCurrentProgramScene", { sceneName: currentSlide['scene'] })
         };
 
         if (Object.hasOwn(currentSlide, 'cameraPosition')){ 
@@ -86,18 +94,17 @@
             await setSourceVisibilityByName("Camera Position", currentSlide['cameraPosition'], true)
         };
 
-        if (Object.hasOwn(currentSlide, 'shapeMask')){ 
+        if (Object.hasOwn(currentSlide, 'cameraShape')){ 
             console.log("camera mask found")
             //disable this scenes cameras
             await disableSceneItems("Camera Shape")
             
             //enable source
-            await setSourceVisibilityByName("Camera Shape", currentSlide['shapeMask'], true)
+            await setSourceVisibilityByName("Camera Shape", currentSlide['cameraShape'], true)
         };
 
         if (Object.hasOwn(currentSlide, 'slidePosition')) {
             console.log("slide class tag found")
-            console.log("class name", currentSlide['data-slide-entrance'])
             const className = currentSlide['slidePosition']
             setSlidePositionCSS(className);
         };

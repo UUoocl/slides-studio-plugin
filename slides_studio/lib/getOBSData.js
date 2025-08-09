@@ -1,7 +1,7 @@
 const dropDownOptions = {
-    scenes:[],
+    scene:[],
     cameraPosition:[],
-    shapeMask:[],
+    cameraShape:[],
     slidePosition:[]
 }
 
@@ -14,13 +14,11 @@ obs.on("Identified", async (data) => {
 
         //get Scene options
         const sceneList = await obs.call("GetSceneList");
-        const excludeList = ['Set Camera','Slides', '----------SETTINGS----------', '----------SCENES----------', '----------SOURCES----------', '----------OPTIONS----------'];
         sceneList.scenes.forEach(async (scene, index) => {
-            //console.log("scene ", scene, !excludeList.includes(scene.sceneName));
             if(scene.sceneName.startsWith("Scene")){
                 const sceneName = scene.sceneName;
                 //  console.log(sceneName)
-                dropDownOptions.scenes.push(sceneName);
+                dropDownOptions.scene.push(sceneName);
             }
         });
         
@@ -42,9 +40,8 @@ obs.on("Identified", async (data) => {
         const shapeSources = await obs.call("GetSceneItemList", { sceneName: "Camera Shape" });
         console.log("shapreSources", shapeSources)
         shapeSources.sceneItems.forEach(async(source, index) => {
-            dropDownOptions.shapeMask.push(source.sourceName)
+            dropDownOptions.cameraShape.push(source.sourceName)
         });
-                // dropDownOptions.shapeMask = ["","cicle","square","pulse"]
         console.log("dropDownOptions", dropDownOptions)
         if(slidesArray.length > 0){
             document.getElementById("slidesTable").hidden = false;

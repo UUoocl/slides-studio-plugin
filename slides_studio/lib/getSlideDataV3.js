@@ -30,7 +30,6 @@ window.addEventListener('message', async (event) => {
         const iframeDocument = iframe.contentDocument;
         // Get the innerHTML of the iframe's body
         const iframeBodyContent = iframeDocument.body.innerHTML;
-        
         // Access a specific element by ID within the iframe
         const slidesEl = iframeDocument.querySelector('.slides');
         const currentEl = slidesEl.querySelector('.drop.present')
@@ -75,6 +74,7 @@ window.addEventListener('message', async (event) => {
 })
 
 async function addElementToSlideArray(slideEl, data){
+    console.log("slide element", slideEl)
     //Get slide id        
     const slideId = await getSlideDataAttributeValue(slideEl.outerHTML, 'data-id');
     
@@ -84,7 +84,9 @@ async function addElementToSlideArray(slideEl, data){
     
     const cameraPosition = await getSlideDataAttributeValue(slideEl.outerHTML, 'data-camera-position');
     
-    const cameraFOV = await getSlideDataAttributeValue(slideEl.outerHTML, 'data-camera-fov');
+    const cameraShape = await getSlideDataAttributeValue(slideEl.outerHTML, 'data-camera-shape');
+    
+    const scene = await getSlideDataAttributeValue(slideEl.outerHTML, 'data-scene');
 
     const isFragment = data.state.indexf !== undefined ? data.state.indexf : false;
     
@@ -106,7 +108,8 @@ async function addElementToSlideArray(slideEl, data){
             
             const cameraPosition = await getFragmentDataAttributeValue(fragment, 'data-fragment-camera-position');
             
-            const cameraFOV = await getFragmentDataAttributeValue(fragment, 'data-fragment-camera-fov');
+            const cameraShape = await getFragmentDataAttributeValue(fragment, 'data-fragment-camera-shape');
+            const scene = await getFragmentDataAttributeValue(fragment, 'data-fragment-scene');
             
             const fragmentDetails = {
                 slideId: `${fragmentId}`,
@@ -114,7 +117,8 @@ async function addElementToSlideArray(slideEl, data){
                 slideName: slideName,
                 slidePosition: slidePosition,
                 cameraPosition: cameraPosition,
-                cameraFOV: cameraFOV
+                cameraShape: cameraShape,
+                scene: scene
             }
             const result = children.find(({ slideId }) => slideId === `${fragmentId}`)
             if(typeof result != 'object'){
@@ -127,7 +131,8 @@ async function addElementToSlideArray(slideEl, data){
             slideName: slideName,
             slidePosition: slidePosition,
             cameraPosition: cameraPosition,
-            cameraFOV: cameraFOV,
+            cameraShape: cameraShape,
+            scene: scene,
             _children: children
         }
         slidesArray.push(slideDetails)
@@ -140,7 +145,8 @@ async function addElementToSlideArray(slideEl, data){
             slideName: slideName,
             slidePosition: slidePosition,
             cameraPosition: cameraPosition,
-            cameraFOV: cameraFOV,
+            cameraShape: cameraShape,
+            scene: scene,
             // _children: children
         }
         slidesArray.push(slideDetails)
