@@ -15,6 +15,19 @@ function loadTable() {
         dataTree: true,
         dataTreeStartExpanded: true,
         dataTreeSort:true,
+        //enable range selection        
+        selectableRange:1,
+        selectableRangeClearCells:true,
+        //configure clipboard to allow copy and paste of range format data
+        clipboard:true,
+        clipboardCopyStyled:false,
+        clipboardCopyConfig:{
+            rowHeaders:false,
+            columnHeaders:false,
+        },
+        clipboardCopyRowRange:"range",
+        clipboardPasteParser:"range",
+        clipboardPasteAction:"range",
         initialSort:[
             {column:"slideState", dir:"asc"}, //sort by this first
         ],
@@ -50,15 +63,15 @@ function loadTable() {
                 },
                 cellEdited: saveTableToLocalStorage
             },
-            {title:"remoteScene", field:"remoteScene", editor:"list", editorParams:{
-                //Value Options (You should use ONE of these per editor)
-                values: ["backStage"],
-                autocomplete:true,
-                listOnEmpty:true,
-                freetext:true,
-                },
-                cellEdited: saveTableToLocalStorage
-            }
+            // {title:"remoteScene", field:"remoteScene", editor:"list", editorParams:{
+            //     //Value Options (You should use ONE of these per editor)
+            //     values: ["backStage"],
+            //     autocomplete:true,
+            //     listOnEmpty:true,
+            //     freetext:true,
+            //     },
+            //     cellEdited: saveTableToLocalStorage
+            // }
         ],
     });
     
