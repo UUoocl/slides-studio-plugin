@@ -1,13 +1,18 @@
 import { Notice, Plugin, Platform, WorkspaceLeaf } from 'obsidian';
 import { slidesStudioSettingsTab } from 'settings';
-import { SLIDES_STUDIO_VIEW_TYPE, slidesStudioView } from 'view';
+import { SLIDES_STUDIO_VIEW_TYPE, slidesStudioView } from 'tagView';
+import { SLIDES_STUDIO_WEBVIEW_TYPE, SlideStudioWebview } from 'slideStudioWebview';
+import { ServerManager } from 'serverLogic';
+
+import { OscManager, OscDeviceSetting } from 'oscLogic';
+import { MidiManager, MidiDeviceSetting } from 'midiLogic';
 
 import path from 'node:path'; 
 import { exec } from 'child_process';
 import { promisify } from 'util';
 const execAsync = promisify(exec); 
 
-import { Client, Server, Message } from 'node-osc';
+import { Message } from 'node-osc';
 import { OBSWebSocket } from 'obs-websocket-js';
 
 interface slidesStudioPluginSettings{
@@ -21,7 +26,14 @@ interface slidesStudioPluginSettings{
 	camera_shape_tags: string[];
 	newTag: string;
 	user_tags: string[];
-	obs: OBSWebSocket;
+	obsAppName_Text: string;
+	obsCollection_Text: string;
+	obsDebugPort_Text: string;
+	obsAppPath_Text: string;
+    // Server Settings
+    serverPort: string;
+	oscDevices: OscDeviceSetting[];
+	midiDevices: MidiDeviceSetting[];
 }
 
 const DEFAULT_SETTINGS: Partial<slidesStudioPluginSettings> = {
@@ -35,10 +47,22 @@ const DEFAULT_SETTINGS: Partial<slidesStudioPluginSettings> = {
 	camera_shape_tags: [],
 	user_tags: [],
 	newTag: "",
+	obsAppName_Text: "OBS",
+	obsCollection_Text: "Untitled",
+	obsDebugPort_Text: "9222",
+	obsAppPath_Text: "",
+    serverPort: "3000",
+	oscDevices: [],
+	midiDevices: []
 };
 
 export default class slidesStudioPlugin extends Plugin {
 	settings: slidesStudioPluginSettings;
+	public oscManager: OscManager;
+	public midiManager: MidiManager; 
+    public serverManager: ServerManager; 
+	public obs: OBSWebSocket;
+	public isObsConnected: boolean = false;
 	
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -46,19 +70,52 @@ export default class slidesStudioPlugin extends Plugin {
 	
 	async saveSettings() {
 		await this.saveData(this.settings);
+        // Save the details to the specific JS file for external usage
+        await this.saveWebsocketDetailsToFile();
 	}
+
+    // New helper to write the JS file
+    async saveWebsocketDetailsToFile() {
+        const folderName = ".obsidian/plugins/slides-studio/slides_studio/obs_webSocket_details";
+        const fileName = "websocketDetails.js";
+        const filePath = `${folderName}/${fileName}`;
+
+        try {
+            const adapter = this.app.vault.adapter;
+            
+            // Check if folder exists, create if not
+            if (!(await adapter.exists(folderName))) {
+                await this.app.vault.createFolder(folderName);
+            }
+
+            // Ensure port is a number for the JSON structure
+            const port = parseInt(this.settings.websocketPort_Text) || 4455;
+            
+            // Format content as requested
+            const content = `let websocketDetails = {"IP": "${this.settings.websocketIP_Text}", "PW": "${this.settings.websocketPW_Text}", "PORT": ${port}}`;
+
+            await adapter.write(filePath, content);
+        } catch (error) {
+            console.error("Error writing websocket details file:", error);
+            // Optionally notify user only on failure
+            // new Notice("Failed to save websocketDetails.js");
+        }
+    }
 	
 	async onload() {
 		await this.loadSettings();
-		let obs = this.settings.obs;
-		obs = new OBSWebSocket();
-		let slideState = '';
+		
+		this.obs = new OBSWebSocket();
 
-		//clear settings value
-		this.app.plugins.plugins['slides-studio'].settings.scenes = [];
-		this.app.plugins.plugins['slides-studio'].settings.cameras = [];
+		if(this.app.plugins.plugins['slides-studio']) {
+			this.app.plugins.plugins['slides-studio'].settings.scenes = [];
+			this.app.plugins.plugins['slides-studio'].settings.cameras = [];
+		}
 	
+        // Register Tag View
 		this.registerView(SLIDES_STUDIO_VIEW_TYPE, (leaf) => new slidesStudioView(leaf))
+        // Register New Webview
+        this.registerView(SLIDES_STUDIO_WEBVIEW_TYPE, (leaf) => new SlideStudioWebview(leaf, this));
 
 		this.addRibbonIcon("aperture","open slides studio view", () => {
 			this.openView();
@@ -68,7 +125,35 @@ export default class slidesStudioPlugin extends Plugin {
 
 		new Notice("Enabled slides studio plugin")	
 
-	
+        // #region Server Initialization
+        const port = parseInt(this.settings.serverPort) || 3000;
+        this.serverManager = new ServerManager(this.app, port);
+        this.app.workspace.onLayoutReady(() => {
+            this.serverManager.start();
+        });
+        // #endregion
+
+		// #region OSC Manager Initialization
+		this.oscManager = new OscManager((name, msg) => {
+			const payload = {
+				deviceName: name,
+				message: msg
+			};
+			this.sendToOBS(payload, "osc-message");
+		});
+		// #endregion
+
+		// #region MIDI Manager Initialization
+		this.midiManager = new MidiManager((name, msg) => {
+			const payload = {
+				deviceName: name,
+				message: msg
+			};
+			this.sendToOBS(payload, "midi-message");
+		});
+		await this.midiManager.enable();
+		// #endregion
+
 	//
 	// #region ✅Connect to OBS Websocket connection
 	//
@@ -79,71 +164,39 @@ export default class slidesStudioPlugin extends Plugin {
 			new Notice("Starting OBS Web Socket Server Connection")
 			
 			const wssDetails = {
-				IP: this.app.plugins.plugins['slides-studio'].settings.websocketIP_Text,
-				PORT: this.app.plugins.plugins['slides-studio'].settings.websocketPort_Text,
-				PW: this.app.plugins.plugins['slides-studio'].settings.websocketPW_Text
+				IP: this.settings.websocketIP_Text,
+				PORT: this.settings.websocketPort_Text,
+				PW: this.settings.websocketPW_Text
 			}
-			obsWSSconnect(wssDetails)
+			this.obsWSSconnect(wssDetails)
 		}
 	})
-
-	async function obsWSSconnect(wssDetails){
-		try {
-			//avoid duplicate connections
-			await disconnect()
-			
-			//start new connection
-			const { obsWebSocketVersion, negotiatedRpcVersion } = await obs.connect(
-				`ws://${wssDetails.IP}:${wssDetails.PORT}`,
-				wssDetails.PW,
-				{
-					rpcVersion: 1,
-				}
-			)
-			console.log(`Connected to server ${obsWebSocketVersion} (using RPC ${negotiatedRpcVersion})`);
-			new Notice("Connected to OBS WebSocket Server");
-		} catch (error) {
-			new Notice("Failed to connect to OBS WebSocket Server")
-			console.error("Failed to connect", error.code, error.message);
-		}
-	}
         
-	async function disconnect () {
-		try{
-		await obs.disconnect()
-		console.log("disconnected")
-		obs.connected = false
-		} catch(error){
-		console.error("disconnect catch",error)
-		} 
-	}
-        
-	obs.on('ConnectionOpened', () => {
+	this.obs.on('ConnectionOpened', () => {
 		console.log('Connection to OBS WebSocket successfully opened');
-		obs.status = "connected";
 	});
 	
-	obs.on('ConnectionClosed', () => {
+	this.obs.on('ConnectionClosed', () => {
 		console.log('Connection to OBS WebSocket closed');
-		obs.status = "disconnected";
+		this.isObsConnected = false;
 	});
 	
-	obs.on('ConnectionError', err => {
+	this.obs.on('ConnectionError', err => {
 		console.error('Connection to OBS WebSocket failed', err);
+		this.isObsConnected = false;
 	});
 	
-	obs.on("Identified", async (data) => {
-		obs.connected = true;
+	this.obs.on("Identified", async (data) => {
+		this.isObsConnected = true;
 		console.log("OBS WebSocket successfully identified", data);
 
 		const wssDetails = {
-			IP: this.app.plugins.plugins['slides-studio'].settings.websocketIP_Text,
-			PORT: this.app.plugins.plugins['slides-studio'].settings.websocketPort_Text,
-			PW: this.app.plugins.plugins['slides-studio'].settings.websocketPW_Text
+			IP: this.settings.websocketIP_Text,
+			PORT: this.settings.websocketPort_Text,
+			PW: this.settings.websocketPW_Text
 		}
 
-		//trigger OBS browsers to reconnect to the websocket server
-		await obs.call("CallVendorRequest", {
+		await this.obs.call("CallVendorRequest", {
 			vendorName: "obs-browser",
 			requestType: "emit_event",
 			requestData: {
@@ -151,149 +204,78 @@ export default class slidesStudioPlugin extends Plugin {
 				event_data: { wssDetails },
 			},
 		});
-		console.log(`ws://${wssDetails.IP}:${wssDetails.PORT}`);  
 		
-		//Get Source Names
 		this.app.commands.executeCommandById('slides-studio:get-obs-scene-tags')
 
-		//Set OBS Browser source slides URL.
-		const port = this.app.plugins.plugins['slides-extended'].settings.port
-		const speakerViewURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/slides_studio_OBS_browser_source.html`
-		console.log("slides studio browser source URL", speakerViewURL);
-			obs.call("SetInputSettings", {
-				inputName: "slides",
-				inputSettings: {
-					url: speakerViewURL,
-        	},
-    	});
-
-		//Set the localhost path for the camera shape masks
-		const cameraShapeURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/cameraShapes/cameraShape_`;
-		let cameraShapes = await obs.call("GetSceneItemList", {
-			sceneName: "Camera Shape",
-		})
-		console.log("Camera Masks", cameraShapes);
-		//Set the camera mask SVGs to the Camera Shape scene items
-		cameraShapes.sceneItems.forEach(async (source, index) => {
-			console.log("Camera Shape Source", source);
-			if(source.inputKind === "browser_source"){
-				await obs.call("SetInputSettings", {
-					inputName: source.sourceName,
+		if (this.app.plugins.plugins['slides-studio']) {
+			const port = this.app.plugins.plugins['slides-studio'].settings.serverPort
+			const speakerViewURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/slides_studio_OBS_browser_source.html`
+			
+			this.obs.call("SetInputSettings", {
+					inputName: "slides",
 					inputSettings: {
-						url: cameraShapeURL + source.sourceName + ".html",
-					},
-				});
-			}
-		});
+						url: speakerViewURL,
+				},
+			});
+
+			const cameraShapeURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/cameraShapes/cameraShape_`;
+			let cameraShapes = await this.obs.call("GetSceneItemList", {
+				sceneName: "Camera Shape",
+			})
+			
+			cameraShapes.sceneItems.forEach(async (source, index) => {
+				if(source.inputKind === "browser_source"){
+					await this.obs.call("SetInputSettings", {
+						inputName: source.sourceName,
+						inputSettings: {
+							url: cameraShapeURL + source.sourceName + ".html",
+						},
+					});
+				}
+			});
+		}
 	});
 	
-	obs.on("error", (err) => {
+	this.obs.on("error", (err) => {
 		console.error("Socket error:", err);
 	});
 	// #endregion Connect to OBS Websocket connection
 
 	// #region ✅ Handle websocket custom events from OBS
-		obs.on("CustomEvent", function (event) {
+	this.obs.on("CustomEvent", (event) => {
 			console.log("Message from OBS",event);
 			
-			// #region OSC_to_Websocket and OSC app
 			if (event.event_name === `OSC-out`) {
 				const message = new Message(event.address);
-				if (Object.hasOwn(event, "arg1")) {
-					message.append(event.arg1);
-					//console.log("arg1", message);
-				}
-				if (Object.hasOwn(event, "arg2")) {
-					message.append(event.arg2);
+				if (Object.hasOwn(event, "arg1")) message.append(event.arg1);
+				if (Object.hasOwn(event, "arg2")) message.append(event.arg2);
+				if (Object.hasOwn(event, "arg3")) message.append(event.arg3);
+				if (Object.hasOwn(event, "arg4")) message.append(event.arg4);
+				if (Object.hasOwn(event, "arg5")) message.append(event.arg5);
+				if (Object.hasOwn(event, "arg6")) message.append(event.arg6);
+				if (Object.hasOwn(event, "arg7")) message.append(event.arg7);
 				
-				}
-				if (Object.hasOwn(event, "arg3")) {
-					message.append(event.arg3);
-				
-				}
-				if (Object.hasOwn(event, "arg4")) {
-					message.append(event.arg4);
-				
-				}
-				if (Object.hasOwn(event, "arg5")) {
-					message.append(event.arg5);
-				
-				}
-				if (Object.hasOwn(event, "arg6")) {
-					message.append(event.arg6);
-				
-				}
-				if (Object.hasOwn(event, "arg7")) {
-					message.append(event.arg7);
-				
-				}
 				console.log(`message to OSC device - ${event.osc_name}`, message);
-				
-				switch(event.osc_name){
-					case oscClient1.oscName:
-						console.log("1")
-						oscClient1.oscClient.send(message, (err) => {
-							if (err) {
-								console.error(new Error(err));
-							}
-						});
-						break;
-					case oscClient2.oscName:
-						console.log("2")
-						oscClient2.oscClient.send(message, (err) => {
-							if (err) {
-								console.error(new Error(err));
-							}
-						});
-						break;
-					case oscClient3.oscName:
-						oscClient3.oscClient.send(message, (err) => {
-							if (err) {
-								console.error(new Error(err));
-							}
-						});
-						break;
-					case oscClient4.oscName:
-						oscClient4.oscClient.send(message, (err) => {
-							if (err) {
-								console.error(new Error(err));
-							}
-						});
-						break;
-					case oscClient5.oscName:
-						oscClient5.oscClient.send(message, (err) => {
-							if (err) {
-								console.error(new Error(err));
-							}
-						});
-						break;
-				}
+				this.oscManager.sendMessage(event.osc_name, message);
+			}
+
+			if (event.event_name === `MIDI-out`) {
+				const midiData = {
+					type: event.arg1, 
+					channel: event.arg2,
+					note: event.arg3,    
+					velocity: event.arg4, 
+					value: event.arg4,
+					controller: event.arg3
+				};
+				console.log(`message to MIDI device - ${event.midi_name}`, midiData);
+				this.midiManager.sendMidiMessage(event.midi_name, this.settings.midiDevices, midiData);
 			}
 		});		 
 		// #endregion Handle websocket custom event message from OBS
 
-	function sendToOBS(msgParam, eventName) {
-		const webSocketMessage = JSON.stringify(msgParam);
-	
-		//send results to OBS Browser Source
-		obs.call("CallVendorRequest", {
-			vendorName: "obs-browser",
-			requestType: "emit_event",
-			requestData: {
-				event_name: eventName,
-				event_data: { 
-					webSocketMessage 
-				},
-			},
-		});
-	}
-	// #endregion
-
 //		
 // #region ✅ Open OBS feature
-// 
-//
-//	Execute a command line to Open OBS
 
 		this.addCommand({
 			id: 'open-obs',
@@ -340,7 +322,6 @@ export default class slidesStudioPlugin extends Plugin {
 
 //	
 //	#region ✅ Get Scenes from OBS feature
-//  1. populate the OBS tag options 
 
 		this.addCommand({
 			id: 'get-obs-scene-tags',
@@ -349,34 +330,31 @@ export default class slidesStudioPlugin extends Plugin {
 			new Notice("Getting OBS Tags");
 			
 		//get Scene tag options
-			const sceneList = await obs.call("GetSceneList");
+			const sceneList = await this.obs.call("GetSceneList");
 			sceneList.scenes.forEach(async (scene, index) => {
 				if(scene.sceneName.startsWith("Scene")){
 					const sceneName = scene.sceneName;
-					//  console.log(sceneName)
 					this.settings.scene_tags.push(sceneName);
             	}
 			});
 				
 		//get Camera Position tag options
-			let cameraSources = await obs.call("GetSceneItemList", { sceneName: "Camera Position" });
-			//console.log(cameraSources)
+			let cameraSources = await this.obs.call("GetSceneItemList", { sceneName: "Camera Position" });
 			cameraSources.sceneItems.forEach(async(source, index) => {
-				this.app.plugins.plugins['slides-studio'].settings.camera_tags.push(source.sourceName)
+				this.settings.camera_tags.push(source.sourceName)
 			});
 			
 		//get Slide Position tag options
-	        const slideSources = await obs.call("GetSceneItemList", { sceneName: "Slide Position" });
-			//console.log(cameraSources)
+	        const slideSources = await this.obs.call("GetSceneItemList", { sceneName: "Slide Position" });
         	slideSources.sceneItems.forEach(async(source, index) => {
-				this.app.plugins.plugins['slides-studio'].settings.slide_tags.push(source.sourceName)
+				this.settings.slide_tags.push(source.sourceName)
 			});
 			
 			//get Camera Shape tag options
-        	const shapeSources = await obs.call("GetSceneItemList", { sceneName: "Camera Shape" });
+        	const shapeSources = await this.obs.call("GetSceneItemList", { sceneName: "Camera Shape" });
         	console.log("shapreSources", shapeSources)
         	shapeSources.sceneItems.forEach(async(source, index) => {
-				this.app.plugins.plugins['slides-studio'].settings.camera_shape_tags.push(source.sourceName)
+				this.settings.camera_shape_tags.push(source.sourceName)
         	});
 		return
 		}})
@@ -385,28 +363,43 @@ export default class slidesStudioPlugin extends Plugin {
 //	
 //	#region ✅Open Slides Studio in browser
 //
-//
+    this.addCommand({
+        id: 'open-slide-studio-webview',
+        name: 'Open Slides Studio Webview',
+        callback: async () => {
+            await this.openWebView();
+        }
+    });
+
 	this.addCommand({
 		id: 'open-slide-studio-speaker-view',
 		name: 'Open the Slide Studio Speaker View in an external browser',
 		callback: async() => {
-			const port = this.app.plugins.plugins['slides-extended'].settings.port
-			new Notice(`Opening Speaker View on port ${port}`);
+			if (this.app.plugins.plugins['slides-studio']) {
+				const port = this.app.plugins.plugins['slides-studio'].settings.serverPort
+				new Notice(`Opening Speaker View on port ${port}`);
 				window.open(`http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/speakerView.html`)
+			} else {
+				new Notice('Slides Extended plugin not found.');
 			}
-		})
+		}
+	})
 		
 		this.addCommand({
 			id: 'copy-obs-browser-source-link',
 			name: 'Copy the Slides Url for OBS to the clipboard ',
 			callback: async() => {
-				const port = this.app.plugins.plugins['slides-extended'].settings.port
-				const obsURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/slides_studio_OBS_browser_source.html`
-				try {
-					await navigator.clipboard.writeText(obsURL);
-					new Notice('URL copied to clipboard successfully!');
-				} catch (err) {
-					console.error('Failed to copy: ', err);
+				if (this.app.plugins.plugins['slides-studio']) {
+					const port = this.app.plugins.plugins['slides-studio'].settings.serverPort
+					const obsURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/slides_studio_OBS_browser_source.html`
+					try {
+						await navigator.clipboard.writeText(obsURL);
+						new Notice('URL copied to clipboard successfully!');
+					} catch (err) {
+						console.error('Failed to copy: ', err);
+					}
+				} else {
+					new Notice('Slides Extended plugin not found.');
 				}
 			}
 		})
@@ -414,193 +407,77 @@ export default class slidesStudioPlugin extends Plugin {
 
 // #region ✅OSC Functions
 
-	//
-	// #region Connect to OCS device 1 
-	//
-
 	this.addCommand({
-		id: 'connect-to-osc-1',
-		name: 'Connect to OCS device 1',
+		id: 'connect-all-osc-devices',
+		name: 'Connect to ALL OSC devices',
 		callback: async () => {
-			new Notice("Starting OSC Server");
-			let oscName = this.app.plugins.plugins['osc-to-websocket'].settings.oscName1_Text; 
-			let oscIP = this.app.plugins.plugins['osc-to-websocket'].settings.oscIP1_Text;
-			let oscInPORT = this.app.plugins.plugins['osc-to-websocket'].settings.oscInPort1_Text;
-			let oscOutPORT = this.app.plugins.plugins['osc-to-websocket'].settings.oscOutPort1_Text;
-			oscClient1.oscClient = new Client(oscIP, oscOutPORT);
-			oscClient1.oscName = oscName;
-
-			/*
-			*Create an OSC Server connection
-			*OSC app -- to--> OBS
-			*/
-			
-			const oscServer1 = new Server(oscInPORT, oscIP);
-			
-			oscServer1.on("listening", () => {
-				//console.log("OSC Server is listening.");
-				new Notice(`OSC Server ${oscName} is listening.`);
-			});
-			
-			oscServer1.on("message", (msg) => {
-				console.log(`Message 1: ${msg}`);
-				sendToOBS(msg, "osc-message");
-			});
-		}
-	})
-	
-	// #endregion
-	
-//
-// #region Connect to OCS device 2 
-//
-
-	this.addCommand({
-		id: 'connect-to-osc-2',
-		name: 'Connect to OCS device 2',
-		callback: async () => {
-			new Notice("Starting OSC Server 2");
-			let oscName = this.app.plugins.plugins['osc-to-websocket'].settings.oscName2_Text; 
-			let oscIP = this.app.plugins.plugins['osc-to-websocket'].settings.oscIP2_Text;
-			let oscInPORT = this.app.plugins.plugins['osc-to-websocket'].settings.oscInPort2_Text;
-			let oscOutPORT = this.app.plugins.plugins['osc-to-websocket'].settings.oscOutPort2_Text;
-			oscClient2.oscClient = new Client(oscIP, oscOutPORT);
-			oscClient2.oscName = oscName;
-
-			/*
-			*Create an OSC Server connection
-			*OSC app -- to--> OBS
-			*/
-			
-			const oscServer2 = new Server(oscInPORT, oscIP);
-			
-			oscServer2.on("listening", () => {
-				//console.log("OSC Server is listening.");
-				new Notice(`OSC Server ${oscName} is listening.`);
-			});
-			
-			oscServer2.on("message", (msg) => {
-				console.log(`Message 2: ${msg}`);
-				sendToOBS(msg, "osc-message");
+			this.settings.oscDevices.forEach(device => {
+				if (device.name && device.ip && device.inPort && device.outPort) {
+					this.oscManager.connectDevice(device);
+				}
 			});
 		}
 	})
 
-// #endregion
-
-//
-// #region Connect to OCS device 3
-//
-
-	this.addCommand({
-		id: 'connect-to-osc-3',
-		name: 'Connect to OCS device 3',
-		callback: async () => {
-			new Notice("Starting OSC Server 3");
-			let oscName = this.app.plugins.plugins['osc-to-websocket'].settings.oscName3_Text; 
-			let oscIP = this.app.plugins.plugins['osc-to-websocket'].settings.oscIP3_Text;
-			let oscInPORT = this.app.plugins.plugins['osc-to-websocket'].settings.oscInPort3_Text;
-			let oscOutPORT = this.app.plugins.plugins['osc-to-websocket'].settings.oscOutPort3_Text;
-			oscClient3.oscClient = new Client(oscIP, oscOutPORT);
-			oscClient3.oscName = oscName;
-
-			/*
-			*Create an OSC Server connection
-			*OSC app -- to--> OBS
-			*/
-			
-			const oscServer3 = new Server(oscInPORT, oscIP);
-			
-			oscServer3.on("listening", () => {
-				//console.log("OSC Server is listening.");
-				new Notice(`OSC Server ${oscName} is listening.`);
-			});
-			
-			oscServer3.on("message", (msg) => {
-				console.log(`Message 3: ${msg}`);
-				sendToOBS(msg, "osc-message");
-			});
-		}
-	})
-
-// #endregion
-
-//
-// #region Connect to OCS device 4
-//
-
-	this.addCommand({
-		id: 'connect-to-osc-4',
-		name: 'Connect to OCS device 4',
-		callback: async () => {
-			new Notice("Starting OSC Server 4");
-			let oscName = this.app.plugins.plugins['osc-to-websocket'].settings.oscName4_Text; 
-			let oscIP = this.app.plugins.plugins['osc-to-websocket'].settings.oscIP4_Text;
-			let oscInPORT = this.app.plugins.plugins['osc-to-websocket'].settings.oscInPort4_Text;
-			let oscOutPORT = this.app.plugins.plugins['osc-to-websocket'].settings.oscOutPort4_Text;
-			oscClient4.oscClient = new Client(oscIP, oscOutPORT);
-			oscClient4.oscName = oscName;
-
-			/*
-			*Create an OSC Server connection
-			*OSC app -- to--> OBS
-			*/
-			
-			const oscServer4 = new Server(oscInPORT, oscIP);
-			
-			oscServer4.on("listening", () => {
-				//console.log("OSC Server is listening.");
-				new Notice(`OSC Server ${oscName} is listening.`);
-			});
-			
-			oscServer4.on("message", (msg) => {
-				console.log(`Message 4: ${msg}`);
-				sendToOBS(msg, "osc-message");
-			});
-		}
-	})
-
-// #endregion
-
-//
-// #region Connect to OCS device 5
-//
-
-	this.addCommand({
-		id: 'connect-to-osc-5',
-		name: 'Connect to OCS device 5',
-		callback: async () => {
-			new Notice("Starting OSC Server 5");
-			let oscName = this.app.plugins.plugins['osc-to-websocket'].settings.oscName5_Text; 
-			let oscIP = this.app.plugins.plugins['osc-to-websocket'].settings.oscIP5_Text;
-			let oscInPORT = this.app.plugins.plugins['osc-to-websocket'].settings.oscInPort5_Text;
-			let oscOutPORT = this.app.plugins.plugins['osc-to-websocket'].settings.oscOutPort5_Text;
-			oscClient5.oscClient = new Client(oscIP, oscOutPORT);
-			oscClient5.oscName = oscName;
-
-			/*
-			*Create an OSC Server connection
-			*OSC app -- to--> OBS
-			*/
-			
-			const oscServer5 = new Server(oscInPORT, oscIP);
-			
-			oscServer5.on("listening", () => {
-				//console.log("OSC Server is listening.");
-				new Notice(`OSC Server ${oscName} is listening.`);
-			});
-			
-			oscServer5.on("message", (msg) => {
-				console.log(`Message 5: ${msg}`);
-				sendToOBS(msg, "osc-message");
-			});
-		}
-	})
-
-// #endregion
 // #endregion OSC end
+
+// #region MIDI Functions
+    this.addCommand({
+        id: 'connect-all-midi-devices',
+        name: 'Connect to ALL MIDI devices',
+        callback: async () => {
+            this.settings.midiDevices.forEach(device => {
+                this.midiManager.connectDevice(device);
+            });
+        }
+    })
+// #endregion
 }
 
+	// Helper Methods
+	async obsWSSconnect(wssDetails) {
+		try {
+			await this.disconnect()
+			const { obsWebSocketVersion, negotiatedRpcVersion } = await this.obs.connect(
+				`ws://${wssDetails.IP}:${wssDetails.PORT}`,
+				wssDetails.PW,
+				{
+					rpcVersion: 1,
+				}
+			)
+			console.log(`Connected to server ${obsWebSocketVersion} (using RPC ${negotiatedRpcVersion})`);
+			new Notice("Connected to OBS WebSocket Server");
+		} catch (error) {
+			new Notice("Failed to connect to OBS WebSocket Server")
+			console.error("Failed to connect", error.code, error.message);
+		}
+	}
+        
+	async disconnect () {
+		try{
+		await this.obs.disconnect()
+		this.isObsConnected = false; 
+		console.log("disconnected")
+		} catch(error){
+		console.error("disconnect catch",error)
+		} 
+	}
+
+	sendToOBS(msgParam, eventName) {
+		const webSocketMessage = JSON.stringify(msgParam.message);
+		console.log("sending to OBS", msgParam)
+		this.obs.call("CallVendorRequest", {
+			vendorName: "obs-browser",
+			requestType: "emit_event",
+			requestData: {
+				event_name: eventName,
+				event_data: { 
+					"deviceName": msgParam.deviceName,
+					webSocketMessage,
+				},
+			},
+		});
+	}
 
 async openView(){
 	const { workspace } = this.app;
@@ -608,21 +485,42 @@ async openView(){
     const leaves = workspace.getLeavesOfType(SLIDES_STUDIO_VIEW_TYPE);
 	
     if (leaves.length > 0) {
-		// A leaf with our view already exists, use that
 		leaf = leaves[0];
-		
     } else {
-		// Our view could not be found in the workspace, create a new leaf
-		// in the right sidebar for it
 		leaf = workspace.getRightLeaf(false);
 		await leaf.setViewState({ type: SLIDES_STUDIO_VIEW_TYPE, active: true });
     }
+    workspace.revealLeaf(leaf);
+}
+
+async openWebView(){
+	const { workspace } = this.app;
+	let leaf: WorkspaceLeaf | null = null;
+    const leaves = workspace.getLeavesOfType(SLIDES_STUDIO_WEBVIEW_TYPE);
 	
-    // "Reveal" the leaf in case it is in a collapsed sidebar
+    if (leaves.length > 0) {
+		leaf = leaves[0];
+    } else {
+		const port = this.app.plugins.plugins['slides-studio'].settings.serverPort
+		leaf = workspace.getLeaf('tab');
+		await leaf.setViewState({ type: 'webviewer', active: true, state:{ url:`http://localhost:${port}`} });
+    }
     workspace.revealLeaf(leaf);
 }
 
 	onunload() {
-		new Notice("Disabled slides studio plugin")
+		new Notice("Disabled slides studio plugin");
+        if (this.serverManager) {
+            this.serverManager.stop();
+        }
+		if (this.oscManager) {
+			this.oscManager.disconnectAll();
+		}
+		if (this.midiManager) {
+            this.midiManager.disconnectAll(this.settings.midiDevices);
+        }
+		if (this.obs) {
+			this.obs.disconnect();
+		}
 	}
 }

@@ -7,7 +7,6 @@ function loadTable() {
     console.log(tableData)
     console.log(typeof table)
     table = undefined;
-    console.log(typeof table)
     table = new Tabulator("#slidesTable", {
         layout:"fitDataStretch",
         height: "500px",
@@ -35,43 +34,29 @@ function loadTable() {
             { title: "Index", field: "slideState",  responsive: 0,
                 cellClick: function gotoSlide(e,cell){
                     let rowValues = cell.getRow().getData();
-                    console.log(rowValues)
+                    console.log("Cell clicked", rowValues)
                     filterRowData(rowValues);
                 },
                 sorter:"alphanum",
             }, 
             { title: "Name", field: "slideName", width: 70, responsive: 2 }, 
             {title:"Slide Position", field:"slidePosition", editor:"list", editorParams:{
-                //Value Options (You should use ONE of these per editor)
                 values: dropDownOptions.slidePosition},
                 cellEdited: saveTableToLocalStorage
             },
-            {title:"Camera Position", field:"cameraPosition", editor:"list", editorParams:{
-                //Value Options (You should use ONE of these per editor)
+            {title:"camera Position", field:"cameraPosition", editor:"list", editorParams:{
                 values: dropDownOptions.cameraPosition},
                 cellEdited: saveTableToLocalStorage
             },
             {
                 title:"Camera Shape", field:"cameraShape", editor:"list", editorParams:{
-                    //Value Options (You should use ONE of these per editor)
-                    values: dropDownOptions.cameraShape},
-                    cellEdited: saveTableToLocalStorage
-            },
-            {title:"Scene", field:"scene", editor:"list", editorParams:{
-                //Value Options (You should use ONE of these per editor)
-                values: dropDownOptions.scene,
-                },
+                values: dropDownOptions.cameraShape},
                 cellEdited: saveTableToLocalStorage
             },
-            // {title:"remoteScene", field:"remoteScene", editor:"list", editorParams:{
-            //     //Value Options (You should use ONE of these per editor)
-            //     values: ["backStage"],
-            //     autocomplete:true,
-            //     listOnEmpty:true,
-            //     freetext:true,
-            //     },
-            //     cellEdited: saveTableToLocalStorage
-            // }
+            {title:"Scene", field:"scene", editor:"list", editorParams:{
+                values: dropDownOptions.scene},
+                cellEdited: saveTableToLocalStorage
+            }
         ],
     });
     
@@ -88,9 +73,10 @@ function loadTable() {
     table.on("rowClick", function (e, row) {
         table.deselectRow();
         table.selectRow(table.getRowFromPosition(row.getPosition()));
-        selectedRowNumber = row.getPosition();
+        selectedRowNumber = row.getPosition()
     });
     
+
     document.addEventListener('keydown', function(event) {
         if (event.key === ' ' && !isKeyPressed){ 
             isKeyPressed = true;
@@ -110,3 +96,4 @@ function loadTable() {
         }
     });
 }
+        

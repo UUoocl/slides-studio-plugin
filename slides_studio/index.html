@@ -1,11 +1,8 @@
-<!--
-	NOTE: You need to build the notes plugin after making changes to this file.
--->
 <html lang="en">
   <head>
     <meta charset="utf-8" />
 
-    <title>reveal.js - OBS Speaker View</title>
+    <title>Slides Studio</title>
 
     <style>
       body {
@@ -36,14 +33,14 @@
         z-index: 2;
       }
 
-      #connection-status {
+      .connection-status {
         position: absolute;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
         z-index: 20;
-        padding: 30% 20% 20% 20%;
+        padding: 0% 20% 20% 20%;
         font-size: 18px;
         color: #222;
         background: #fff;
@@ -327,36 +324,143 @@ body[data-speaker-layout="teleprompter"] #current-slide,
           font-size: 12px;
         }
       }  
+
+        /* 2 column form grid layout         */
+        .form-grid {
+            display:grid;
+            grid-template-columns: 350px 150px;
+        }
+
+        .form-button{
+            padding: 2px;
+            margin: 10px 10px 0 0;
+        }
+        
+        .slide-location{
+            width: 500px
+        }
 	  </style>
- 
-    <script src="lib/obs-ws.js"></script>
-    <script src="lib/obsConnect.js"></script>
+</head>
 
-  </head>
+<body>
+  <div id="connection-status" class="connection-status">    
+    <div id="slidesLocation">
+      <h2>Slides Studio settings</h2>
+      <h3>Open a Slides deck</h3>
+      <form>
+        <div>
+          <label for="configName">Enter the shared Slides link:</label>
+        </div>
+        <input class="slide-location" type="text" id="location" name="locationName" list="configNameValues"
+        placeholder="https://slides.com/username/deck-id/" />
+        <datalist id="slideLocations">
+        </datalist>
+        <!-- <div id="openSlidesButton">
+          <input class="form-button" type="button" value="Open Slides" />
+        </div> -->
+      </form>
+    </div>
+    
+    <div id="connectToOBS">
+     <div id="OBSform" hidden>
+      <h3>Open OBS</h3>
+      <form class="form-grid" id="obsData">
+        <label for="configName">Enter a configuration name:</label>
+        <input type="text" id="configName" name="configName" list="configNameValues" placeholder="Slides" />
+        <datalist id="configNameValues">
+          
+        </datalist>
+        <label for="obsName" id="obsNameLabel">Enter OBS app name:</label>
+        <input type="text" id="obsName" name="obsName" value="OBS" />
+        <label for="profileName">Enter OBS Profile name:</label>
+        <input type="text" id="profileName" name="profileName" value="720vc" />
+        <label for="collectionName">Enter OBS Collection name:</label>
+        <input type="text" id="collectionName" name="collectionName" value="slides collection" />
+        <label for="IP">Enter IP address or "localhost":</label>
+        <input type="text" id="IP" name="IP" value="localhost" disabled />
+        <label for="Port">Enter Port Number:</label>
+        <input type="text" id="Port" name="Port" value="4455" />
+        <label for="PW">Enter Password:</label>
+        <input type="password" id="PW" name="PW" value="" />
+        <label for="virtualCameraOn">Start Virtual Camera:</label>
+        <input type="checkbox" id="virtualCameraOn" name="virtualCameraOn" disabled unchecked />
+        <label for="Debug">Debug mode:</label>
+        <input type="checkbox" id="Debug" name="Debug" />
+        <p></p>
+        <div id="openOBSbutton">
+          <input class="form-button" type="button" value="Open OBS" />
+        </div>
+      </form>
+      <div>
+        <button id="copyCommand" class="form-button">Copy Command</button>
+        <input type="text" id="obsOpenCommand" />
+      </div>
+    </div>
+      <div id="srvr">
+        <h3>Connect to the OBS WebSocket Server</h3>
+        <form class="form-grid">
+          <p></p><input class="form-button" type="button" id="WSconnectButton" value="Connect" />
+        </form>
+      </div>
+    </div>
+  </div>
   
-  <body>
-	  <!-- <aside id="teleprompterData" data-speakerview-font-size="25px" data-speakerview-speed=50></aside> -->
-
-    <div id="connection-status">Loading speaker view...</div>
-
-    <div id="current-slide"></div>
-    <div id="upcoming-slide">
-      <span class="overlay-element label">Upcoming</span>
+  <div id="current-slide" hidden></div>
+  <div id="upcoming-slide" hidden>
+    <span class="overlay-element label">Upcoming</span>
+  </div>
+  <div id="speaker-controls" hidden>
+    <div id="studio-table">
     </div>
-    <div id="speaker-controls" >  
-      <div id = "studio-table" >
-      </div>
-      <div id="teleprompter">
-
-      </div>
+    <div id="teleprompter">
+      
     </div>
-    <div id="speaker-layout" class="overlay-element interactive">
-      <span class="speaker-layout-label"></span>
-      <select class="speaker-layout-dropdown"></select>
-    </div>
+  </div>
+  <div id="speaker-layout" class="overlay-element interactive" hidden>
+    <span class="speaker-layout-label"></span>
+    <select class="speaker-layout-dropdown"></select>
+  </div>
+  
+  <script src="lib/obs-ws.js"></script>
+  <script src="obs_webSocket_details/websocketDetails.js"></script>
+  <script src="lib/obsWssConnectionManager.js"></script>
+  <script src='lib/obsOpen.js'></script>
+  <script id ="setupForm">
+    window.addEventListener("load", (event) => {
+      console.log("page is fully loaded");
+      if (localStorage.getItem("wssDetails")) {
+        const wssDetails = JSON.parse(window.localStorage.getItem('wssDetails'))
+        document.getElementById("IP").value = wssDetails?.IP;
+        document.getElementById("Port").value = wssDetails?.PORT;
+        document.getElementById("PW").value = wssDetails?.PW;
+      }
+      //add button event listeners
+      document
+        .getElementById("configName")
+        .addEventListener('change', configSelected);
 
-    <script>
+      document
+        .getElementById("obsData")
+        .addEventListener('change', obsLaunchCommand);
 
+      document
+        .getElementById("openOBSbutton")
+        .addEventListener('click', openOBS);
+
+      document
+        .getElementById("copyCommand")
+        .addEventListener('click', (e) => {
+          console.log(e)
+          copyCode(e.target.id, "obsOpenCommand", e.target.innerText)
+        });
+
+      document
+          .getElementById("WSconnectButton")
+          .addEventListener("click", wsConnect);
+    })
+  </script>
+  <script id="setupSpeakerView">
+    
       console.log("Iframe SpeakerView")
       let notes,
       notesValue,
@@ -371,52 +475,43 @@ body[data-speaker-layout="teleprompter"] #current-slide,
       connected = false,
       scroller,
       slideDeck,
-      deckName;
-
+      deckName,
+      slideDeckURL;
+      
       let slidesArray = []
       let slidesLoaded = false;
       let tableLoaded = false;
       
-      document.addEventListener("DOMContentLoaded", async () => {
-        //slide parameter
-        let params = new URLSearchParams(document.location.search);
+      function loadSpeakerView(){
+        document.getElementById("connection-status").hidden = true;
+        document.getElementById("current-slide").hidden = false;
+        document.getElementById("upcoming-slide").hidden = false;
+        document.getElementById("speaker-controls").hidden = false;
+        document.getElementById("speaker-layout").hidden = false;
         
-        //check search parameter for slides location
-        slideDeck = params.get('deckId') ? `https://slides.com/${params.get('user')}/${params.get('deckId')}/fullscreen` : `http://localhost:${window.location.port}/`,
-        deckName = params.get("vaultFolder") ?? ''; 
+        //create element
+        //set slides url
+        slideDeckURL = new URL(document.getElementById("location").value)
+        if(slideDeckURL.origin === "https://slides.com"){
+          slideDeck = `${document.getElementById("location").value}/fullscreen`
+          loadScript('lib/getSlideData-slides_com.js')
+        } else {
+          slideDeck = `${document.getElementById("location").value}`
+          loadScript("lib/getSlideData-localhost.js");
+          updateBrowserOrigin();
+        }
         
-        await getWebsocketDetailsFromObsidian();
-        //clearTimeout( connectionTimeout );
+        //send slide url to OBS browser source
+        sendToOBS({url: slideDeck}, "set-slides-studio-url");
+        
         connectionStatus.style.display = "none";
-        layoutLabel
         setupLayout();
+        setupIframes();
         handleConnectMessage();
         window.document.getElementById("speaker-controls").focus();
-      });
-
-      //Get OBS websocket connection details from Obsidian plugin settings folder
-      async function getWebsocketDetailsFromObsidian(){
-          await fetch('../data.json')
-          .then(response => {
-              if (!response.ok) {
-                  throw new Error(`HTTP error! status: ${response.status}`);
-              }
-              return response.json(); // Parses the JSON response into a JavaScript object
-          })
-          .then(data => {
-              const wssDetails = {
-                IP:data.websocketIP_Text,
-                PORT: data.websocketPort_Text,
-                PW: data.websocketPW_Text,
-              }
-              connectOBS(wssDetails);
-          })
-          .catch(error => {
-              console.error('Error fetching JSON:', error);
-          });
       }
-
-	//
+  
+  //
 	//#region speaker view settings
 	//
    
@@ -490,7 +585,6 @@ body[data-speaker-layout="teleprompter"] #current-slide,
         if (connected === false) {
           connected = true;
 
-          setupIframes();
           setupKeyboard();
         }
       }
@@ -571,28 +665,28 @@ body[data-speaker-layout="teleprompter"] #current-slide,
         currentSlide = document.createElement("iframe");
         currentSlide.setAttribute("width", 1280);
         currentSlide.setAttribute("height", 1024);
-        currentSlide.setAttribute("src", `${slideDeck}${deckName}?postMessageEvents=true`);
+        currentSlide.setAttribute("src", `${slideDeck}?postMessageEvents=true`);
         currentSlide.setAttribute("id", "current-iframe");
         document.querySelector("#current-slide").appendChild(currentSlide);
 
         upcomingSlide = document.createElement("iframe");
         upcomingSlide.setAttribute("width", 640);
         upcomingSlide.setAttribute("height", 512);
-        upcomingSlide.setAttribute("src", `${slideDeck}${deckName}?postMessageEvents=false?postMessage=true`);
+        upcomingSlide.setAttribute("src", `${slideDeck}?postMessageEvents=false?postMessage=true`);
         upcomingSlide.setAttribute("id", "upcoming-iframe");
         document.querySelector("#upcoming-slide").appendChild(upcomingSlide);
         
         notesIframe = document.createElement("iframe");
         notesIframe.setAttribute("width",'100%')
         notesIframe.setAttribute("height",'100%')
-        notesIframe.setAttribute("src",`http://localhost:${window.location.port}/.obsidian/plugins/slides-studio/slides_studio/teleprompter.html`)
+        notesIframe.setAttribute("src",`teleprompter.html`)
         notesIframe.setAttribute("id", "notes-iframe");
         document.getElementById("teleprompter").appendChild(notesIframe);
 
         studioIframe = document.createElement("iframe");
         studioIframe.setAttribute("width",'100%')
         studioIframe.setAttribute("height",'100%')
-        studioIframe.setAttribute("src",`http://localhost:${window.location.port}/.obsidian/plugins/slides-studio/slides_studio/studio.html`)
+        studioIframe.setAttribute("src",`studio.html`)
         studioIframe.setAttribute("id", "studio-iframe");
         document.getElementById("studio-table").appendChild(studioIframe);
       }
@@ -720,12 +814,57 @@ body[data-speaker-layout="teleprompter"] #current-slide,
         };
       }
 
+      function loadScript(script, module = false, callback = false) {
+        const scriptElem = document.createElement("script");
+        scriptElem.src = `${script}`;
+        //scriptElem.async = script.async;
+        scriptElem.type = 'text/javascript';
+
+        if (module) {
+          scriptElem.type = 'module';
+        }
+
+        scriptElem.onload = () => {
+          console.log(`${script} Script loaded successfuly`);
+          if (callback) {
+            callback();
+          }
+        };
+
+        scriptElem.onerror = () => {
+          console.log(`${script} Error occurred while loading script`);
+        };
+        
+        document.body.appendChild(scriptElem);
+      }
+
+      async function updateBrowserOrigin(){
+          //send localhost URL to OBS Browser Sources
+          let browserSources = await obsWss.call("GetInputList",{inputKind: "browser_source"})
+
+          for(let i=0; i<browserSources.inputs.length; i++){
+            const browserSettings = 
+              await obsWss.call("GetInputSettings", {
+                inputUuid: browserSources.inputs[i].inputUuid
+              })
+            console.log("BROWSER SETTINGS",browserSettings)  
+            const browserURL = new URL(browserSettings.inputSettings.url)
+            
+            console.log("browserURL",browserURL)
+            await obsWss.call("SetInputSettings", {
+              inputUuid: browserSources.inputs[i].inputUuid,
+              inputSettings: {
+                url: `${window.location.origin}${browserURL.pathname}`,
+              },
+            });
+          }
+          refreshOBSbrowsers()
+      }
+
 //#endregion
     
     </script>
     <script src="lib/getOBSData.js"></script>
-    <script src="lib/getSlideDataV3.js"></script>
-    <!-- <script src="lib/getSlideDataV2.js"></script> -->
-    <script src="lib/slideSync_SpeakerView_Browser.js"></script>
+    <script src="lib/slideSync_SpeakerView_Browser.js"></script> 
   </body>
 </html>

@@ -6,14 +6,11 @@ const dropDownOptions = {
 }
 
 
-obs.on("Identified", async (data) => {
-        console.log("calling obs", obs)
-        //send slide url to OBS browser source 
-        slidesURL = {url:`${slideDeck}${deckName}`}
-        sendToOBS(slidesURL, "set-slides-studio-url");
-
+obsWss.on("Identified", async (data) => {
         //get Scene options
-        const sceneList = await obs.call("GetSceneList");
+    if(document.getElementById("location").value.length > 0){       
+        let sceneList = [];
+        sceneList = await obsWss.call("GetSceneList");
         sceneList.scenes.forEach(async (scene, index) => {
             if(scene.sceneName.startsWith("Scene")){
                 const sceneName = scene.sceneName;
@@ -23,28 +20,32 @@ obs.on("Identified", async (data) => {
         });
         
         //get Camera Position tag options
-        let cameraSources = await obs.call("GetSceneItemList", { sceneName: "Camera Position" });
+        let cameraSources = [];
+        cameraSources = await obsWss.call("GetSceneItemList", { sceneName: "Camera Position" });
         //console.log(cameraSources)
         cameraSources.sceneItems.forEach(async(source, index) => {
             dropDownOptions.cameraPosition.push(source.sourceName)
         });
-        
+                
         //get Slide Position tag options
-        const slideSources = await obs.call("GetSceneItemList", { sceneName: "Slide Position" });
+        let slideSources = [];
+        slideSources = await obsWss.call("GetSceneItemList", { sceneName: "Slide Position" });
         //console.log(cameraSources)
         slideSources.sceneItems.forEach(async(source, index) => {
             dropDownOptions.slidePosition.push(source.sourceName)
         });
         
         //get Camera Shape tag options
-        const shapeSources = await obs.call("GetSceneItemList", { sceneName: "Camera Shape" });
+        let shapeSources = [];
+        shapeSources = await obsWss.call("GetSceneItemList", { sceneName: "Camera Shape" });
         console.log("shapreSources", shapeSources)
         shapeSources.sceneItems.forEach(async(source, index) => {
             dropDownOptions.cameraShape.push(source.sourceName)
         });
+        
         console.log("dropDownOptions", dropDownOptions)
         if(slidesArray.length > 0){
-            document.getElementById("slidesTable").hidden = false;
+            // document.getElementById("slidesTable").hidden = false;
         }
 
         //send OBS data to tabulator iFrame.
@@ -68,13 +69,14 @@ obs.on("Identified", async (data) => {
                     studioIframe.contentWindow.postMessage(JSON.stringify({ message:'obs-data-response', obsData: dropDownOptions, namespace: 'speakerview'}), window.location.origin);
             }  
         });
-    })
+    }
+})
 
 function sendToOBS(msgParam, eventName) {
     //console.log("sending message:", JSON.stringify(msgParam));
     const webSocketMessage = JSON.stringify(msgParam);
     //send results to OBS Browser Source
-    obs.call("CallVendorRequest", {
+    obsWss.call("CallVendorRequest", {
         vendorName: "obs-browser",
         requestType: "emit_event",
         requestData: {

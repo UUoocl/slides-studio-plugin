@@ -42,58 +42,59 @@ window.addEventListener('message', async (event) => {
                 currentSlide_iframe.contentWindow.postMessage(JSON.stringify({ method: 'removeKeyBinding', args: [83] }), '*');
             }
             
-            //on current slide iframe  change or pause
-            if (data.namespace === 'reveal' &&
-                ['paused','resumed','fragmentshown','fragmenthidden','slidechanged'].includes(data.eventName)) {
-                    console.log("Slide Changed", event)
+        //on current slide iframe  change or pause
+        if (data.namespace === 'reveal' &&
+            ['paused','resumed','fragmentshown','fragmenthidden','slidechanged'].includes(data.eventName)) 
+            {
+                console.log("Slide Changed", event)
+                
+                //if event 'state' doesn't equal settings 'state'
+                if(JSON.stringify(data.state) != slideState){
+                    slideState = JSON.stringify(data.state);
                     
-                    //if event 'state' doesn't equal settings 'state'
-                    if(JSON.stringify(data.state) != slideState){
-                        slideState = JSON.stringify(data.state);
-                        
-                        //Get slide notes
-                        const currentSlide_iframe = document.getElementById("current-iframe");
-                        
-                        if('slidechanged' === data.eventName){
-                            currentSlide_iframe.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes'}), '*');
-                        }
-                        
-                        //send slide state to upcoming iFrame
-                        const upcoming_iframe = document.getElementById("upcoming-iframe");
-                        upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.state.indexh, data.state.indexv, data.state.indexf] }), '*');
-                        upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'next'}), '*');
-                        
-                        //send slide state to studio table iFrame
-                        const state = JSON.parse(slideState);
-                        studioIframe.contentWindow.postMessage(JSON.stringify({ namespace: 'speakerview', message: 'change-row', state: state }), window.location.origin);
+                    //Get slide notes
+                    const currentSlide_iframe = document.getElementById("current-iframe");
+                    
+                    if('slidechanged' === data.eventName){
+                        currentSlide_iframe.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes'}), '*');
                     }
-                }
-                
-                //callback from get notes request
-                if( data.namespace === 'reveal' && data.eventName === 'callback' && data.method === "getSlideNotes" ){
-                    //send slide notes to notes iFrame
-                    const notes_iframe = document.getElementById("notes-iframe");
-                    notes_iframe.contentWindow.postMessage(JSON.stringify({ namespace:"teleprompter", method: 'updateNotes', data: `${JSON.stringify(data.result)}` }), '*');
-                }
-                
-                //on overview mode
-                if (data.namespace === 'reveal' && 
-                    ['overviewhidden','overviewshown'].includes(data.eventName)) {
-                        
-                        //Send CustomEvent to OBS webSocket clients
-                        slideState = data.state;
-                        obs.call("BroadcastCustomEvent", {
-                            eventData:{
-                                eventName:"overview-toggled",
-                                eventData: slideState,
-                            }    
-                        });
-                    }  
                     
+                    //send slide state to upcoming iFrame
+                    const upcoming_iframe = document.getElementById("upcoming-iframe");
+                    upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.state.indexh, data.state.indexv, data.state.indexf] }), '*');
+                    upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'next'}), '*');
+                    
+                    //send slide state to studio table iFrame
+                    const state = JSON.parse(slideState);
+                    studioIframe.contentWindow.postMessage(JSON.stringify({ namespace: 'speakerview', message: 'change-row', state: state }), window.location.origin);
                 }
+            }
+                
+        //callback from get notes request
+        if( data.namespace === 'reveal' && data.eventName === 'callback' && data.method === "getSlideNotes" ){
+            //send slide notes to notes iFrame
+            const notes_iframe = document.getElementById("notes-iframe");
+            notes_iframe.contentWindow.postMessage(JSON.stringify({ namespace:"teleprompter", method: 'updateNotes', data: `${JSON.stringify(data.result)}` }), '*');
+        }
+        
+        //on overview mode
+        if (data.namespace === 'reveal' && 
+            ['overviewhidden','overviewshown'].includes(data.eventName)) {
+                
+                //Send CustomEvent to OBS webSocket clients
+                slideState = data.state;
+                obsWss.call("BroadcastCustomEvent", {
+                    eventData:{
+                        eventName:"overview-toggled",
+                        eventData: slideState,
+                    }    
+                });
+            }  
+            
+        }
     
-    //messages from slides.com
-    if(event.origin === "https://slides.com" && slidesLoaded == true){ 
+    //messages from reveal slide deck
+    if(event.origin === slideDeckURL.origin && slidesLoaded == true){ 
         //read the message data
         data = JSON.parse(event.data);
         
@@ -103,7 +104,7 @@ window.addEventListener('message', async (event) => {
             console.log("row selected message received.", JSON.stringify(data))
             console.log("var slide state", data.row.slideState.split(','))
             //post slide change to current Iframe
-            currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: data.row.slideState.split(',')}), "https://slides.com");
+            currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: data.row.slideState.split(',')}), slideDeckURL.origin);
             //send row data to OBS
             sendToOBS(data.row, "slide-changed")
         }
@@ -117,75 +118,75 @@ window.addEventListener('message', async (event) => {
         if (data.namespace === 'reveal' && 
             ['ready'].includes(data.eventName)) {
                 const currentSlide_iframe = document.getElementById("current-iframe");
-                currentSlide_iframe.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes'}), 'https://slides.com');
+                currentSlide_iframe.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes'}), slideDeckURL.origin);
                 
                 //the slide iframe shouldn't open the speakerview pop up window
-                currentSlide_iframe.contentWindow.postMessage(JSON.stringify({ method: 'removeKeyBinding', args: [83] }), "https://slides.com");
+                currentSlide_iframe.contentWindow.postMessage(JSON.stringify({ method: 'removeKeyBinding', args: [83] }), slideDeckURL.origin);
             }
             
-            //on current slide iframe  change or pause
-            if (data.namespace === 'reveal' &&
-                ['paused','resumed','fragmentshown','fragmenthidden','slidechanged'].includes(data.eventName)) {
-                    console.log("Slide Changed", event)
+        //on current slide iframe  change or pause
+        if (data.namespace === 'reveal' &&
+            ['paused','resumed','fragmentshown','fragmenthidden','slidechanged'].includes(data.eventName)) {
+                console.log("Slide Changed", event)
+                
+                //if event 'state' doesn't equal settings 'state'
+                if(JSON.stringify(data.state) != slideState){
+                    slideState = JSON.stringify(data.state);
                     
-                    //if event 'state' doesn't equal settings 'state'
-                    if(JSON.stringify(data.state) != slideState){
-                        slideState = JSON.stringify(data.state);
-                        
-                        //Get slide notes
-                        const currentSlide_iframe = document.getElementById("current-iframe");
-                        
-                        if('slidechanged' === data.eventName){
-                            currentSlide_iframe.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes'}), 'https://slides.com');
-                        }
-                        
-                        //send slide state to upcoming iFrame
-                        const upcoming_iframe = document.getElementById("upcoming-iframe");
-                        upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.state.indexh, data.state.indexv, data.state.indexf] }), "https://slides.com");
-                        upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'next'}), "https://slides.com");
-                        
-                        //send slide state to studio table iFrame
-                        const state = JSON.parse(slideState);
-                        studioIframe.contentWindow.postMessage(JSON.stringify({ namespace: 'speakerview', message: 'change-row', state: state }), window.location.origin);
+                    //Get slide notes
+                    const currentSlide_iframe = document.getElementById("current-iframe");
+                    
+                    if('slidechanged' === data.eventName){
+                        currentSlide_iframe.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes'}), slideDeckURL.origin);
                     }
-                }
-                
-                //callback from get notes request
-                if( data.namespace === 'reveal' && data.eventName === 'callback' && data.method === "getSlideNotes" ){
-                    console.log(data)
-                    //send slide notes to notes iFrame
-                    const notes_iframe = document.getElementById("notes-iframe");
-                    notes_iframe.contentWindow.postMessage(JSON.stringify({ namespace:"teleprompter", method: 'updateNotes', data: `${JSON.stringify(data.result)}` }), '*');
-                }
-                
-                //on overview mode
-                if (data.namespace === 'reveal' && 
-                    ['overviewhidden','overviewshown'].includes(data.eventName)) {
-                        
-                        //Send CustomEvent to OBS webSocket clients
-                        slideState = data.state;
-                        obs.call("BroadcastCustomEvent", {
-                            eventData:{
-                                eventName:"overview-toggled",
-                                eventData: slideState,
-                            }    
-                        });
-                    }  
                     
-                }        
-            
-            });
+                    //send slide state to upcoming iFrame
+                    const upcoming_iframe = document.getElementById("upcoming-iframe");
+                    upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [data.state.indexh, data.state.indexv, data.state.indexf] }), slideDeckURL.origin);
+                    upcoming_iframe.contentWindow.postMessage(JSON.stringify({ method: 'next'}), slideDeckURL.origin);
+                    
+                    //send slide state to studio table iFrame
+                    const state = JSON.parse(slideState);
+                    studioIframe.contentWindow.postMessage(JSON.stringify({ namespace: 'speakerview', message: 'change-row', state: state }), window.location.origin);
+                }
+            }
+        
+        //callback from get notes request
+        if( data.namespace === 'reveal' && data.eventName === 'callback' && data.method === "getSlideNotes" ){
+            console.log(data)
+            //send slide notes to notes iFrame
+            const notes_iframe = document.getElementById("notes-iframe");
+            notes_iframe.contentWindow.postMessage(JSON.stringify({ namespace:"teleprompter", method: 'updateNotes', data: `${JSON.stringify(data.result)}` }), '*');
+        }
+        
+        //on overview mode
+        if (data.namespace === 'reveal' && 
+            ['overviewhidden','overviewshown'].includes(data.eventName)) {
                 
-                //Custom Event message from OBS
-        obs.on("CustomEvent", async function (event) {
-            //do something with message from OBS
-        });
+                //Send CustomEvent to OBS webSocket clients
+                slideState = data.state;
+                obsWss.call("BroadcastCustomEvent", {
+                    eventData:{
+                        eventName:"overview-toggled",
+                        eventData: slideState,
+                    }    
+                });
+            }  
+            
+        }        
+        
+    });
+                
+//Custom Event message from OBS
+obsWss.on("CustomEvent", async function (event) {
+        //do something with message from OBS
+    });
 
 function sendToOBS(msgParam, eventName) {
     console.log("sending message:", JSON.stringify(msgParam));
     const webSocketMessage = JSON.stringify(msgParam);
     //send results to OBS Browser Source
-    obs.call("CallVendorRequest", {
+    obsWss.call("CallVendorRequest", {
         vendorName: "obs-browser",
         requestType: "emit_event",
         requestData: {

@@ -1,14 +1,15 @@
 let slideState = '';
-const iframe = document.getElementById("revealIframe");
+const iframe = document.getElementById("slidesDeck");
 
 //Message from Reveal Slides iFrame API
 window.addEventListener('message', async (event) => {
+    if(event.origin === slideDeckURL.origin){  
+    //console.log(event)
     let data = JSON.parse(event.data);
 
     //remove speakerview hotkey
     if (data.namespace === 'reveal' && 
     ['ready'].includes(data.eventName)) {
-        const iframe = document.getElementById("revealIframe");
         iframe.contentWindow.postMessage(JSON.stringify({ method: 'removeKeyBinding', args: [83] }), '*');
     }
     
@@ -33,17 +34,18 @@ window.addEventListener('message', async (event) => {
         //Send CustomEvent to OBS webSocket clients
         slideState = data.state;
         console.log("sending custom message", slideState)
-        obs.call("BroadcastCustomEvent", {
+        obsWss.call("BroadcastCustomEvent", {
             eventData:{
                 eventName:"overview-toggled",
                 eventData: slideState,
             }    
         });
-    }            
+    }  
+}          
 });
 
 //Custom Event message from OBS
-obs.on("CustomEvent", async function (event) {
+obsWss.on("CustomEvent", async function (event) {
     console.log("CUSTOMEVENT ",event.eventData, "var",slideState);
     console.log("CUSTOMEVENT =?", event.eventData === slideState);
     if(['overview-toggled','slide-changed'].includes(event.eventName)){
@@ -60,18 +62,3 @@ obs.on("CustomEvent", async function (event) {
         }
     } 
 });
-
-function sendToOBS(msgParam, eventName) {
-    const webSocketMessage = JSON.stringify(msgParam);
-    //send results to OBS Browser Source
-    obs.call("CallVendorRequest", {
-        vendorName: "obs-browser",
-        requestType: "emit_event",
-        requestData: {
-            event_name: eventName,
-            event_data: { 
-                webSocketMessage 
-            },
-        },
-    });
-}

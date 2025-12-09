@@ -1,9 +1,10 @@
+<!-- https://uuoocl.github.io/slides-studio/slides_studio_OBS_browser_source.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slide Studio</title>
+    <title>Slides Studio localhost</title>
     <style>
         :root {
             --top: 0;
@@ -16,7 +17,7 @@
             --border-width: 0px;
             --border-radius: 24px;
             --transform-perspective: 1500px;
-            --transform-rotate-y: 15deg;
+            --transform-rotate-y: 0deg;
             --filter-opacity: 100%; 
             --filter-drop-shadow-color: rgba(0, 0, 0, 50.5);
             --filter-drop-shadow-offset-x: 30px;
@@ -51,6 +52,7 @@
                 left 0.5s,
                 bottom 0.5s,
                 right 0.5s,
+                border-radius 0.5s,
                 filter 0.5s;
         }
     </style>
@@ -58,13 +60,13 @@
 <body>
     <div class="container">
         <!-- <iframe id= "revealIframe" class="responsive-iframe" src="index.html"></iframe> -->
-        <iframe id= "revealIframe" class="slide-position" src="http://localhost:5000/"></iframe>
+        <iframe id= "revealIframe" class="side-by-side" src="http://localhost:5000/"></iframe>
     </div>
     
-    <!-- <script src="../lib/obs-ws.js"></script>
-    <script src="../lib/obsConnect.js"></script> -->
     <script src="lib/obs-ws.js"></script>
-    <script src="lib/obsConnect.js"></script>
+    <script src="obs_webSocket_details/websocketDetails.js"></script>
+    <script src="lib/obsWssConnectionManager.js"></script>
+    
     <script src="lib/slideSync_OBS.js"></script>
     <script>
         // iframe.contentWindow.postMessage( JSON.stringify({ method: 'slide', args: [ 2 ] }), '*' );
@@ -82,7 +84,7 @@
 
         if (Object.hasOwn(currentSlide, 'scene')) {
             console.log("scene tag found")
-            obs.call("SetCurrentProgramScene", { sceneName: currentSlide['scene'] })
+            obsWss.call("SetCurrentProgramScene", { sceneName: currentSlide['scene'] })
         };
 
         if (Object.hasOwn(currentSlide, 'cameraPosition')){ 
@@ -101,20 +103,20 @@
             
             //enable source
             await setSourceVisibilityByName("Camera Shape", currentSlide['cameraShape'], true)
-        };
-
+        };        
+        
         if (Object.hasOwn(currentSlide, 'slidePosition')) {
             console.log("slide class tag found")
             const className = currentSlide['slidePosition']
             setSlidePositionCSS(className);
         };
     }
-
+    
         async function setSlidePositionCSS(className) {
             const slidePosition = document.querySelector(':root');
             // const slidePosition = document.getElementById("revealIframe");
             document.getElementById("revealIframe").className = "slide-position";
-            settings = await obs.call("GetInputSettings", {
+            settings = await obsWss.call("GetInputSettings", {
                 inputName: className,
             });
             console.log("Settings", settings);
@@ -142,14 +144,14 @@
                 console.warn("No CSS settings found for class:", className);
             }
         }
-     
+
         async function disableSceneItems(sceneName){
             //disable all camera scene sources
-            const sceneItems = await obs.call("GetSceneItemList",{"sceneName":sceneName});
+            const sceneItems = await obsWss.call("GetSceneItemList",{"sceneName":sceneName});
             console.log('sceneItems',sceneItems)
             sceneItems.sceneItems.forEach((sceneItem) => {    
 
-                obs.call("SetSceneItemEnabled", {
+                obsWss.call("SetSceneItemEnabled", {
                     sceneName: sceneName,
                     sceneItemId: sceneItem.sceneItemId,
                     sceneItemEnabled: false
@@ -159,12 +161,12 @@
 
         async function setSourceVisibilityByName(sceneName, sourceName, visible) {
             //Get the Scene Item Id number
-            const sceneItemId = await obs.call("GetSceneItemId", {
+            const sceneItemId = await obsWss.call("GetSceneItemId", {
                 sceneName: sceneName,
                 sourceName: sourceName,
             })
             //Set the Source to the visible parameter value    
-            await obs.call("SetSceneItemEnabled", {
+            await obsWss.call("SetSceneItemEnabled", {
                 sceneName: sceneName,
                 sceneItemId: Number(sceneItemId.sceneItemId),
                 sceneItemEnabled: visible
@@ -173,18 +175,18 @@
 
         async function toggleSourceVisibilityByName(sceneName, sourceName) {
             //Get the Scene Item Id number
-            const sceneItemId = await obs.call("GetSceneItemId", {
+            const sceneItemId = await obsWss.call("GetSceneItemId", {
                 sceneName: sceneName,
                 sourceName: sourceName,
             })
 
-            const sceneItemVisible = await obs.call("GetSceneItemEnabled", {
+            const sceneItemVisible = await obsWss.call("GetSceneItemEnabled", {
                 sceneName: sceneName,
                 sourceItemId: sceneItemId,
             })
 
             //toggle Source visibility    
-            await obs.call("SetSceneItemEnabled", {
+            await obsWss.call("SetSceneItemEnabled", {
                 sceneName: sceneName,
                 sceneItemId: Number(sceneItemId.sceneItemId),
                 sceneItemEnabled: !sceneItemVisible
@@ -195,7 +197,7 @@
 	// 	//console.log("sending message:", JSON.stringify(msgParam));
 	// 	const webSocketMessage = JSON.stringify(msgParam);
 	// 	//send results to OBS Browser Source
-	// 	obs.call("CallVendorRequest", {
+	// 	obsWss.call("CallVendorRequest", {
 	// 		vendorName: "obs-browser",
 	// 		requestType: "emit_event",
 	// 		requestData: {

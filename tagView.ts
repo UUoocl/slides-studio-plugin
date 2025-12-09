@@ -28,10 +28,10 @@ export class slidesStudioView extends ItemView{
         
         new Setting(container).setName('Open Slides Studio')
         .setHeading()
-        .setDesc('Open the Slides Studio Page in a browser.  Chrome browser is recommended')
+        .setDesc('Open the Slides Studio Page in a new view')
         .addButton((button) =>{
             button.setButtonText("Open")
-            .onClick(() => {this.app.commands.executeCommandById('slides-studio:open-slide-studio-speaker-view')})
+            .onClick(() => {this.app.commands.executeCommandById('slides-studio:open-slide-studio-webview')})
             .setCta()
         })
             
@@ -75,7 +75,7 @@ export class slidesStudioView extends ItemView{
         
         new Setting(container).setName("Slides Position").setHeading()
         slides.forEach(scene => {
-            new Setting(container).setName(scene)
+            new Setting(container).setName(scene as string)
             .addButton((item) =>{
                 item.setButtonText("Add")
                 .setCta()
@@ -95,7 +95,7 @@ export class slidesStudioView extends ItemView{
                 const cameras =  Array.from(new Set(this.app.plugins.plugins['slides-studio'].settings.camera_tags));
                 new Setting(container).setName("Camera Position").setHeading()
                 cameras.forEach(scene => {
-                    new Setting(container).setName(scene)
+                    new Setting(container).setName(scene as string)
                     .addButton((item) =>{
                         item.setButtonText("Add")
                         .setCta()
@@ -115,7 +115,7 @@ export class slidesStudioView extends ItemView{
                         const cameras_shapes =  Array.from(new Set(this.app.plugins.plugins['slides-studio'].settings.camera_shape_tags));
                         new Setting(container).setName("Camera Shapes").setHeading()
                         cameras_shapes.forEach(scene => {
-                            new Setting(container).setName(scene)
+                            new Setting(container).setName(scene as string)
                             .addButton((item) =>{
                                 item.setButtonText("Add")
                                 .setCta()
@@ -135,7 +135,7 @@ export class slidesStudioView extends ItemView{
                                 const scenes =  Array.from(new Set(this.app.plugins.plugins['slides-studio'].settings.scene_tags));
                                 new Setting(container).setName("Scenes").setHeading()
                                 scenes.forEach(scene => {
-                                    new Setting(container).setName(scene)
+                                    new Setting(container).setName(scene as string)
                                     .addButton((item) =>{
                                         item.setButtonText("Add")
                                         .setCta()
@@ -166,10 +166,10 @@ export class slidesStudioView extends ItemView{
                                                         (value) => {
                                                             this.app.plugins.plugins['slides-studio'].settings.newTagKey = value;
                                                             //set description using DOM element values
-                                                            let settingEl: HTMLElement = document.querySelector(".slide-studio-new-user-tag");
+                                                            let settingEl: HTMLElement | null = document.querySelector(".slide-studio-new-user-tag");
                                                             const tagValue = this.app.plugins.plugins['slides-studio'].settings.newTagValue
                                                             console.log(tagValue)
-                                                            settingEl.querySelector(".setting-item-description").innerHTML =`data-${value.replace(" ","-")} : ${tagValue.replace(" ","-")}`
+                                                            if(settingEl) settingEl.querySelector(".setting-item-description")!.innerHTML =`data-${value.replace(" ","-")} : ${tagValue.replace(" ","-")}`
                                                         })
                                                     })
                                                 .addText((item) => {    
@@ -178,10 +178,10 @@ export class slidesStudioView extends ItemView{
                                                         (value) => {
                                                             this.app.plugins.plugins['slides-studio'].settings.newTagValue = value;
                                                             //set description using DOM element values
-                                                            let settingEl: HTMLElement = document.querySelector(".slide-studio-new-user-tag");
+                                                            let settingEl: HTMLElement | null = document.querySelector(".slide-studio-new-user-tag");
                                                             const tagKey = this.app.plugins.plugins['slides-studio'].settings.newTagKey
                                                             console.log(tagKey)
-                                                            settingEl.querySelector(".setting-item-description").innerHTML =`data-${tagKey.replace(" ","-")} : ${value}`
+                                                            if(settingEl) settingEl.querySelector(".setting-item-description")!.innerHTML =`data-${tagKey.replace(" ","-")} : ${value}`
                                                     })
                                                 })
                                                 .addButton( item => {                
@@ -194,7 +194,7 @@ export class slidesStudioView extends ItemView{
                                                         this.onOpen()          
                                                     })
                                                 })
-                                                userTags.forEach(userTag => {
+                                                userTags.forEach((userTag: string) => {
                                                     new Setting(container).setName(userTag)
                                                     .addButton((item) =>{
                                                     item.setButtonText("Add")

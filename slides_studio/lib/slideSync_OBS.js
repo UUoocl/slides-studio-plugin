@@ -13,7 +13,7 @@ window.addEventListener('message', async (event) => {
         //Send CustomEvent to OBS webSocket clients
         slideState = data.state;
         console.log("sending custom message", slideState)
-        obs.call("BroadcastCustomEvent", {
+        obsWss.call("BroadcastCustomEvent", {
             eventData:{
                 eventName:"slide-changed",
                 eventData: slideState,
@@ -29,7 +29,7 @@ window.addEventListener('message', async (event) => {
         //Send CustomEvent to OBS webSocket clients
         slideState = data.state;
         console.log("sending custom message", slideState)
-        obs.call("BroadcastCustomEvent", {
+        obsWss.call("BroadcastCustomEvent", {
             eventData:{
                 eventName:"overview-toggled",
                 eventData: slideState,
@@ -63,7 +63,7 @@ window.addEventListener('overview-changed', async (event) => {
         iframe.contentWindow.postMessage( JSON.stringify({ method: 'toggleOverview', args: [ data.overview ] }), '*' );
 
         //Send CustomEvent to OBS webSocket clients
-        obs.call("BroadcastCustomEvent", {
+        obsWss.call("BroadcastCustomEvent", {
             eventData:{
                 eventName:"overview-toggled",
                 eventData: slideState
