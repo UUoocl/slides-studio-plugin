@@ -119,7 +119,7 @@ export class MidiManager {
         try {
             switch (type.toLowerCase()) {
                 case "noteon":
-                    output.playNote(messageData.note, { channels: channel, velocity: messageData.velocity || 0.75 });
+                    output.playNote(messageData.note, { channels: channel, attack: messageData.velocity || 0.75 });
                     break;
                 case "noteoff":
                     output.stopNote(messageData.note, { channels: channel });

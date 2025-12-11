@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "outDir": "./build",
     "baseUrl": ".",
     "inlineSourceMap": true,
     "inlineSources": true,
@@ -8,14 +9,25 @@
     "allowJs": true,
     "noImplicitAny": true,
     "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": false,
+    "strictNullChecks": false,
     "importHelpers": true,
-    "isolatedModules": true,
-    "strictNullChecks": true,
     "lib": [
       "DOM",
       "es2022"
-    ]
-  },
+    ],
+        "types": [
+            "node",
+            "obsidian-typings"
+        ]
+    },
+    "exclude": [
+        "node_modules",
+        "docs",
+        "build"
+    ],
   "include": [
     "**/*.ts"
   ]

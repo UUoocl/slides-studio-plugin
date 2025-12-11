@@ -21,12 +21,12 @@ export class slidesStudioView extends ItemView{
     }
     
     async onOpen() {
-        const container = this.containerEl.children[1]
-
-        container.empty();
-        container.createDiv('Header')
+        let { containerEl } = this;
         
-        new Setting(container).setName('Open Slides Studio')
+        containerEl.empty();
+        containerEl.createDiv('Header')
+        
+        new Setting(containerEl).setName('Open Slides Studio')
         .setHeading()
         .setDesc('Open the Slides Studio Page in a new view')
         .addButton((button) =>{
@@ -35,7 +35,7 @@ export class slidesStudioView extends ItemView{
             .setCta()
         })
             
-        new Setting(container).setName('Add Tags')
+        new Setting(containerEl).setName('Add Tags')
         .setHeading()
         .setDesc('Use the buttons below to insert tags into notes.  Tags will be inserted at the current cursor position')
         .addButton((button) =>{
@@ -44,7 +44,7 @@ export class slidesStudioView extends ItemView{
         })
         
         //add a data-id number for the selected slide
-        new Setting(container).setName('Slide Id')
+        new Setting(containerEl).setName('Slide Id')
         .setHeading()
         .setDesc('Add an Id tag')
         .addButton((button) =>{
@@ -60,22 +60,22 @@ export class slidesStudioView extends ItemView{
             .setCta()
         })
 
-        const tagsContainer = container.createDiv('tags')
+        const tagsContainer = containerEl.createDiv('tags')
         this.addTagButtons(tagsContainer)
     }
     
-    async addTagButtons(container){
+    async addTagButtons(containerEl: HTMLElement ){
         
         this.app.commands.executeCommandById('slides-studio:get-obs-scene-tags')
       
-        container.empty()
+        containerEl.empty()
             
         //load Slide options
         const slides = Array.from(new Set(this.app.plugins.plugins['slides-studio'].settings.slide_tags));
         
-        new Setting(container).setName("Slides Position").setHeading()
+        new Setting(containerEl).setName("Slides Position").setHeading()
         slides.forEach(scene => {
-            new Setting(container).setName(scene as string)
+            new Setting(containerEl).setName(scene as string)
             .addButton((item) =>{
                 item.setButtonText("Add")
                 .setCta()
@@ -93,9 +93,9 @@ export class slidesStudioView extends ItemView{
                 
                 //load Camera options
                 const cameras =  Array.from(new Set(this.app.plugins.plugins['slides-studio'].settings.camera_tags));
-                new Setting(container).setName("Camera Position").setHeading()
+                new Setting(containerEl).setName("Camera Position").setHeading()
                 cameras.forEach(scene => {
-                    new Setting(container).setName(scene as string)
+                    new Setting(containerEl).setName(scene as string)
                     .addButton((item) =>{
                         item.setButtonText("Add")
                         .setCta()
@@ -113,9 +113,9 @@ export class slidesStudioView extends ItemView{
                         
                         //load Camera Shapes options
                         const cameras_shapes =  Array.from(new Set(this.app.plugins.plugins['slides-studio'].settings.camera_shape_tags));
-                        new Setting(container).setName("Camera Shapes").setHeading()
+                        new Setting(containerEl).setName("Camera Shapes").setHeading()
                         cameras_shapes.forEach(scene => {
-                            new Setting(container).setName(scene as string)
+                            new Setting(containerEl).setName(scene as string)
                             .addButton((item) =>{
                                 item.setButtonText("Add")
                                 .setCta()
@@ -133,9 +133,9 @@ export class slidesStudioView extends ItemView{
                                 
                                 //load scenes
                                 const scenes =  Array.from(new Set(this.app.plugins.plugins['slides-studio'].settings.scene_tags));
-                                new Setting(container).setName("Scenes").setHeading()
+                                new Setting(containerEl).setName("Scenes").setHeading()
                                 scenes.forEach(scene => {
-                                    new Setting(container).setName(scene as string)
+                                    new Setting(containerEl).setName(scene as string)
                                     .addButton((item) =>{
                                         item.setButtonText("Add")
                                         .setCta()
@@ -155,10 +155,10 @@ export class slidesStudioView extends ItemView{
                                                 // #region User Created Tags
                                                 const userTags = this.app.plugins.plugins['slides-studio'].settings.user_tags;
                                                 const userTagsSet = new Set(userTags);
-                                                new Setting(container).setName("User Tags").setHeading()
+                                                new Setting(containerEl).setName("User Tags").setHeading()
                                                 .setClass("slide-studio-new-user-tag")
                                                 .setDesc("data-user-tag={tag value}")
-                                                new Setting(container)
+                                                new Setting(containerEl)
                                                 .setName("Create a new tag")
                                                 .addText((item) => {    
                                                     item.setPlaceholder("key")
@@ -195,7 +195,7 @@ export class slidesStudioView extends ItemView{
                                                     })
                                                 })
                                                 userTags.forEach((userTag: string) => {
-                                                    new Setting(container).setName(userTag)
+                                                    new Setting(containerEl).setName(userTag)
                                                     .addButton((item) =>{
                                                     item.setButtonText("Add")
                                                         .setCta()

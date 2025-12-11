@@ -37,12 +37,14 @@ export class SlideStudioWebview extends ItemView {
         frame.style.height = "100%";
         frame.style.border = "none";
 
-        // Point to the Fastify Server
-        if (this.plugin.serverManager) {
-            frame.src = this.plugin.serverManager.getUrl();
+        // ✅ Use the helper to get the correct URL regardless of server provider
+        const url = this.plugin.getServerUrl();
+
+        if (url) {
+            frame.src = url;
         } else {
             frame.src = "about:blank";
-            container.createEl("h3", { text: "Server not running" });
+            container.createEl("h3", { text: "Server not running. Enable it in settings." });
         }
     }
 

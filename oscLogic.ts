@@ -78,7 +78,7 @@ export class OscManager {
             console.log(`Sending to ${deviceName}`);
             activeDevice.client.send(message, (err) => {
                 if (err) {
-                    console.error(`Error sending to ${deviceName}:`, new Error(err));
+                    console.error(`Error sending to ${deviceName}:`, err);
                 }
             });
         } else {
