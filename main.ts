@@ -508,7 +508,19 @@ async openWebView(){
 		leaf = leaves[0];
     } else {
 		leaf = workspace.getLeaf('tab');
-		await leaf.setViewState({ type: SLIDES_STUDIO_WEBVIEW_TYPE, active: true });
+		const port = this.app.plugins.plugins['slides-studio'].settings.serverPort
+		console.log(port)
+		const url = `http://localhost:${this.app.plugins.plugins['slides-studio'].settings.serverPort}/.obsidian/plugins/slides-studio/slides_studio/`
+		console.log(url)
+		await leaf.setViewState({
+			type: 'webviewer',
+			state: {
+				url: url,
+				navigate: true,
+			},
+			active: true, // Make the new leaf active
+		});
+
     }
     workspace.revealLeaf(leaf);
 }

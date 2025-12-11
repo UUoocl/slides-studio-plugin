@@ -173,6 +173,20 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                             this.plugin.saveSettings()
                     })
                 });
+
+                //path to obs collection json file
+                let collectionPath = this.app.vault.adapter.basePath;
+                collectionPath += Platform.isWin ? 
+                    `\\.obsidian\\plugins\\slides-studio\\slides_studio\\obs_Collections\\SlidesStudio_Collection.json`:
+                    `/.obsidian/plugins/slides-studio/slides_studio/obs_Collections/SlidesStudio_Collection.json`;
+        
+                    new Setting(containerEl)
+                .setName("Slide Studio Collection")
+                .setDesc("Copy the path to the Slide Studio Collection, and Import the collection in OBS")
+                .addText((item) => {
+                    item.setValue(collectionPath)
+                    .setDisabled(true)
+                });
         
                 new Setting(containerEl)
                 .setName("OBS Browser Source Debug Port")
