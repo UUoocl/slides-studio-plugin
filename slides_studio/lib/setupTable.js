@@ -39,7 +39,11 @@ function loadTable() {
                 },
                 sorter:"alphanum",
             }, 
-            { title: "Name", field: "slideName", width: 70, responsive: 2 }, 
+            {title:"Scene", field:"scene", width: 150, editor:"list", editorParams:{
+                values: dropDownOptions.scene},
+                cellEdited: saveTableToLocalStorage
+            },
+            // { title: "Name", field: "slideName", width: 70, responsive: 2 }, 
             {title:"Slide Position", field:"slidePosition", editor:"list", editorParams:{
                 values: dropDownOptions.slidePosition},
                 cellEdited: saveTableToLocalStorage
@@ -51,10 +55,6 @@ function loadTable() {
             {
                 title:"Camera Shape", field:"cameraShape", editor:"list", editorParams:{
                 values: dropDownOptions.cameraShape},
-                cellEdited: saveTableToLocalStorage
-            },
-            {title:"Scene", field:"scene", editor:"list", editorParams:{
-                values: dropDownOptions.scene},
                 cellEdited: saveTableToLocalStorage
             }
         ],

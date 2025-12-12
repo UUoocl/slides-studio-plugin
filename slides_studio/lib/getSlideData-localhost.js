@@ -205,9 +205,13 @@ async function addFragmentToSlideArray(slideEl, data) {
 }
                           
   async function getSlideDataAttributeValue(element, dataAttribute) {
+    // check the element data attribute first
+    if(element.getAttribute(dataAttribute)){
+        return element.getAttribute(dataAttribute)
+    }
     //if querySelector is nullish, then set the value to an empty string
-    const getEl = element.querySelector(`[${dataAttribute}]`) ?? "";
-    return getEl ? getEl.getAttribute(dataAttribute) : "";
+    let getEl = element.querySelector(`[${dataAttribute}]`) ?? "";
+    return getEl
   }
   
   async function getFragmentDataAttributeValue(element, dataAttribute) {

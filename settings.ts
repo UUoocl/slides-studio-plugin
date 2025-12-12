@@ -9,7 +9,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
     constructor(app: App, plugin: slidesStudioPlugin){
         super(app,plugin);
         this.plugin = plugin;
-    }
+    } 
 
     display(){
         const { containerEl } = this;
@@ -20,66 +20,53 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
             .setName("Slides Studio Server")
             .setHeading();
 
-        // Check for Slides Extended
-        // @ts-ignore
-        const slidesExtended = this.plugin.app.plugins.plugins['slides-extended'];
-
-        if (slidesExtended) {
-            // ✅ Display message if Slides Extended is present
-            this.plugin.settings.serverPort = this.plugin.app.plugins.plugins['slides-extended'].settings.port
-            containerEl.createEl("div", { 
-                text: `Using Slides Extended plugin web server. Port number: ${this.plugin.settings.serverPort}`,
-                cls: "setting-item-description"
-            });
-        } else {
-            // ✅ Display Controls if Slides Extended is missing
-            new Setting(containerEl)
-                .setName("Enable Internal Server")
-                .setDesc("Start a local Fastify server to host the studio view.")
-                .addToggle(toggle => toggle
-                    .setValue(this.plugin.settings.serverEnabled)
-                    .onChange(async (value) => {
-                        this.plugin.settings.serverEnabled = value;
-                        await this.plugin.saveSettings();
-                        
-                        if(value) {
-                             const port = parseInt(this.plugin.settings.serverPort) || 3000;
-                             if(!this.plugin.serverManager) {
-                                 this.plugin.serverManager = new ServerManager(this.plugin.app, port);
-                             }
-                             this.plugin.serverManager.start();
-                        } else {
-                            if(this.plugin.serverManager) {
-                                this.plugin.serverManager.stop();
-                                this.plugin.serverManager = null;
+        // ✅ Display Controls always
+        new Setting(containerEl)
+            .setName("Enable Internal Server")
+            .setDesc("Start a local Fastify server to host the studio view.")
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.serverEnabled)
+                .onChange(async (value) => {
+                    this.plugin.settings.serverEnabled = value;
+                    await this.plugin.saveSettings();
+                    
+                    if(value) {
+                            const port = parseInt(this.plugin.settings.serverPort) || 3000;
+                            if(!this.plugin.serverManager) {
+                                this.plugin.serverManager = new ServerManager(this.plugin.app, port);
                             }
+                            this.plugin.serverManager.start();
+                    } else {
+                        if(this.plugin.serverManager) {
+                            this.plugin.serverManager.stop();
+                            this.plugin.serverManager = null;
                         }
-                        // Refresh to show/hide port option
-                        this.display();
+                    }
+                    // Refresh to show/hide port option
+                    this.display();
+                })
+            );
+
+        if (this.plugin.settings.serverEnabled) {
+            new Setting(containerEl)
+                .setName("Server Port")
+                .setDesc("Port for the local Fastify server serving 'slideStudioView.html'")
+                .addText((text) => {
+                    text.setValue(this.plugin.settings.serverPort)
+                    .onChange(async (value) => {
+                        this.plugin.settings.serverPort = value;
+                        await this.plugin.saveSettings();
+                    });
+                })
+                .addButton(btn => btn
+                    .setButtonText("Restart Server")
+                    .onClick(() => {
+                        const port = parseInt(this.plugin.settings.serverPort);
+                        if (this.plugin.serverManager) {
+                            this.plugin.serverManager.restart(port);
+                        }
                     })
                 );
-
-            if (this.plugin.settings.serverEnabled) {
-                new Setting(containerEl)
-                    .setName("Server Port")
-                    .setDesc("Port for the local Fastify server serving 'slideStudioView.html'")
-                    .addText((text) => {
-                        text.setValue(this.plugin.settings.serverPort)
-                        .onChange(async (value) => {
-                            this.plugin.settings.serverPort = value;
-                            await this.plugin.saveSettings();
-                        });
-                    })
-                    .addButton(btn => btn
-                        .setButtonText("Restart Server")
-                        .onClick(() => {
-                            const port = parseInt(this.plugin.settings.serverPort);
-                            if (this.plugin.serverManager) {
-                                this.plugin.serverManager.restart(port);
-                            }
-                        })
-                    );
-            }
         }
         // #endregion
 
@@ -176,11 +163,10 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
                 //path to obs collection json file
                 let collectionPath = this.app.vault.adapter.basePath;
-                collectionPath += Platform.isWin ? 
-                    `\\.obsidian\\plugins\\slides-studio\\slides_studio\\obs_Collections\\SlidesStudio_Collection.json`:
-                    `/.obsidian/plugins/slides-studio/slides_studio/obs_Collections/SlidesStudio_Collection.json`;
-        
-                    new Setting(containerEl)
+                collectionPath += `/.obsidian/plugins/slides-studio/obs_collections/SlidesStudio.json`;
+                collectionPath = Platform.isWin ? collectionPath.replace(/\//g, '\\') : collectionPath;
+
+                new Setting(containerEl)
                 .setName("Slide Studio Collection")
                 .setDesc("Copy the path to the Slide Studio Collection, and Import the collection in OBS")
                 .addText((item) => {

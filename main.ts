@@ -38,7 +38,7 @@ interface slidesStudioPluginSettings{
 	obsAppPath_Text: string;
     // Server Settings
     serverPort: string;
-    serverEnabled: boolean; // ✅ New setting
+    serverEnabled: boolean;
 	oscDevices: OscDeviceSetting[];
 	midiDevices: MidiDeviceSetting[];
 }
@@ -59,7 +59,7 @@ const DEFAULT_SETTINGS: Partial<slidesStudioPluginSettings> = {
 	obsDebugPort_Text: "9222",
 	obsAppPath_Text: "",
     serverPort: "3000",
-    serverEnabled: false, // ✅ Default to false
+    serverEnabled: false,
 	oscDevices: [],
 	midiDevices: []
 };
@@ -81,18 +81,31 @@ export default class slidesStudioPlugin extends Plugin {
         await this.saveWebsocketDetailsToFile();
 	}
 
-    async saveWebsocketDetailsToFile() {
+   async saveWebsocketDetailsToFile() {
+        // Get the directory of the current plugin (e.g., .obsidian/plugins/slides-studio)
+        const pluginDir = this.manifest.dir;
+		console.log(pluginDir)
         const folderName = "obs_webSocket_details";
         const fileName = "websocketDetails.js";
-        const filePath = `${folderName}/${fileName}`;
+        
+        // Construct the full path relative to the vault root
+        const targetFolder = `${pluginDir}/${folderName}`;
+        let filePath = `${targetFolder}/${fileName}`;
+
+		//if Windows, change / to \\
+		filePath = Platform.isWin ? filePath.replace(/\//g, '\\') : filePath;
 
         try {
             const adapter = this.app.vault.adapter;
-            if (!(await adapter.exists(folderName))) {
-                await this.app.vault.createFolder(folderName);
+            
+            // Check if the specific subfolder exists inside the plugin directory
+            if (!(await adapter.exists(targetFolder))) {
+                await this.app.vault.createFolder(targetFolder);
             }
+            
             const port = parseInt(this.settings.websocketPort_Text) || 4455;
             const content = `let websocketDetails = {"IP": "${this.settings.websocketIP_Text}", "PW": "${this.settings.websocketPW_Text}", "PORT": ${port}}`;
+            
             await adapter.write(filePath, content);
         } catch (error) {
             console.error("Error writing websocket details file:", error);
@@ -121,25 +134,13 @@ export default class slidesStudioPlugin extends Plugin {
 		new Notice("Enabled slides studio plugin")	
 
         // #region Server Initialization Logic
-        // Check for Slides Extended Plugin
-        // @ts-ignore
-        const slidesExtended = this.app.plugins.plugins['slides-extended'];
-
-        if (slidesExtended) {
-            // ✅ Use Slides Extended configuration
-            const extPort = slidesExtended.settings.port;
-            this.settings.serverPort = extPort;
-            console.log(`Slides Studio: Slides Extended detected. Using port ${extPort}. Internal server disabled.`);
-            // serverManager remains null
-        } else {
-            // ✅ Use Internal Server if enabled
-            if (this.settings.serverEnabled) {
-                const port = parseInt(this.settings.serverPort) || 3000;
-                this.serverManager = new ServerManager(this.app, port);
-                this.app.workspace.onLayoutReady(() => {
-                    this.serverManager?.start();
-                });
-            }
+        // ✅ Use Internal Server if enabled
+        if (this.settings.serverEnabled) {
+            const port = parseInt(this.settings.serverPort) || 3000;
+            this.serverManager = new ServerManager(this.app, port);
+            this.app.workspace.onLayoutReady(() => {
+                this.serverManager?.start();
+            });
         }
         // #endregion
 
@@ -199,7 +200,8 @@ export default class slidesStudioPlugin extends Plugin {
 	this.obs.on("Identified", async (data) => {
 		this.isObsConnected = true;
 		console.log("OBS WebSocket successfully identified", data);
-
+		
+		//share connection details with obs browser sources
 		const wssDetails = {
 			IP: this.settings.websocketIP_Text,
 			PORT: this.settings.websocketPort_Text,
@@ -216,35 +218,10 @@ export default class slidesStudioPlugin extends Plugin {
 		});
 		
 		this.app.commands.executeCommandById('slides-studio:get-obs-scene-tags')
+		this.app.commands.executeCommandById('slides-studio:update-browsers-url')
+		this.app.commands.executeCommandById('slides-studio:set-slides-studio-obs-receiver')
 
-		if (this.app.plugins.plugins['slides-extended']) {
-			const port = this.app.plugins.plugins['slides-extended'].settings.port
-			const speakerViewURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/slides_studio_OBS_browser_source.html`
-			
-			this.obs.call("SetInputSettings", {
-					inputName: "slides",
-					inputSettings: {
-						url: speakerViewURL,
-				},
-			});
-
-			const cameraShapeURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/cameraShapes/cameraShape_`;
-			const cameraShapes = await this.obs.call("GetSceneItemList", {
-				sceneName: "Camera Shape",
-			})
-			
-			cameraShapes.sceneItems.forEach(async (source: any, index) => {
-				if(source.inputKind === "browser_source"){
-					await this.obs.call("SetInputSettings", {
-						inputName: source.sourceName,
-						inputSettings: {
-							url: cameraShapeURL + source.sourceName + ".html",
-						},
-					});
-				}
-			});
-		}
-	});
+	})
 	
 	this.obs.on("ConnectionError", (err) => {
 		console.error("Socket error:", err);
@@ -340,27 +317,35 @@ export default class slidesStudioPlugin extends Plugin {
 			sceneList.scenes.forEach(async (scene: any, index) => {
 				if(scene.sceneName.startsWith("Scene")){
 					const sceneName = scene.sceneName;
-					this.settings.scene_tags.push(sceneName);
+					if (!this.settings.scene_tags.includes(sceneName)) {
+						this.settings.scene_tags.push(sceneName);
+					}
 				}
 			});
 				
 		//get Camera Position tag options
 			const cameraSources = await this.obs.call("GetSceneItemList", { sceneName: "Camera Position" });
 			cameraSources.sceneItems.forEach(async(source: any, index) => {
-				this.settings.camera_tags.push(source.sourceName)
+				if (!this.settings.camera_tags.includes(source.sourceName)) {
+					this.settings.camera_tags.push(source.sourceName)
+				}
 			});
 			
 		//get Slide Position tag options
 			const slideSources = await this.obs.call("GetSceneItemList", { sceneName: "Slide Position" });
 			slideSources.sceneItems.forEach(async(source: any, index) => {
-				this.settings.slide_tags.push(source.sourceName)
+				if (!this.settings.slide_tags.includes(source.sourceName)) {
+					this.settings.slide_tags.push(source.sourceName)
+				}
 			});
 			
 			//get Camera Shape tag options
 			const shapeSources = await this.obs.call("GetSceneItemList", { sceneName: "Camera Shape" });
 			console.log("shapreSources", shapeSources)
 			shapeSources.sceneItems.forEach(async(source: any, index) => {
-				this.settings.camera_shape_tags.push(source.sourceName)
+				if (!this.settings.camera_shape_tags.includes(source.sourceName)) {
+					this.settings.camera_shape_tags.push(source.sourceName)
+				}
 			});
 		return
 		}})
@@ -376,40 +361,105 @@ export default class slidesStudioPlugin extends Plugin {
             await this.openWebView();
         }
     });
-
+	
 	this.addCommand({
-		id: 'open-slide-studio-speaker-view',
-		name: 'Open the Slide Studio Speaker View in an external browser',
+		id: 'copy-obs-browser-source-link',
+		name: 'Copy the Slides Url for OBS to the clipboard ',
 		callback: async() => {
-			if (this.app.plugins.plugins['slides-extended']) {
-				const port = this.app.plugins.plugins['slides-extended'].settings.port
-				new Notice(`Opening Speaker View on port ${port}`);
-				window.open(`http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/speakerView.html`)
-			} else {
-				new Notice('Slides Extended plugin not found.');
-			}
+            const port = this.settings.serverPort;
+            const obsURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/slides_studio_OBS_browser_source.html`
+            try {
+                await navigator.clipboard.writeText(obsURL);
+                new Notice('URL copied to clipboard successfully!');
+            } catch (err) {
+                console.error('Failed to copy: ', err);
+            }
 		}
 	})
+
+	this.addCommand({
+		id: 'set-slides-studio-obs-receiver',
+		name: 'Set the Url for Slides Studio Receiver OBS Browser Sourceto the clipboard ',
+		callback: async() => {
+            const port = this.settings.serverPort;
+            const obsURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/slides_studio_OBS_browser_source.html`
+            try {
+                //set the browser settings
+                this.obs.call("SetInputSettings", {
+                    inputName: 'slides',
+                    inputSettings: {
+                        url: obsURL,
+                    },
+                });
+            } catch (err) {
+                console.error('Failed set slides studio receiver: ', err);
+            }
+		}
+	})
+// #endregion
+
+// #region Refresh Slides Studio OBS Browser sources
+this.addCommand({
+	id: 'update-browsers-url',
+	name: 'Update Slides Studio OBS browsers URL',
+	callback: async() =>{
+		//for each of the slides studio OBS  browser sources,  update the url origin in case the port changed. 
+		const port = this.settings.serverPort;
 		
-		this.addCommand({
-			id: 'copy-obs-browser-source-link',
-			name: 'Copy the Slides Url for OBS to the clipboard ',
-			callback: async() => {
-				if (this.app.plugins.plugins['slides-extended']) {
-					const port = this.app.plugins.plugins['slides-extended'].settings.port
-					const obsURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/slides_studio_OBS_browser_source.html`
-					try {
-						await navigator.clipboard.writeText(obsURL);
-						new Notice('URL copied to clipboard successfully!');
-					} catch (err) {
-						console.error('Failed to copy: ', err);
-					}
-				} else {
-					new Notice('Slides Extended plugin not found.');
-				}
+		//get all the OBS browser sources
+		const browserSources: any = await this.obs.call("GetInputList",{inputKind: "browser_source"})
+
+		//check if the source contains the slide studio custom css --slides-studio-refresh
+		for(let i=0; i<browserSources.inputs.length; i++){
+			//get browser settings
+			const settings: any = await this.obs.call("GetInputSettings", {
+				inputUuid: browserSources.inputs[i].inputUuid,
+			});	
+			console.log("settings",settings)
+			//check for the slides studio css value
+			try{
+			if(settings.inputSettings.css.contains("--slides-studio-refresh")){
+				//create url object
+				const browserURL: any = new URL(settings.inputSettings.url)
+				
+				//change origin to localhost:${port}
+				const newURL = `http://localhost:${port}${browserURL.pathname}`
+
+				//set the browser settings
+				this.obs.call("SetInputSettings", {
+					inputUuid: browserSources.inputs[i].inputUuid,
+					inputSettings: {
+						url: newURL,
+					},
+				});
+			}}catch(err){
+				//common error of browser missing the css property.  
+				console.log(err) 
 			}
+		}
+	}
+})
+
+// #endregion
+
+// #region Refresh all OBS browsers
+this.addCommand({
+	id: 'refresh-obs-browsers',
+	name: 'Refresh ALL OBS browser sources',
+	callback: async() =>{
+		//get all the OBS browser sources
+		const browserSources: any = await this.obs.call("GetInputList",{inputKind: "browser_source"})
+
+		browserSources.forEach( async(browser: any) => {
+		//refresh the browser
+			await this.obs.call("PressInputPropertiesButton", {
+				inputUuid: browser.inputUuid,
+				propertyName: "refreshnocache",
+			});
 		})
-	// #endregion
+	}
+})
+// #endregion
 
 // #region ✅OSC Functions
 
@@ -508,9 +558,9 @@ async openWebView(){
 		leaf = leaves[0];
     } else {
 		leaf = workspace.getLeaf('tab');
-		const port = this.app.plugins.plugins['slides-studio'].settings.serverPort
+		const port = this.settings.serverPort;
 		console.log(port)
-		const url = `http://localhost:${this.app.plugins.plugins['slides-studio'].settings.serverPort}/.obsidian/plugins/slides-studio/slides_studio/`
+		const url = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/`
 		console.log(url)
 		await leaf.setViewState({
 			type: 'webviewer',
@@ -531,14 +581,6 @@ public getServerUrl(): string | null {
     if (this.serverManager) {
         return this.serverManager.getUrl();
     }
-    
-    // If Slides Extended is detected, construct the URL using its port
-    // @ts-ignore
-    const slidesExtended = this.app.plugins.plugins['slides-extended'];
-    if (slidesExtended) {
-        return `http://127.0.0.1:${this.settings.serverPort}`;
-    }
-
     return null;
 }
 

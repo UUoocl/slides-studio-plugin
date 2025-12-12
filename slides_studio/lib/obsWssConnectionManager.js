@@ -73,12 +73,14 @@ window.addEventListener(`ws-details`, async function (event) {
 //4. listen for a button press to start 
 async function wsConnectButton() {
   //change to this.
-  wssDetails = {
-    IP: document.getElementById("IP").value,
-    PORT: document.getElementById("Port").value,
-    PW: document.getElementById("PW").value,
-  };
+  // wssDetails = {
+  //   IP: document.getElementById("IP").value,
+  //   PORT: document.getElementById("Port").value,
+  //   PW: document.getElementById("PW").value,
+  // };
 
+  const wssDetails = JSON.parse(window.localStorage.getItem('wssDetails'))
+  console.log("connect button", wssDetails)
   await connectOBS(wssDetails).then(async (result) => {
     if (result === "failed") {
       document.getElementById("WSconnectButton").style.background = "#ff0000";

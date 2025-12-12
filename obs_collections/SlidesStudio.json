@@ -1,6 +1,6 @@
 {
-    "current_scene": "Scene Slides over Camera",
-    "current_program_scene": "Scene Slides over Camera",
+    "current_scene": "Set Camera",
+    "current_program_scene": "Set Camera",
     "scene_order": [
         {
             "name": "----------SETTINGS----------"
@@ -60,7 +60,7 @@
             "name": "Camera Lower Right"
         }
     ],
-    "name": "Slides.com_Collection",
+    "name": "Slides-Studio",
     "groups": [],
     "quick_transitions": [
         {
@@ -92,96 +92,99 @@
     "transition_duration": 300,
     "preview_locked": false,
     "scaling_enabled": false,
-    "scaling_level": -6,
-    "scaling_off_x": 3.4581868648529053,
+    "scaling_level": -18,
+    "scaling_off_x": 0.0,
     "scaling_off_y": 0.0,
     "virtual-camera": {
         "type2": 3
     },
     "modules": {
         "advanced-scene-switcher": {
-            "sceneGroups": [],
-            "macros": [],
+            "actionQueues": [],
+            "active": true,
+            "adjustActiveTransitionType": true,
+            "audioFallbackDuration": {
+                "unit": 0,
+                "value": {
+                    "type": 0,
+                    "value": 0
+                },
+                "version": 1
+            },
+            "audioFallbackEnable": false,
+            "audioFallbackScene": "",
+            "audioFallbackTargetType": 0,
+            "audioFallbackTransition": "",
+            "audioSwitches": [],
+            "autoStartEvent": 0,
+            "cooldown": {
+                "unit": 0,
+                "value": {
+                    "type": 0,
+                    "value": 0
+                },
+                "version": 1
+            },
+            "defTransitionDelay": 0,
+            "defaultTransitions": [],
+            "disableFilterComboboxFilter": false,
+            "disableHints": false,
+            "disableMacroWidgetCache": false,
+            "downMacroSegmentHotkey": [],
+            "enableCooldown": false,
+            "executableSwitches": [],
+            "fileSwitches": [],
+            "hideLegacyTabs": true,
+            "idleEnable": false,
+            "idleSceneName": "",
+            "idleTargetType": 0,
+            "idleTime": 60,
+            "idleTransitionName": "",
+            "ignoreIdleWindows": [],
+            "ignoreWindows": [],
+            "interval": 300,
+            "lastImportPath": "",
+            "logLevel": 0,
+            "logLevelVersion": 1,
+            "macroListMacroEditSplitterPosition": [
+                {
+                    "pos": 142
+                },
+                {
+                    "pos": 811
+                }
+            ],
             "macroSettings": {
-                "highlightExecuted": false,
-                "highlightConditions": false,
                 "highlightActions": false,
+                "highlightConditions": false,
+                "highlightExecuted": false,
                 "newMacroCheckInParallel": false,
                 "newMacroRegisterHotkey": false,
                 "newMacroUseShortCircuitEvaluation": false,
                 "saveSettingsOnMacroChange": true
             },
-            "variables": [],
-            "switches": [],
-            "ignoreWindows": [],
-            "screenRegion": [],
-            "pauseEntries": [],
-            "sceneRoundTrip": [],
-            "sceneTransitions": [],
-            "defaultTransitions": [],
-            "defTransitionDelay": 0,
-            "ignoreIdleWindows": [],
-            "idleTargetType": 0,
-            "idleSceneName": "",
-            "idleTransitionName": "",
-            "idleEnable": false,
-            "idleTime": 60,
-            "executableSwitches": [],
-            "randomSwitches": [],
-            "fileSwitches": [],
-            "readEnabled": false,
-            "readPath": "",
-            "writeEnabled": false,
-            "writePath": "",
+            "macros": [],
             "mediaSwitches": [],
-            "timeSwitches": [],
-            "audioSwitches": [],
-            "audioFallbackTargetType": 0,
-            "audioFallbackScene": "",
-            "audioFallbackTransition": "",
-            "audioFallbackEnable": false,
-            "audioFallbackDuration": {
-                "value": {
-                    "value": 0.0,
-                    "type": 0
-                },
-                "unit": 0,
-                "version": 1
-            },
-            "videoSwitches": [],
-            "interval": 300,
-            "non_matching_scene": "",
-            "switch_if_not_matching": 0,
+            "mqttConnections": [],
+            "newMacroHotkey": [
+                {
+                    "control": true,
+                    "key": "OBS_KEY_N"
+                }
+            ],
             "noMatchDelay": {
-                "value": {
-                    "value": 0.0,
-                    "type": 0
-                },
                 "unit": 0,
+                "value": {
+                    "type": 0,
+                    "value": 0
+                },
                 "version": 1
             },
-            "cooldown": {
-                "value": {
-                    "value": 0.0,
-                    "type": 0
-                },
-                "unit": 0,
-                "version": 1
-            },
-            "enableCooldown": false,
-            "active": true,
-            "startup_behavior": 0,
-            "autoStartEvent": 0,
-            "logLevel": 0,
-            "logLevelVersion": 1,
-            "showSystemTrayNotifications": false,
-            "disableHints": false,
-            "disableFilterComboboxFilter": false,
-            "disableMacroWidgetCache": false,
-            "warnPluginLoadFailure": true,
-            "hideLegacyTabs": true,
+            "non_matching_scene": "",
+            "pauseEntries": [],
             "priority0": 10,
             "priority1": 0,
+            "priority10": 3,
             "priority2": 2,
             "priority3": 8,
             "priority4": 6,
@@ -190,23 +193,21 @@
             "priority7": 4,
             "priority8": 1,
             "priority9": 5,
-            "priority10": 3,
-            "threadPriority": 3,
-            "transitionOverrideOverride": false,
-            "adjustActiveTransitionType": true,
-            "lastImportPath": "",
-            "startHotkey": [],
-            "stopHotkey": [],
-            "toggleHotkey": [],
-            "newMacroHotkey": [
-                {
-                    "control": true,
-                    "key": "OBS_KEY_N"
-                }
-            ],
-            "upMacroSegmentHotkey": [],
-            "downMacroSegmentHotkey": [],
+            "randomSwitches": [],
+            "readEnabled": false,
+            "readPath": "",
             "removeMacroSegmentHotkey": [],
+            "saveWindowGeo": false,
+            "sceneGroups": [],
+            "sceneRoundTrip": [],
+            "sceneTransitions": [],
+            "screenRegion": [],
+            "showSystemTrayNotifications": false,
+            "startHotkey": [],
+            "startup_behavior": 0,
+            "stopHotkey": [],
+            "switch_if_not_matching": 0,
+            "switches": [],
             "tabWidgetOrder": [
                 {
                     "generalTab": 0
@@ -272,24 +273,23 @@
                     "actionQueueTab": 20
                 }
             ],
-            "saveWindowGeo": false,
+            "threadPriority": 3,
+            "timeSwitches": [],
+            "toggleHotkey": [],
+            "transitionOverrideOverride": false,
+            "twitchConnections": [],
+            "upMacroSegmentHotkey": [],
+            "variables": [],
+            "version": "bf7fe71ae39a9a0a782a224dedda14513b97dfc2",
+            "videoSwitches": [],
+            "warnPluginLoadFailure": true,
+            "websocketConnections": [],
+            "windowHeight": 600,
             "windowPosX": 766,
             "windowPosY": 367,
             "windowWidth": 1000,
-            "windowHeight": 600,
-            "macroListMacroEditSplitterPosition": [
-                {
-                    "pos": 142
-                },
-                {
-                    "pos": 811
-                }
-            ],
-            "version": "bf7fe71ae39a9a0a782a224dedda14513b97dfc2",
-            "twitchConnections": [],
-            "mqttConnections": [],
-            "websocketConnections": [],
-            "actionQueues": []
+            "writeEnabled": false,
+            "writePath": ""
         },
         "auto-scene-switcher": {
             "interval": 300,
@@ -301,21 +301,21 @@
         "copyTransformHotkey": [],
         "downstream_keyers": [
             {
-                "name": "DSK 1",
-                "transition": "",
-                "transition_duration": 300,
-                "show_transition": "",
-                "show_transition_duration": 300,
+                "disable_tie_hotkey": [],
+                "enable_tie_hotkey": [],
+                "exclude_scenes": [],
+                "hide_after": 0,
                 "hide_transition": "",
                 "hide_transition_duration": 300,
-                "hide_after": 0,
-                "tie": false,
-                "scenes": [],
-                "scene": "",
+                "name": "DSK 1",
                 "null_hotkey": [],
-                "enable_tie_hotkey": [],
-                "disable_tie_hotkey": [],
-                "exclude_scenes": []
+                "scene": "",
+                "scenes": [],
+                "show_transition": "",
+                "show_transition_duration": 300,
+                "tie": false,
+                "transition": "",
+                "transition_duration": 300
             }
         ],
         "downstream_keyers_channel": 7,
@@ -333,17 +333,23 @@
         "pasteTransformHotkey": [],
         "scripts-tool": [],
         "source-dock": {
-            "docks": [],
-            "windows": [],
+            "corner_bl": false,
+            "corner_br": false,
             "corner_tl": false,
             "corner_tr": false,
-            "corner_br": false,
-            "corner_bl": false
+            "docks": [],
+            "windows": []
         },
         "transition-table": {
             "disable_hotkey": [],
             "enable_hotkey": [],
             "transitions": []
+        },
+        "captions": {
+            "source": "",
+            "enabled": false,
+            "lang_id": 1033,
+            "provider": "mssapi"
         }
     },
     "resolution": {
@@ -484,6 +490,7 @@
             "versioned_id": "macos-avcapture",
             "settings": {
                 "color_space": 1,
+                "device": "47B4B64B-7067-4B9C-AD2B-AE273A71F4B5",
                 "device_name": "FaceTime HD Camera",
                 "frame_rate": {
                     "denominator": 1,
@@ -492,9 +499,8 @@
                 "input_format": 2,
                 "resolution": "{\"width\":1920,\"height\":1080}",
                 "supported_format": "MTkyMHgxMDgwIDE1LjAwMC0zMC4wMDAgMiA4NzU3MDQ0Mzg=",
-                "video_range": 1,
-                "device": "47B4B64B-7067-4B9C-AD2B-AE273A71F4B5",
-                "use_preset": false
+                "use_preset": false,
+                "video_range": 1
             },
             "mixers": 255,
             "sync": 0,
@@ -509,9 +515,9 @@
             "push-to-talk-delay": 0,
             "hotkeys": {
                 "libobs.mute": [],
-                "libobs.unmute": [],
                 "libobs.push-to-mute": [],
-                "libobs.push-to-talk": []
+                "libobs.push-to-talk": [],
+                "libobs.unmute": []
             },
             "deinterlace_mode": 0,
             "deinterlace_field_order": 0,
@@ -525,9 +531,10 @@
             "id": "browser_source",
             "versioned_id": "browser_source",
             "settings": {
-                "url": "https://uuoocl.github.io/slides-studio/obs_Collections/camera_placeholder.html",
+                "url": "http://localhost:5555/.obsidian/plugins/slides-studio/obs_Collections/camera_placeholder.html",
                 "width": 1920,
-                "height": 1080
+                "height": 1080,
+                "css": "body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; \n--slides-studio-refresh: 1;\n}"
             },
             "mixers": 255,
             "sync": 0,
@@ -1269,7 +1276,7 @@
                     {
                         "name": "Camera Upper Left",
                         "source_uuid": "d62189f8-fe02-4408-bdee-d58ee35878e4",
-                        "visible": false,
+                        "visible": true,
                         "locked": false,
                         "rot": 0.0,
                         "scale_ref": {
@@ -1544,7 +1551,7 @@
                     {
                         "name": "Camera Full Screen",
                         "source_uuid": "50ef12b5-0283-4a23-9c8d-c475587fed77",
-                        "visible": true,
+                        "visible": false,
                         "locked": false,
                         "rot": 0.0,
                         "scale_ref": {
@@ -2593,9 +2600,10 @@
             "id": "browser_source",
             "versioned_id": "browser_source",
             "settings": {
-                "url": "https://uuoocl.github.io/slides-studio/cameraShapes/cameraShape_p5_Circle.html",
+                "url": "http://localhost:5555/.obsidian/plugins/slides-studio/slides_studio/cameraShapes/cameraShape_Circle.html",
                 "width": 1920,
-                "height": 1080
+                "height": 1080,
+                "css": "body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; \n--slides-studio-refresh: 1;\n}"
             },
             "mixers": 255,
             "sync": 0,
@@ -2627,10 +2635,10 @@
             "id": "browser_source",
             "versioned_id": "browser_source",
             "settings": {
-                "url": "https://uuoocl.github.io/slides-studio/cameraShapes/cameraShape_cssAnimation_Circle.html",
+                "url": "http://localhost:5555/.obsidian/plugins/slides-studio/slides_studio/cameraShapes/cameraShape_cssAnimation_Circle.html",
                 "width": 1920,
                 "height": 1080,
-                "css": "body { margin: 0px auto; overflow: hidden; }"
+                "css": "body { margin: 0px auto; overflow: hidden; \n--slides-studio-refresh: 1;\n}"
             },
             "mixers": 255,
             "sync": 0,
@@ -2662,10 +2670,10 @@
             "id": "browser_source",
             "versioned_id": "browser_source",
             "settings": {
-                "url": "https://uuoocl.github.io/slides-studio/cameraShapes/cameraShape_cssAnimation_Square.html",
+                "url": "http://localhost:5555/.obsidian/plugins/slides-studio/slides_studio/cameraShapes/cameraShape_cssAnimation_Square.html",
                 "width": 1920,
                 "height": 1080,
-                "css": "body { margin: 0px auto; overflow: hidden; }"
+                "css": "body { margin: 0px auto; overflow: hidden; \n--slides-studio-refresh: 1;\n}"
             },
             "mixers": 255,
             "sync": 0,
@@ -2697,10 +2705,10 @@
             "id": "browser_source",
             "versioned_id": "browser_source",
             "settings": {
-                "url": "https://uuoocl.github.io/slides-studio/cameraShapes/cameraShape_cssCircle.html",
+                "url": "http://localhost:5555/.obsidian/plugins/slides-studio/slides_studio/cameraShapes/cameraShape_cssCircle.html",
                 "width": 1920,
                 "height": 1080,
-                "css": "body { margin: 0px auto; overflow: hidden; }"
+                "css": "body { margin: 0px auto; overflow: hidden; \n--slides-studio-refresh: 1;\n}"
             },
             "mixers": 255,
             "sync": 0,
@@ -2732,10 +2740,10 @@
             "id": "browser_source",
             "versioned_id": "browser_source",
             "settings": {
-                "url": "https://uuoocl.github.io/slides-studio/cameraShapes/cameraShape_cssSquare.html",
+                "url": "http://localhost:5555/.obsidian/plugins/slides-studio/slides_studio/cameraShapes/cameraShape_cssSquare.html",
                 "width": 1920,
                 "height": 1080,
-                "css": "body {  margin: 0px auto; overflow: hidden; }"
+                "css": "body {  margin: 0px auto; overflow: hidden;\n--slides-studio-refresh: 1;\n }"
             },
             "mixers": 255,
             "sync": 0,
@@ -2764,8 +2772,8 @@
             "prev_ver": 536870913,
             "name": "Full Screen",
             "uuid": "4d932745-9860-4d91-8837-f7e7338b0318",
-            "id": "text_ft2_source",
-            "versioned_id": "text_ft2_source_v2",
+            "id": "text_gdiplus",
+            "versioned_id": "text_gdiplus_v3",
             "settings": {
                 "text": "\"top\": \"0\",\n\"left\": \"0\",\n\"bottom\": \"0\",\n\"right\": \"0\",\n\"width\": \"100%\",\n\"height\": \"100%\",\n\"borderStyle\": \"solid\",\n\"borderWidth\": \"0px\",\n\"borderRadius\": \"24px\",\n\"transformPerspective\": \"0\",\n\"transformRotateY\": \"0deg\",\n\"filterOpacity\": \"100%\", \n\"filterDropShadowColor\": \"rgba(0, 0, 0, 50.5)\",\n\"filterDropShadowOffsetX\": \"30px\",\n\"filterDropShadowOffsetY\": \"21px\",\n\"filterDropShadowBlur\": \"40px\""
             },
@@ -2794,8 +2802,8 @@
             "versioned_id": "screen_capture",
             "settings": {
                 "display_uuid": "37D8832A-2D66-02CA-B9F7-8F30A301B230",
-                "show_cursor": true,
-                "hide_obs": true
+                "hide_obs": true,
+                "show_cursor": true
             },
             "mixers": 255,
             "sync": 0,
@@ -2810,9 +2818,9 @@
             "push-to-talk-delay": 0,
             "hotkeys": {
                 "libobs.mute": [],
-                "libobs.unmute": [],
                 "libobs.push-to-mute": [],
-                "libobs.push-to-talk": []
+                "libobs.push-to-talk": [],
+                "libobs.unmute": []
             },
             "deinterlace_mode": 0,
             "deinterlace_field_order": 0,
@@ -2849,8 +2857,8 @@
             "prev_ver": 536870913,
             "name": "Over-the-Shoulder skewed",
             "uuid": "b34956a3-a127-4f72-9738-a200d66a58a2",
-            "id": "text_ft2_source",
-            "versioned_id": "text_ft2_source_v2",
+            "id": "text_gdiplus",
+            "versioned_id": "text_gdiplus_v3",
             "settings": {
                 "text": "\"top\": \"10%\",\n\"left\": \"10%\",\n\"bottom\": \"0\",\n\"right\": \"0\",\n\"width\": \"25%\",\n\"height\": \"40%\",\n\"borderStyle\": \"solid\",\n\"borderWidth\": \"0px\",\n\"borderRadius\": \"24px\",\n\"transformPerspective\": \"1500px\",\n\"transformRotateY\": \"15deg\",\n\"filterOpacity\": \"100%\", \n\"filterDropShadowColor\": \"rgba(0, 0, 0, 50.5)\",\n\"filterDropShadowOffsetX\": \"30px\",\n\"filterDropShadowOffsetY\": \"21px\",\n\"filterDropShadowBlur\": \"40px\""
             },
@@ -2878,11 +2886,11 @@
             "id": "browser_source",
             "versioned_id": "browser_source",
             "settings": {
-                "url": "https://uuoocl.github.io/slides-studio/cameraShapes/cameraShape_p5_Pulse.html",
+                "url": "http://localhost:5555/.obsidian/plugins/slides-studio/slides_studio/cameraShapes/cameraShape_Pulse.html",
                 "width": 1920,
                 "height": 1080,
                 "shutdown": false,
-                "css": "body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; }"
+                "css": "body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden;\n--slides-studio-refresh: 1;\n }"
             },
             "mixers": 255,
             "sync": 0,
@@ -3353,7 +3361,7 @@
             "versioned_id": "scene",
             "settings": {
                 "custom_size": false,
-                "id_counter": 18,
+                "id_counter": 19,
                 "items": [
                     {
                         "name": "camera 1 placeholder",
@@ -3468,6 +3476,61 @@
                             "duration": 0
                         },
                         "private_settings": {}
+                    },
+                    {
+                        "name": "windows Video Capture Device",
+                        "source_uuid": "1bcd989c-9d39-4a4c-8822-cafe749e6a10",
+                        "visible": true,
+                        "locked": false,
+                        "rot": 0.0,
+                        "scale_ref": {
+                            "x": 1920.0,
+                            "y": 1080.0
+                        },
+                        "align": 5,
+                        "bounds_type": 0,
+                        "bounds_align": 0,
+                        "bounds_crop": false,
+                        "crop_left": 0,
+                        "crop_top": 0,
+                        "crop_right": 0,
+                        "crop_bottom": 0,
+                        "id": 19,
+                        "group_item_backup": false,
+                        "pos": {
+                            "x": 0.0,
+                            "y": 0.0
+                        },
+                        "pos_rel": {
+                            "x": -1.7777777910232544,
+                            "y": -1.0
+                        },
+                        "scale": {
+                            "x": 1.0,
+                            "y": 1.0
+                        },
+                        "scale_rel": {
+                            "x": 1.0,
+                            "y": 1.0
+                        },
+                        "bounds": {
+                            "x": 0.0,
+                            "y": 0.0
+                        },
+                        "bounds_rel": {
+                            "x": 0.0,
+                            "y": 0.0
+                        },
+                        "scale_filter": "disable",
+                        "blend_method": "default",
+                        "blend_type": "normal",
+                        "show_transition": {
+                            "duration": 0
+                        },
+                        "hide_transition": {
+                            "duration": 0
+                        },
+                        "private_settings": {}
                     }
                 ]
             },
@@ -3487,7 +3550,9 @@
                 "libobs.show_scene_item.18": [],
                 "libobs.hide_scene_item.18": [],
                 "libobs.show_scene_item.1": [],
-                "libobs.hide_scene_item.1": []
+                "libobs.hide_scene_item.1": [],
+                "libobs.show_scene_item.19": [],
+                "libobs.hide_scene_item.19": []
             },
             "deinterlace_mode": 0,
             "deinterlace_field_order": 0,
@@ -3503,7 +3568,7 @@
             "versioned_id": "scene",
             "settings": {
                 "custom_size": false,
-                "id_counter": 6,
+                "id_counter": 7,
                 "items": [
                     {
                         "name": "macOS Screen Capture",
@@ -3559,6 +3624,61 @@
                             "duration": 0
                         },
                         "private_settings": {}
+                    },
+                    {
+                        "name": "Windows Display Capture",
+                        "source_uuid": "d3d49ebe-2f45-411e-8436-95a64517e25e",
+                        "visible": true,
+                        "locked": false,
+                        "rot": 0.0,
+                        "scale_ref": {
+                            "x": 1920.0,
+                            "y": 1080.0
+                        },
+                        "align": 5,
+                        "bounds_type": 0,
+                        "bounds_align": 0,
+                        "bounds_crop": false,
+                        "crop_left": 0,
+                        "crop_top": 0,
+                        "crop_right": 0,
+                        "crop_bottom": 0,
+                        "id": 7,
+                        "group_item_backup": false,
+                        "pos": {
+                            "x": 0.0,
+                            "y": 0.0
+                        },
+                        "pos_rel": {
+                            "x": -1.7777777910232544,
+                            "y": -1.0
+                        },
+                        "scale": {
+                            "x": 1.0,
+                            "y": 1.0
+                        },
+                        "scale_rel": {
+                            "x": 1.0,
+                            "y": 1.0
+                        },
+                        "bounds": {
+                            "x": 0.0,
+                            "y": 0.0
+                        },
+                        "bounds_rel": {
+                            "x": 0.0,
+                            "y": 0.0
+                        },
+                        "scale_filter": "disable",
+                        "blend_method": "default",
+                        "blend_type": "normal",
+                        "show_transition": {
+                            "duration": 0
+                        },
+                        "hide_transition": {
+                            "duration": 0
+                        },
+                        "private_settings": {}
                     }
                 ]
             },
@@ -3576,7 +3696,9 @@
             "hotkeys": {
                 "OBSBasic.SelectScene": [],
                 "libobs.show_scene_item.2": [],
-                "libobs.hide_scene_item.2": []
+                "libobs.hide_scene_item.2": [],
+                "libobs.show_scene_item.7": [],
+                "libobs.hide_scene_item.7": []
             },
             "deinterlace_mode": 0,
             "deinterlace_field_order": 0,
@@ -3588,8 +3710,8 @@
             "prev_ver": 536870913,
             "name": "Side-by-Side",
             "uuid": "1f4355d3-e46c-4e7f-a072-f09090629ab8",
-            "id": "text_ft2_source",
-            "versioned_id": "text_ft2_source_v2",
+            "id": "text_gdiplus",
+            "versioned_id": "text_gdiplus_v3",
             "settings": {
                 "text": "\"top\": \"0\",\n\"left\": \"0\",\n\"bottom\": \"0\",\n\"right\": \"0\",\n\"width\": \"50%\",\n\"height\": \"100%\",\n\"borderStyle\": \"solid\",\n\"borderWidth\": \"0px\",\n\"borderRadius\": \"24px\",\n\"transformPerspective\": \"0\",\n\"transformRotateY\": \"0deg\",\n\"filterOpacity\": \"100%\", \n\"filterDropShadowColor\": \"rgba(0, 0, 0, 50.5)\",\n\"filterDropShadowOffsetX\": \"30px\",\n\"filterDropShadowOffsetY\": \"21px\",\n\"filterDropShadowBlur\": \"40px\""
             },
@@ -3909,10 +4031,11 @@
             "id": "browser_source",
             "versioned_id": "browser_source",
             "settings": {
-                "url": "https://uuoocl.github.io/slides-studio/slides_studio_OBS_browser_source.html",
                 "width": 1920,
                 "height": 1080,
-                "fps_custom": true
+                "fps_custom": true,
+                "css": "body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; \n--slides-studio-refresh: 1;\n}",
+                "url": "http://localhost:5555/.obsidian/plugins/slides-studio/slides_studio/slides_studio_OBS_browser_source.html"
             },
             "mixers": 255,
             "sync": 0,
@@ -3944,10 +4067,11 @@
             "id": "browser_source",
             "versioned_id": "browser_source",
             "settings": {
-                "url": "https://uuoocl.github.io/slides-studio/cameraShapes/cameraShape_p5_Square.html",
+                "url": "http://localhost:5555/.obsidian/plugins/slides-studio/slides_studio/cameraShapes/cameraShape_Square.html",
                 "width": 1920,
                 "height": 1080,
-                "shutdown": false
+                "shutdown": false,
+                "css": "body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; \n--slides-studio-refresh: 1;\n}"
             },
             "mixers": 255,
             "sync": 0,
@@ -3966,6 +4090,61 @@
                 "libobs.push-to-mute": [],
                 "libobs.push-to-talk": [],
                 "ObsBrowser.Refresh": []
+            },
+            "deinterlace_mode": 0,
+            "deinterlace_field_order": 0,
+            "monitoring_type": 0,
+            "private_settings": {}
+        },
+        {
+            "prev_ver": 536870913,
+            "name": "Windows Display Capture",
+            "uuid": "d3d49ebe-2f45-411e-8436-95a64517e25e",
+            "id": "monitor_capture",
+            "versioned_id": "monitor_capture",
+            "settings": {
+                "monitor_id": "\\\\?\\DISPLAY#Default_Monitor#4&1801d19c&0&UID0#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}"
+            },
+            "mixers": 0,
+            "sync": 0,
+            "flags": 0,
+            "volume": 1.0,
+            "balance": 0.5,
+            "enabled": true,
+            "muted": false,
+            "push-to-mute": false,
+            "push-to-mute-delay": 0,
+            "push-to-talk": false,
+            "push-to-talk-delay": 0,
+            "hotkeys": {},
+            "deinterlace_mode": 0,
+            "deinterlace_field_order": 0,
+            "monitoring_type": 0,
+            "private_settings": {}
+        },
+        {
+            "prev_ver": 536870913,
+            "name": "windows Video Capture Device",
+            "uuid": "1bcd989c-9d39-4a4c-8822-cafe749e6a10",
+            "id": "dshow_input",
+            "versioned_id": "dshow_input",
+            "settings": {},
+            "mixers": 255,
+            "sync": 0,
+            "flags": 0,
+            "volume": 1.0,
+            "balance": 0.5,
+            "enabled": true,
+            "muted": false,
+            "push-to-mute": false,
+            "push-to-mute-delay": 0,
+            "push-to-talk": false,
+            "push-to-talk-delay": 0,
+            "hotkeys": {
+                "libobs.mute": [],
+                "libobs.unmute": [],
+                "libobs.push-to-mute": [],
+                "libobs.push-to-talk": []
             },
             "deinterlace_mode": 0,
             "deinterlace_field_order": 0,

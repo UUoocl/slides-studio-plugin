@@ -422,12 +422,16 @@ body[data-speaker-layout="teleprompter"] #current-slide,
   </div>
   
   <script src="lib/obs-ws.js"></script>
-  <script src="obs_webSocket_details/websocketDetails.js"></script>
+  <script src="../obs_webSocket_details/websocketDetails.js"></script>
   <script src="lib/obsWssConnectionManager.js"></script>
   <script src='lib/obsOpen.js'></script>
   <script id ="setupForm">
     window.addEventListener("load", (event) => {
       console.log("page is fully loaded");
+      //if the websocketDetails variable exists, update local storage
+      if(websocketDetails){
+        window.localStorage.setItem('wssDetails',JSON.stringify(websocketDetails))
+      }
       if (localStorage.getItem("wssDetails")) {
         const wssDetails = JSON.parse(window.localStorage.getItem('wssDetails'))
         document.getElementById("IP").value = wssDetails?.IP;

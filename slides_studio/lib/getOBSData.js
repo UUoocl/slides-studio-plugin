@@ -21,27 +21,33 @@ obsWss.on("Identified", async (data) => {
         
         //get Camera Position tag options
         let cameraSources = [];
-        cameraSources = await obsWss.call("GetSceneItemList", { sceneName: "Camera Position" });
-        //console.log(cameraSources)
-        cameraSources.sceneItems.forEach(async(source, index) => {
-            dropDownOptions.cameraPosition.push(source.sourceName)
-        });
+        try{
+            cameraSources = await obsWss.call("GetSceneItemList", { sceneName: "Camera Position" });
+            //console.log(cameraSources)
+            cameraSources.sceneItems.forEach(async(source, index) => {
+                dropDownOptions.cameraPosition.push(source.sourceName)
+            });
+        }catch{}
                 
         //get Slide Position tag options
         let slideSources = [];
-        slideSources = await obsWss.call("GetSceneItemList", { sceneName: "Slide Position" });
-        //console.log(cameraSources)
-        slideSources.sceneItems.forEach(async(source, index) => {
-            dropDownOptions.slidePosition.push(source.sourceName)
-        });
+        try{
+            slideSources = await obsWss.call("GetSceneItemList", { sceneName: "Slide Position" });
+            //console.log(cameraSources)
+            slideSources.sceneItems.forEach(async(source, index) => {
+                dropDownOptions.slidePosition.push(source.sourceName)
+            });
+        }catch{}
         
         //get Camera Shape tag options
         let shapeSources = [];
-        shapeSources = await obsWss.call("GetSceneItemList", { sceneName: "Camera Shape" });
-        console.log("shapreSources", shapeSources)
-        shapeSources.sceneItems.forEach(async(source, index) => {
-            dropDownOptions.cameraShape.push(source.sourceName)
-        });
+        try{
+            shapeSources = await obsWss.call("GetSceneItemList", { sceneName: "Camera Shape" });
+            console.log("shapreSources", shapeSources)
+            shapeSources.sceneItems.forEach(async(source, index) => {
+                dropDownOptions.cameraShape.push(source.sourceName)
+            });
+        }catch{}
         
         console.log("dropDownOptions", dropDownOptions)
         if(slidesArray.length > 0){
