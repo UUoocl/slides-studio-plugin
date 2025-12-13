@@ -60,9 +60,16 @@ export class slidesStudioView extends ItemView{
         .setDesc('Use the buttons below to insert tags into notes.  Tags will be inserted at the current cursor position')
         .addButton((button) =>{
             button.setButtonText("refresh view")
-            .onClick(() => {this.addTagButtons(tagsContainer)})
+            .onClick(async () => {
+                await this.addTagButtons(tagsContainer)
+            })
         })
+
+        const tagsContainer = container.createDiv('tags')
         
+        // Initial load (no await needed strictly for initial render, or you can await it)
+        this.addTagButtons(tagsContainer)        
+
         //add a data-id number for the selected slide
         new Setting(container).setName('Slide Id')
         .setHeading()
@@ -79,16 +86,42 @@ export class slidesStudioView extends ItemView{
             .setCta()
         })
 
-        const tagsContainer = container.createDiv('tags')
-        this.addTagButtons(tagsContainer)
     }
     
     async addTagButtons(container: any){
-        
-        this.app.commands.executeCommandById('slides-studio:get-obs-scene-tags')
-      
+        // ✅ 1. Show Loading State
+        container.empty();
+        container.createEl('div', { 
+            text: 'Fetching OBS Data...', 
+            attr: { style: 'padding: 10px; color: var(--text-muted); text-align: center;' } 
+        });
+
+        // ✅ 2. Call the plugin method directly and AWAIT it
+        const plugin = this.app.plugins.plugins['slides-studio'];
+        if(plugin && typeof plugin.getObsTags === 'function') {
+            await plugin.getObsTags();
+        } else {
+            // Fallback if method doesn't exist (e.g. plugin not ready)
+            console.warn("Slides Studio: getObsTags method not found on plugin instance.");
+        }
+
+        // ✅ 3. Clear loading text
         container.empty()
             
+        //load scenes
+        const scenes =  Array.from(new Set(this.app.plugins.plugins['slides-studio'].settings.scene_tags));
+        new Setting(container).setName("Scenes").setHeading()
+        scenes.forEach(scene => {
+            new Setting(container).setName(scene as string)
+            .addButton((item) =>{
+                item.setButtonText("Add")
+                .setCta()
+                .onClick(() => {
+                    this.insertTag(`data-scene="${scene}"`);
+                })
+            })
+        });
+
         //load Slide options
         const slides = Array.from(new Set(this.app.plugins.plugins['slides-studio'].settings.slide_tags));
         
@@ -131,49 +164,7 @@ export class slidesStudioView extends ItemView{
                 })
             })
         });
-        
-        //load scenes
-        const scenes =  Array.from(new Set(this.app.plugins.plugins['slides-studio'].settings.scene_tags));
-        new Setting(container).setName("Scenes").setHeading()
-        scenes.forEach(scene => {
-            new Setting(container).setName(scene as string)
-            .addButton((item) =>{
-                item.setButtonText("Add")
-                .setCta()
-                .onClick(() => {
-                    this.insertTag(`data-scene="${scene}"`);
-                })
-            })
-        });
-
-        // #region MIDI Devices
-        const midiDevices = this.app.plugins.plugins['slides-studio'].settings.midiDevices;
-        if (midiDevices && midiDevices.length > 0) {
-            new Setting(container).setName("MIDI Devices").setHeading()
-            .setDesc("Insert a MIDI tag template. Format: 'type:channel:note/cc:velocity/value'");
-
-            midiDevices.forEach((device: any) => {
-                new Setting(container)
-                .setName(device.name)
-                .addButton((item) => {
-                    item.setButtonText("Note On")
-                    .setCta()
-                    .onClick(() => {
-                        // Example format: DeviceName:noteon:Channel:Note:Velocity
-                        this.insertTag(`data-midi="${device.name}:noteon:1:60:127"`);
-                    });
-                })
-                .addButton((item) => {
-                    item.setButtonText("CC")
-                    .onClick(() => {
-                        // Example format: DeviceName:cc:Channel:Controller:Value
-                        this.insertTag(`data-midi="${device.name}:cc:1:0:127"`);
-                    });
-                });
-            });
-        }
-        // #endregion
-        
+                
         // #region User Created Tags
         const userTags = this.app.plugins.plugins['slides-studio'].settings.user_tags;
         const userTagsSet = new Set(userTags);

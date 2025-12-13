@@ -344,66 +344,66 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     deviceDiv.style.marginBottom = "10px";
                     deviceDiv.style.borderRadius = "5px";
 
-                    new Setting(deviceDiv)
-                        .setName(`MIDI Device ${index + 1}`)
-                        .setHeading();
+                new Setting(deviceDiv)
+                    .setName(`MIDI Device ${index + 1}`)
+                    .setHeading();
 
-                    new Setting(deviceDiv)
-                        .setName("Virtual Name")
-                        .setDesc("Alias used for OBS tags")
-                        .addText(text => text
-                            .setValue(device.name)
-                            .onChange(async (value) => {
-                                this.plugin.settings.midiDevices[index].name = value;
-                                await this.plugin.saveSettings();
-                            })
-                        )
-                        .addButton(btn => btn
-                            .setButtonText("Connect")
-                            .onClick(() => {
-                                this.plugin.midiManager.connectDevice(this.plugin.settings.midiDevices[index]);
-                            })
-                        );
+                new Setting(deviceDiv)
+                    .setName("Virtual Name")
+                    .setDesc("Alias used for OBS tags")
+                    .addText(text => text
+                        .setValue(device.name)
+                        .onChange(async (value) => {
+                            this.plugin.settings.midiDevices[index].name = value;
+                            await this.plugin.saveSettings();
+                        })
+                    )
+                    .addButton(btn => btn
+                        .setButtonText("Connect")
+                        .onClick(() => {
+                            this.plugin.midiManager.connectDevice(this.plugin.settings.midiDevices[index]);
+                        })
+                    );
 
-                    new Setting(deviceDiv)
-                        .setName("Input Device")
-                        .setDesc("Select the hardware source")
-                        .addDropdown(dropdown => {
-                            dropdown.addOption("", "Select Input");
-                            availableInputs.forEach(input => dropdown.addOption(input, input));
-                            dropdown.setValue(device.inputName);
-                            dropdown.onChange(async (value) => {
-                                this.plugin.settings.midiDevices[index].inputName = value;
-                                await this.plugin.saveSettings();
-                            });
+                new Setting(deviceDiv)
+                    .setName("Input Device")
+                    .setDesc("Select the hardware source")
+                    .addDropdown(dropdown => {
+                        dropdown.addOption("", "Select Input");
+                        availableInputs.forEach(input => dropdown.addOption(input, input));
+                        dropdown.setValue(device.inputName);
+                        dropdown.onChange(async (value) => {
+                            this.plugin.settings.midiDevices[index].inputName = value;
+                            await this.plugin.saveSettings();
                         });
+                    });
 
-                    new Setting(deviceDiv)
-                        .setName("Output Device")
-                        .setDesc("Select the hardware destination (for sending from OBS)")
-                        .addDropdown(dropdown => {
-                            dropdown.addOption("", "Select Output");
-                            availableOutputs.forEach(output => dropdown.addOption(output, output));
-                            dropdown.setValue(device.outputName);
-                            dropdown.onChange(async (value) => {
-                                this.plugin.settings.midiDevices[index].outputName = value;
-                                await this.plugin.saveSettings();
-                            });
+                new Setting(deviceDiv)
+                    .setName("Output Device")
+                    .setDesc("Select the hardware destination (for sending from OBS)")
+                    .addDropdown(dropdown => {
+                        dropdown.addOption("", "Select Output");
+                        availableOutputs.forEach(output => dropdown.addOption(output, output));
+                        dropdown.setValue(device.outputName);
+                        dropdown.onChange(async (value) => {
+                            this.plugin.settings.midiDevices[index].outputName = value;
+                            await this.plugin.saveSettings();
                         });
+                    });
 
-                    new Setting(deviceDiv)
-                        .addButton(btn => btn
-                            .setButtonText("Remove MIDI Device")
-                            .setWarning()
-                            .onClick(async () => {
-                                if(this.plugin.midiManager){
-                                    this.plugin.midiManager.disconnectDevice(device);
-                                }
-                                this.plugin.settings.midiDevices.splice(index, 1);
-                                await this.plugin.saveSettings();
-                                this.display();
-                            })
-                        );
+                new Setting(deviceDiv)
+                    .addButton(btn => btn
+                        .setButtonText("Remove MIDI Device")
+                        .setWarning()
+                        .onClick(async () => {
+                            if(this.plugin.midiManager){
+                                this.plugin.midiManager.disconnectDevice(device);
+                            }
+                            this.plugin.settings.midiDevices.splice(index, 1);
+                            await this.plugin.saveSettings();
+                            this.display();
+                        })
+                    );
                 });
 
                 new Setting(containerEl)
@@ -421,8 +421,8 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                             this.display();
                         })
                     );
+                }
             }
+            // #endregion
         }
-        // #endregion
     }
-}

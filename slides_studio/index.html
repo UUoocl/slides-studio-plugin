@@ -424,7 +424,8 @@ body[data-speaker-layout="teleprompter"] #current-slide,
   <script src="lib/obs-ws.js"></script>
   <script src="../obs_webSocket_details/websocketDetails.js"></script>
   <script src="lib/obsWssConnectionManager.js"></script>
-  <script src='lib/obsOpen.js'></script>
+  <script src="lib/getOBSData.js"></script>
+ 
   <script id ="setupForm">
     window.addEventListener("load", (event) => {
       console.log("page is fully loaded");
@@ -495,14 +496,19 @@ body[data-speaker-layout="teleprompter"] #current-slide,
         
         //create element
         //set slides url
+        if(!document.getElementById("location").value.startsWith("http")){
+          document.getElementById("location").value = `${window.location.origin}/${document.getElementById("location").value}`
+        }
+        
         slideDeckURL = new URL(document.getElementById("location").value)
+        console.log(slideDeckURL)
         if(slideDeckURL.origin === "https://slides.com"){
           slideDeck = `${document.getElementById("location").value}/fullscreen`
           loadScript('lib/getSlideData-slides_com.js')
         } else {
           slideDeck = `${document.getElementById("location").value}`
           loadScript("lib/getSlideData-localhost.js");
-          updateBrowserOrigin();
+          // updateBrowserOrigin();
         }
         
         //send slide url to OBS browser source
@@ -868,7 +874,8 @@ body[data-speaker-layout="teleprompter"] #current-slide,
 //#endregion
     
     </script>
-    <script src="lib/getOBSData.js"></script>
     <script src="lib/slideSync_SpeakerView_Browser.js"></script> 
+    <script src='lib/obsOpen.js'></script>
   </body>
 </html>
+

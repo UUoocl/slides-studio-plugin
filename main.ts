@@ -306,49 +306,14 @@ export default class slidesStudioPlugin extends Plugin {
 //	
 //	#region ✅ Get Scenes from OBS feature
 
+        // ✅ Extracted logic to public method so View can await it
 		this.addCommand({
 			id: 'get-obs-scene-tags',
 			name: 'Get OBS tags',
 			callback: async() => {
-			new Notice("Getting OBS Tags");
-			
-		//get Scene tag options
-			const sceneList = await this.obs.call("GetSceneList");
-			sceneList.scenes.forEach(async (scene: any, index) => {
-				if(scene.sceneName.startsWith("Scene")){
-					const sceneName = scene.sceneName;
-					if (!this.settings.scene_tags.includes(sceneName)) {
-						this.settings.scene_tags.push(sceneName);
-					}
-				}
-			});
-				
-		//get Camera Position tag options
-			const cameraSources = await this.obs.call("GetSceneItemList", { sceneName: "Camera Position" });
-			cameraSources.sceneItems.forEach(async(source: any, index) => {
-				if (!this.settings.camera_tags.includes(source.sourceName)) {
-					this.settings.camera_tags.push(source.sourceName)
-				}
-			});
-			
-		//get Slide Position tag options
-			const slideSources = await this.obs.call("GetSceneItemList", { sceneName: "Slide Position" });
-			slideSources.sceneItems.forEach(async(source: any, index) => {
-				if (!this.settings.slide_tags.includes(source.sourceName)) {
-					this.settings.slide_tags.push(source.sourceName)
-				}
-			});
-			
-			//get Camera Shape tag options
-			const shapeSources = await this.obs.call("GetSceneItemList", { sceneName: "Camera Shape" });
-			console.log("shapreSources", shapeSources)
-			shapeSources.sceneItems.forEach(async(source: any, index) => {
-				if (!this.settings.camera_shape_tags.includes(source.sourceName)) {
-					this.settings.camera_shape_tags.push(source.sourceName)
-				}
-			});
-		return
-		}})
+				await this.getObsTags();
+			}
+        })
 // #endregion
 
 //	
@@ -489,6 +454,68 @@ this.addCommand({
     })
 // #endregion
 }
+
+    // ✅ New Public Method for getting tags
+    async getObsTags() {
+        new Notice("Getting OBS Tags");
+
+        // Clear existing arrays
+        this.settings.scene_tags = [];
+        this.settings.camera_tags = [];
+        this.settings.camera_shape_tags = [];
+        this.settings.slide_tags = [];
+
+        await this.saveData(this.settings);
+        
+        try {
+            //get Scene tag options
+            const sceneList = await this.obs.call("GetSceneList");
+            sceneList.scenes.forEach((scene: any) => {
+                if(scene.sceneName.startsWith("Scene")){
+                    const sceneName = scene.sceneName;
+                    if (!this.settings.scene_tags.includes(sceneName)) {
+                        this.settings.scene_tags.push(sceneName);
+                    }
+                }
+            });
+            await this.saveData(this.settings);
+
+            //get Camera Position tag options
+            if(sceneList.scenes.find(scene => scene.sceneName === 'Camera Position')){
+                const cameraSources = await this.obs.call("GetSceneItemList", { sceneName: "Camera Position" });
+                cameraSources.sceneItems.forEach((source: any) => {
+                    if (!this.settings.camera_tags.includes(source.sourceName)) {
+                        this.settings.camera_tags.push(source.sourceName)
+                    }
+                });
+            }
+            
+            //get Slide Position tag options
+            if(sceneList.scenes.find(scene => scene.sceneName === 'Slide Position')){
+                const slideSources = await this.obs.call("GetSceneItemList", { sceneName: "Slide Position" });
+                slideSources.sceneItems.forEach((source: any) => {
+                    if (!this.settings.slide_tags.includes(source.sourceName)) {
+                        this.settings.slide_tags.push(source.sourceName)
+                    }
+                });
+            }
+
+            //get Camera Shape tag options
+            if(sceneList.scenes.find(scene => scene.sceneName === 'Camera Shape')){
+                const shapeSources = await this.obs.call("GetSceneItemList", { sceneName: "Camera Shape" });
+                shapeSources.sceneItems.forEach((source: any) => {
+                    if (!this.settings.camera_shape_tags.includes(source.sourceName)) {
+                        this.settings.camera_shape_tags.push(source.sourceName)
+                    }
+                });
+            }
+            // Save final state
+            await this.saveData(this.settings);
+        } catch (error) {
+            console.error("Error fetching OBS tags", error);
+            new Notice("Failed to fetch OBS Tags. Is OBS connected?");
+        }
+    }
 
 	// Helper Methods
 	async obsWSSconnect(wssDetails: wss) {

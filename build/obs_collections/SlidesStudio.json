@@ -3946,7 +3946,7 @@
                 "id_counter": 8,
                 "items": [
                     {
-                        "name": "slides local",
+                        "name": "slides",
                         "source_uuid": "6a461c7a-d68a-4ffa-a435-2762754aeb21",
                         "visible": true,
                         "locked": false,
@@ -4026,7 +4026,7 @@
         },
         {
             "prev_ver": 536870913,
-            "name": "slides local",
+            "name": "slides",
             "uuid": "6a461c7a-d68a-4ffa-a435-2762754aeb21",
             "id": "browser_source",
             "versioned_id": "browser_source",
