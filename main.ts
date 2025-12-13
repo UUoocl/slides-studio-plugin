@@ -82,7 +82,7 @@ export default class slidesStudioPlugin extends Plugin {
 	}
 
    async saveWebsocketDetailsToFile() {
-        // Get the directory of the current plugin (e.g., .obsidian/plugins/slides-studio)
+        // Get the directory of the current plugin (e.g., .obsidian/plugins/slides-studio) 
         const pluginDir = this.manifest.dir;
 		console.log(pluginDir)
         const folderName = "obs_webSocket_details";
@@ -332,7 +332,7 @@ export default class slidesStudioPlugin extends Plugin {
 		name: 'Copy the Slides Url for OBS to the clipboard ',
 		callback: async() => {
             const port = this.settings.serverPort;
-            const obsURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/slides_studio_OBS_browser_source.html`
+            const obsURL = `http://localhost:${port}/${this.manifest.dir}/slides_studio/slides_studio_OBS_browser_source.html`
             try {
                 await navigator.clipboard.writeText(obsURL);
                 new Notice('URL copied to clipboard successfully!');
@@ -347,7 +347,7 @@ export default class slidesStudioPlugin extends Plugin {
 		name: 'Set the Url for Slides Studio Receiver OBS Browser Sourceto the clipboard ',
 		callback: async() => {
             const port = this.settings.serverPort;
-            const obsURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/slides_studio_OBS_browser_source.html`
+            const obsURL = `http://localhost:${port}/${this.manifest.dir}/slides_studio/slides_studio_OBS_browser_source.html`
             try {
                 //set the browser settings
                 this.obs.call("SetInputSettings", {
@@ -587,7 +587,7 @@ async openWebView(){
 		leaf = workspace.getLeaf('tab');
 		const port = this.settings.serverPort;
 		console.log(port)
-		const url = `http://localhost:${port}/.obsidian/plugins/slides-studio/slides_studio/`
+		const url = `http://localhost:${port}/${this.manifest.dir}/slides_studio/`
 		console.log(url)
 		await leaf.setViewState({
 			type: 'webviewer',

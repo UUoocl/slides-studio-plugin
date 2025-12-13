@@ -26,7 +26,7 @@ export class ServerManager {
             return;
         }
 
-        const slidesFolder = path.join(basePath, '.obsidian/plugins/slides-studio/slides_studio');
+        const slidesFolder = path.join(basePath, `${this.app.plugins.plugins['slides-studio'].manifest.dir}/slides_studio`);
 
         this.server = fastify();
 

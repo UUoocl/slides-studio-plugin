@@ -163,7 +163,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
                 //path to obs collection json file
                 let collectionPath = this.app.vault.adapter.basePath;
-                collectionPath += `/.obsidian/plugins/slides-studio/obs_collections/SlidesStudio.json`;
+                collectionPath += `/${this.app.plugins.plugins['slides-studio'].manifest.dir}/obs_collections/SlidesStudio.json`;
                 collectionPath = Platform.isWin ? collectionPath.replace(/\//g, '\\') : collectionPath;
 
                 new Setting(containerEl)
