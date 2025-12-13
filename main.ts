@@ -58,7 +58,7 @@ const DEFAULT_SETTINGS: Partial<slidesStudioPluginSettings> = {
 	obsCollection_Text: "Untitled",
 	obsDebugPort_Text: "9222",
 	obsAppPath_Text: "",
-    serverPort: "3000",
+    serverPort: "7000",
     serverEnabled: false,
 	oscDevices: [],
 	midiDevices: []
@@ -136,7 +136,7 @@ export default class slidesStudioPlugin extends Plugin {
         // #region Server Initialization Logic
         // ✅ Use Internal Server if enabled
         if (this.settings.serverEnabled) {
-            const port = parseInt(this.settings.serverPort) || 3000;
+            const port = parseInt(this.settings.serverPort) || 7000;
             this.serverManager = new ServerManager(this.app, port);
             this.app.workspace.onLayoutReady(() => {
                 this.serverManager?.start();
