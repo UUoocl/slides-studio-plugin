@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
-    "outDir": "./build",
+    // "outDir": "./build",
+    "outDir": "./",
     "baseUrl": ".",
     "inlineSourceMap": true,
     "inlineSources": true,

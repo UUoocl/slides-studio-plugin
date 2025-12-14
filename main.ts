@@ -58,7 +58,7 @@ const DEFAULT_SETTINGS: Partial<slidesStudioPluginSettings> = {
 	obsCollection_Text: "Untitled",
 	obsDebugPort_Text: "9222",
 	obsAppPath_Text: "",
-    serverPort: "7000",
+    serverPort: "57000",
     serverEnabled: false,
 	oscDevices: [],
 	midiDevices: []
@@ -136,7 +136,7 @@ export default class slidesStudioPlugin extends Plugin {
         // #region Server Initialization Logic
         // ✅ Use Internal Server if enabled
         if (this.settings.serverEnabled) {
-            const port = parseInt(this.settings.serverPort) || 7000;
+            const port = parseInt(this.settings.serverPort) || 57000;
             this.serverManager = new ServerManager(this.app, port);
             this.app.workspace.onLayoutReady(() => {
                 this.serverManager?.start();
@@ -453,114 +453,137 @@ this.addCommand({
         }
     })
 // #endregion
+
+	// #region open slides studio visual editor in webview tab
+	this.addCommand({
+		id: 'open-visual-editor',
+		name: 'Open Visual Flow Editor',
+		callback: async () => {
+			const { workspace } = this.app;
+			const leaf = workspace.getLeaf('tab');
+			const port = this.settings.serverPort;
+			// Point to the new visual_editor.html
+			const url = `http://localhost:${port}/${this.manifest.dir}/slides_studio/visual_editor.html`;
+			
+			await leaf.setViewState({
+				type: 'webviewer', // Assuming you have a generic webviewer type or reuse SlideStudioWebview
+				state: {
+					url: url,
+					navigate: true,
+				},
+				active: true,
+			});
+		}
+	});
+	// #endregion
 }
 
-    // ✅ New Public Method for getting tags
-    async getObsTags() {
-        new Notice("Getting OBS Tags");
+// ✅ New Public Method for getting tags
+async getObsTags() {
+	new Notice("Getting OBS Tags");
 
-        // Clear existing arrays
-        this.settings.scene_tags = [];
-        this.settings.camera_tags = [];
-        this.settings.camera_shape_tags = [];
-        this.settings.slide_tags = [];
+	// Clear existing arrays
+	this.settings.scene_tags = [];
+	this.settings.camera_tags = [];
+	this.settings.camera_shape_tags = [];
+	this.settings.slide_tags = [];
 
-        await this.saveData(this.settings);
-        
-        try {
-            //get Scene tag options
-            const sceneList = await this.obs.call("GetSceneList");
-            sceneList.scenes.forEach((scene: any) => {
-                if(scene.sceneName.startsWith("Scene")){
-                    const sceneName = scene.sceneName;
-                    if (!this.settings.scene_tags.includes(sceneName)) {
-                        this.settings.scene_tags.push(sceneName);
-                    }
-                }
-            });
-            await this.saveData(this.settings);
-
-            //get Camera Position tag options
-            if(sceneList.scenes.find(scene => scene.sceneName === 'Camera Position')){
-                const cameraSources = await this.obs.call("GetSceneItemList", { sceneName: "Camera Position" });
-                cameraSources.sceneItems.forEach((source: any) => {
-                    if (!this.settings.camera_tags.includes(source.sourceName)) {
-                        this.settings.camera_tags.push(source.sourceName)
-                    }
-                });
-            }
-            
-            //get Slide Position tag options
-            if(sceneList.scenes.find(scene => scene.sceneName === 'Slide Position')){
-                const slideSources = await this.obs.call("GetSceneItemList", { sceneName: "Slide Position" });
-                slideSources.sceneItems.forEach((source: any) => {
-                    if (!this.settings.slide_tags.includes(source.sourceName)) {
-                        this.settings.slide_tags.push(source.sourceName)
-                    }
-                });
-            }
-
-            //get Camera Shape tag options
-            if(sceneList.scenes.find(scene => scene.sceneName === 'Camera Shape')){
-                const shapeSources = await this.obs.call("GetSceneItemList", { sceneName: "Camera Shape" });
-                shapeSources.sceneItems.forEach((source: any) => {
-                    if (!this.settings.camera_shape_tags.includes(source.sourceName)) {
-                        this.settings.camera_shape_tags.push(source.sourceName)
-                    }
-                });
-            }
-            // Save final state
-            await this.saveData(this.settings);
-        } catch (error) {
-            console.error("Error fetching OBS tags", error);
-            new Notice("Failed to fetch OBS Tags. Is OBS connected?");
-        }
-    }
-
-	// Helper Methods
-	async obsWSSconnect(wssDetails: wss) {
-		try {
-			await this.disconnect()
-			const { obsWebSocketVersion, negotiatedRpcVersion } = await this.obs.connect(
-				`ws://${wssDetails.IP}:${wssDetails.PORT}`,
-				wssDetails.PW,
-				{
-					rpcVersion: 1,
+	await this.saveData(this.settings);
+	
+	try {
+		//get Scene tag options
+		const sceneList = await this.obs.call("GetSceneList");
+		sceneList.scenes.forEach((scene: any) => {
+			if(scene.sceneName.startsWith("Scene")){
+				const sceneName = scene.sceneName;
+				if (!this.settings.scene_tags.includes(sceneName)) {
+					this.settings.scene_tags.push(sceneName);
 				}
-			)
-			console.log(`Connected to server ${obsWebSocketVersion} (using RPC ${negotiatedRpcVersion})`);
-			new Notice("Connected to OBS WebSocket Server");
-		} catch (error) {
-			new Notice("Failed to connect to OBS WebSocket Server")
-			console.error("Failed to connect", error.code, error.message);
-		}
-	}
-        
-	async disconnect () {
-		try{
-		await this.obs.disconnect()
-		this.isObsConnected = false; 
-		console.log("disconnected")
-		} catch(error){
-		console.error("disconnect catch",error)
-		} 
-	}
-
-	sendToOBS(msgParam: any, eventName: string) {
-		const webSocketMessage = JSON.stringify(msgParam.message);
-		console.log("sending to OBS", msgParam)
-		this.obs.call("CallVendorRequest", {
-			vendorName: "obs-browser",
-			requestType: "emit_event",
-			requestData: {
-				event_name: eventName,
-				event_data: { 
-					"deviceName": msgParam.deviceName,
-					webSocketMessage,
-				},
-			},
+			}
 		});
+		await this.saveData(this.settings);
+
+		//get Camera Position tag options
+		if(sceneList.scenes.find(scene => scene.sceneName === 'Camera Position')){
+			const cameraSources = await this.obs.call("GetSceneItemList", { sceneName: "Camera Position" });
+			cameraSources.sceneItems.forEach((source: any) => {
+				if (!this.settings.camera_tags.includes(source.sourceName)) {
+					this.settings.camera_tags.push(source.sourceName)
+				}
+			});
+		}
+		
+		//get Slide Position tag options
+		if(sceneList.scenes.find(scene => scene.sceneName === 'Slide Position')){
+			const slideSources = await this.obs.call("GetSceneItemList", { sceneName: "Slide Position" });
+			slideSources.sceneItems.forEach((source: any) => {
+				if (!this.settings.slide_tags.includes(source.sourceName)) {
+					this.settings.slide_tags.push(source.sourceName)
+				}
+			});
+		}
+
+		//get Camera Shape tag options
+		if(sceneList.scenes.find(scene => scene.sceneName === 'Camera Shape')){
+			const shapeSources = await this.obs.call("GetSceneItemList", { sceneName: "Camera Shape" });
+			shapeSources.sceneItems.forEach((source: any) => {
+				if (!this.settings.camera_shape_tags.includes(source.sourceName)) {
+					this.settings.camera_shape_tags.push(source.sourceName)
+				}
+			});
+		}
+		// Save final state
+		await this.saveData(this.settings);
+	} catch (error) {
+		console.error("Error fetching OBS tags", error);
+		new Notice("Failed to fetch OBS Tags. Is OBS connected?");
 	}
+}
+
+// Helper Methods
+async obsWSSconnect(wssDetails: wss) {
+	try {
+		await this.disconnect()
+		const { obsWebSocketVersion, negotiatedRpcVersion } = await this.obs.connect(
+			`ws://${wssDetails.IP}:${wssDetails.PORT}`,
+			wssDetails.PW,
+			{
+				rpcVersion: 1,
+			}
+		)
+		console.log(`Connected to server ${obsWebSocketVersion} (using RPC ${negotiatedRpcVersion})`);
+		new Notice("Connected to OBS WebSocket Server");
+	} catch (error) {
+		new Notice("Failed to connect to OBS WebSocket Server")
+		console.error("Failed to connect", error.code, error.message);
+	}
+}
+	
+async disconnect () {
+	try{
+	await this.obs.disconnect()
+	this.isObsConnected = false; 
+	console.log("disconnected")
+	} catch(error){
+	console.error("disconnect catch",error)
+	} 
+}
+
+sendToOBS(msgParam: any, eventName: string) {
+	const webSocketMessage = JSON.stringify(msgParam.message);
+	console.log("sending to OBS", msgParam)
+	this.obs.call("CallVendorRequest", {
+		vendorName: "obs-browser",
+		requestType: "emit_event",
+		requestData: {
+			event_name: eventName,
+			event_data: { 
+				"deviceName": msgParam.deviceName,
+				webSocketMessage,
+			},
+		},
+	});
+}
 
 async openView(){
 	const { workspace } = this.app;
@@ -576,6 +599,7 @@ async openView(){
     workspace.revealLeaf(leaf);
 }
 
+//open slides studio webpage in webview tab
 async openWebView(){
 	const { workspace } = this.app;
 	let leaf: WorkspaceLeaf | null = null;

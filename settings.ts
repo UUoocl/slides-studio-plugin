@@ -31,7 +31,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                     
                     if(value) {
-                            const port = parseInt(this.plugin.settings.serverPort) || 7000;
+                            const port = parseInt(this.plugin.settings.serverPort) || 57000;
                             if(!this.plugin.serverManager) {
                                 this.plugin.serverManager = new ServerManager(this.plugin.app, port);
                             }

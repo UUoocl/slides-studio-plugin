@@ -531,7 +531,7 @@
             "id": "browser_source",
             "versioned_id": "browser_source",
             "settings": {
-                "url": "http://localhost:7000/.obsidian/plugins/slides-studio/obs_Collections/camera_placeholder.html",
+                "url": "http://localhost:57000/.obsidian/plugins/slides-studio/obs_Collections/camera_placeholder.html",
                 "width": 1920,
                 "height": 1080,
                 "css": "body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; \n--slides-studio-refresh: 1;\n}"
@@ -2429,7 +2429,7 @@
             "id": "browser_source",
             "versioned_id": "browser_source",
             "settings": {
-                "url": "http://localhost:7000/.obsidian/plugins/slides-studio/cameraShapes/cameraShape_cssAnimation_Circle.html",
+                "url": "http://localhost:57000/.obsidian/plugins/slides-studio/cameraShapes/cameraShape_cssAnimation_Circle.html",
                 "width": 1920,
                 "height": 1080,
                 "css": "body { margin: 0px auto; overflow: hidden; \n--slides-studio-refresh: 1;\n}"
@@ -2464,7 +2464,7 @@
             "id": "browser_source",
             "versioned_id": "browser_source",
             "settings": {
-                "url": "http://localhost:7000/.obsidian/plugins/slides-studio/cameraShapes/cameraShape_cssAnimation_Square.html",
+                "url": "http://localhost:57000/.obsidian/plugins/slides-studio/cameraShapes/cameraShape_cssAnimation_Square.html",
                 "width": 1920,
                 "height": 1080,
                 "css": "body { margin: 0px auto; overflow: hidden; \n--slides-studio-refresh: 1;\n}"
@@ -2499,7 +2499,7 @@
             "id": "browser_source",
             "versioned_id": "browser_source",
             "settings": {
-                "url": "http://localhost:7000/.obsidian/plugins/slides_studio/cameraShapes/cameraShape_cssCircle.html",
+                "url": "http://localhost:57000/.obsidian/plugins/slides-studio/cameraShapes/cameraShape_cssCircle.html",
                 "width": 1920,
                 "height": 1080,
                 "css": "body { margin: 0px auto; overflow: hidden; \n--slides-studio-refresh: 1;\n}"
@@ -2534,7 +2534,7 @@
             "id": "browser_source",
             "versioned_id": "browser_source",
             "settings": {
-                "url": "http://localhost:7000/.obsidian/plugins/slides-studio/cameraShapes/cameraShape_cssSquare.html",
+                "url": "http://localhost:57000/.obsidian/plugins/slides-studio/cameraShapes/cameraShape_cssSquare.html",
                 "width": 1920,
                 "height": 1080,
                 "css": "body {  margin: 0px auto; overflow: hidden;\n--slides-studio-refresh: 1;\n }"
@@ -3789,7 +3789,7 @@
             "id": "browser_source",
             "versioned_id": "browser_source",
             "settings": {
-                "url": "http://localhost:7000/.obsidian/plugins/slides-studio/slides_studio/slides_studio_OBS_browser_source.html",
+                "url": "http://localhost:57000/.obsidian/plugins/slides-studio/slides_studio/slides_studio_OBS_browser_source.html",
                 "width": 1920,
                 "height": 1080,
                 "fps_custom": true,
