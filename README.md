@@ -7,7 +7,7 @@ Slides Studio is the perfect companion for presenting Reveal.js slides with [Obs
 - Synchronize slide changes and OBS scene changes
 - Add tags to slides that control OBS
 - Serve presentations from Obsidian or slides.com
-- Control slides with MIDI or Open Sound Control(OSC) 
+- Control slides with MIDI and Open Sound Control(OSC) 
 
 ## Manual Installation
 
