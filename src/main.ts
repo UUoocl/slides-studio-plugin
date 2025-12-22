@@ -20,7 +20,7 @@ import {
 import { ConnectObsCommand } from './commands/connectObs';
 import { OpenObsCommand } from './commands/openObs';
 import { GetObsTagsCommand } from './commands/getObsTags';
-import { OpenWebviewCommand, CopyObsLinkCommand } from './commands/webviewCommands';
+import { OpenWebviewCommand } from './commands/webviewCommands';
 import { SetObsReceiverCommand, UpdateBrowsersUrlCommand, RefreshObsBrowsersCommand } from './commands/obsBrowserCommands';
 import { ConnectOscCommand, ConnectMidiCommand } from './commands/deviceCommands';
 
@@ -107,7 +107,6 @@ export default class slidesStudioPlugin extends Plugin {
 		this.addCommand(OpenObsCommand(this));
 		this.addCommand(GetObsTagsCommand(this));
 		this.addCommand(OpenWebviewCommand(this));
-		this.addCommand(CopyObsLinkCommand(this));
 		this.addCommand(SetObsReceiverCommand(this));
 		this.addCommand(UpdateBrowsersUrlCommand(this));
 		this.addCommand(RefreshObsBrowsersCommand(this));
@@ -125,8 +124,12 @@ export default class slidesStudioPlugin extends Plugin {
 			});
 		}
 
-		this.oscManager = new OscManager((name, msg) => {
-			this.sendToOBS({ deviceName: name, message: msg }, "osc-message");
+		this.oscManager = new OscManager((name, msg: unknown[]) => {
+			const payload = {
+				deviceName: name,
+				message: msg // msg is now the [address, ...args] array
+			};
+			this.sendToOBS(payload, "osc-message");
 		});
 
 		this.midiManager = new MidiManager((name, msg) => {

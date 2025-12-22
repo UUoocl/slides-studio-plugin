@@ -10,22 +10,19 @@ interface ActiveOscConnection {
 export class OscManager {
     private activeOscDevices: Map<string, ActiveOscConnection> = new Map();
     
-    // FIX: Replaced 'any' with 'Message'
-    private onOscMessageReceived: (name: string, msg: Message) => void;
+    // Received messages from a Server are arrays: [address, ...args]
+    private onOscMessageReceived: (name: string, msg: unknown[]) => void;
 
-    // FIX: Replaced 'any' with 'Message'
-    constructor(onMessage: (name: string, msg: Message) => void) {
+    constructor(onMessage: (name: string, msg: unknown[]) => void) {
         this.onOscMessageReceived = onMessage;
     }
 
     public connectDevice(deviceSettings: OscDeviceSetting): void {
-        // Cleanup existing connection if it exists
         this.disconnectDevice(deviceSettings.name);
 
         new Notice(`Starting OSC: ${deviceSettings.name}`);
 
         try {
-            // FIX: Removed parseInt since ports are already numbers in types.ts
             const oscClient = new Client(deviceSettings.ip, deviceSettings.outPort);
             const oscServer = new Server(deviceSettings.inPort, '0.0.0.0');
 
@@ -33,8 +30,8 @@ export class OscManager {
                 new Notice(`OSC Server ${deviceSettings.name} is listening on ${deviceSettings.inPort}.`);
             });
 
-            // The 'msg' here is automatically typed as Message by node-osc
-            oscServer.on("message", (msg: Message) => {
+            // FIX: Incoming messages are arrays, not Message instances
+            oscServer.on("message", (msg: unknown[]) => {
                 if (this.onOscMessageReceived) {
                     this.onOscMessageReceived(deviceSettings.name, msg);
                 }
@@ -55,20 +52,22 @@ export class OscManager {
     public disconnectDevice(name: string): void {
         const active = this.activeOscDevices.get(name);
         if (active) {
+            // node-osc close methods are synchronous/void or handle their own callbacks
             void active.client.close(); 
-            void active.server.close();
+            void active.server.close(); 
             this.activeOscDevices.delete(name);
         }
     }
 
     public disconnectAll(): void {
         this.activeOscDevices.forEach((conn) => {
-            void conn.client.close();
-            void conn.server.close();
+            void conn.client.close(); 
+            void conn.server.close(); 
         });
         this.activeOscDevices.clear();
     }
 
+    // Outgoing messages use the Message class
     public sendMessage(deviceName: string, message: Message): void {
         const activeDevice = this.activeOscDevices.get(deviceName);
         if (activeDevice) {
