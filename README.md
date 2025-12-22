@@ -7,7 +7,7 @@ Slides Studio is the perfect companion for presenting Reveal.js slides with [Obs
 - Synchronize slide changes and OBS scene changes
 - Add tags to slides that control OBS
 - Serve presentations from Obsidian or slides.com
-- Control slides with MIDI and Open Sound Control(OSC) 
+- Control slides with MIDI or Open Sound Control(OSC) 
 
 ## Manual Installation
 
@@ -24,6 +24,11 @@ Slides Studio is the perfect companion for presenting Reveal.js slides with [Obs
 > [!NOTE]
 > The plugin folder is named `slides-studio` and contains the `.zip`-contents, `obs_collection` and `slides_studio`,
 > and the files `mainfest.json`, `main.js`, and `style.css`.
+
+## Documentation
+
+Usage documentation can be found here. 
+[Slides Studio Documentation](https://uuoocl.github.io/03-tutorials/slidesstudio-obsidian/)
 
 ## Acknowledgements
 
