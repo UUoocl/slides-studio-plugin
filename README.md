@@ -1,6 +1,6 @@
 # Slides Studio (for Obsidian)
 
-Slides Studio is the perfect companion for presenting Reveal.js slides from [Obsidian](https://obsidian.md) to (Open Broadcast Studio)[https://obsproject.com/]
+Slides Studio is the perfect companion for presenting Reveal.js slides from [Obsidian](https://obsidian.md) to [Open Broadcast Studio](https://obsproject.com/)
 
 ## Features
 
@@ -27,7 +27,7 @@ Slides Studio is the perfect companion for presenting Reveal.js slides from [Obs
 
 ## Acknowledgements
 
-This plugin is inspired the plugin (Slides Extended)[https://github.com/ebullient/obsidian-slides-extended]. Use **Slides Extended** to create slides and **Slides Studio** to presenting. 
+This plugin is inspired the plugin [Slides Extended](https://github.com/ebullient/obsidian-slides-extended). Use **Slides Extended** to create slides and **Slides Studio** to presenting. 
 
 ---
 
