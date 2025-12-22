@@ -43,7 +43,7 @@ export class slidesStudioView extends ItemView {
         }
     }
 
-    async onOpen() {
+    onOpen(): Promise<void> {
         const container = this.contentEl;
 
         // FIX: Use setCssProps instead of direct style assignment
@@ -98,6 +98,7 @@ export class slidesStudioView extends ItemView {
                     })
                     .setCta();
             });
+        return Promise.resolve();
     }
     
     async addTagButtons(container: HTMLElement) {

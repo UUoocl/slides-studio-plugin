@@ -8,7 +8,7 @@ const execAsync = promisify(exec);
 export const OpenObsCommand = (plugin: slidesStudioPlugin): Command => ({
     id: 'open-obs',
     name: 'Open OBS',
-    callback: async () => {
+    callback: () => {
         new Notice("Trying to launch obs");
         let commandString = "";
         const settings = plugin.settings;

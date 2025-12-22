@@ -4,12 +4,13 @@ import fastifyStatic from '@fastify/static';
 import fastifyCors from '@fastify/cors';
 import path from 'path';
 import fs from 'fs';
-import type slidesStudioPlugin from '../main';
+
+import type slidesStudioPlugin from '../main'; 
 import { SaveFileBody, FileListQuery, GetFileQuery } from '../types';
 
 export class ServerManager {
     private app: App;
-    private plugin: slidesStudioPlugin; // Store reference to plugin
+    private plugin: slidesStudioPlugin;
     private server: FastifyInstance | null = null;
     private port: number;
     private isRunning = false;
@@ -23,15 +24,15 @@ export class ServerManager {
     public async start(): Promise<void> {
         if (this.isRunning) return;
 
+        const adapter = this.app.vault.adapter;
         let basePath: string;
-        if (this.app.vault.adapter instanceof FileSystemAdapter) {
-            basePath = this.app.vault.adapter.getBasePath();
+        if (adapter instanceof FileSystemAdapter) {
+            basePath = adapter.getBasePath();
         } else {
-            new Notice("Fastify server cannot determine file system path.");
+            new Notice("Fastify Server: Cannot determine file system path.");
             return;
         }
 
-        // FIX: No longer uses untyped app.plugins.plugins lookup
         const pluginManifest = this.plugin.manifest;
         const slidesFolder = path.join(basePath, `${pluginManifest.dir}/slides_studio`);
         const libFolder = path.join(basePath, `${pluginManifest.dir}/lib`);
@@ -46,7 +47,8 @@ export class ServerManager {
         });
 
         // --- API: Get OBS Credentials ---
-        this.server.get('/api/obswss', async () => {
+        // ✅ Removed async keyword as no await is used inside
+        this.server.get('/api/obswss', (_request, _reply) => {
             const settings = this.plugin.settings;
             return {
                 IP: settings.websocketIP_Text || "localhost",
@@ -74,12 +76,12 @@ export class ServerManager {
                 try {
                     fs.mkdirSync(targetDir, { recursive: true });
                 } catch(e) {
-                    console.error(e)
                     return reply.code(500).send({ error: "Failed to create directory" });
                 }
             }
             
             try {
+                // Using synchronous write here for safety within the async route
                 fs.writeFileSync(fullPath, JSON.stringify(data, null, 2));
                 return { success: true, path: fullPath };
             } catch (err) {
@@ -89,15 +91,17 @@ export class ServerManager {
         });
 
         // --- API: Generic File List ---
-        this.server.get<{ Querystring: FileListQuery }>('/api/file/list', async (request, reply) => {
+        // ✅ Removed async keyword as no await is used inside
+        this.server.get<{ Querystring: FileListQuery }>('/api/file/list', (request, reply) => {
             const { folder } = request.query;
             const targetDir = path.join(basePath, folder);
 
             if (!targetDir.startsWith(basePath)) return reply.code(403).send({ error: "Access denied" });
-            if (!fs.existsSync(targetDir)) return [];
+            if (!fs.existsSync(targetDir)) return reply.send([]);
 
             try {
-                return fs.readdirSync(targetDir).filter(f => f.endsWith('.json'));
+                const files = fs.readdirSync(targetDir).filter(f => f.endsWith('.json'));
+                return reply.send(files);
             } catch (err) {
                 const msg = err instanceof Error ? err.message : String(err);
                 return reply.code(500).send({ error: msg });
@@ -105,7 +109,8 @@ export class ServerManager {
         });
 
         // --- API: Generic File Get ---
-        this.server.get<{ Querystring: GetFileQuery }>('/api/file/get', async (request, reply) => {
+        // ✅ Removed async keyword as no await is used inside
+        this.server.get<{ Querystring: GetFileQuery }>('/api/file/get', (request, reply) => {
             const { folder, filename } = request.query;
             const targetDir = path.join(basePath, folder);
             const fullPath = path.join(targetDir, filename);
@@ -115,7 +120,7 @@ export class ServerManager {
 
             try {
                 const content = fs.readFileSync(fullPath, 'utf-8');
-                return JSON.parse(content);
+                return reply.send(JSON.parse(content));
             } catch(err) {
                 const msg = err instanceof Error ? err.message : String(err);
                 return reply.code(500).send({ error: msg });
