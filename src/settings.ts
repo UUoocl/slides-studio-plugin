@@ -1,7 +1,6 @@
-import slidesStudioPlugin from "main";
-import { OscDeviceSetting } from "oscLogic"; 
+import slidesStudioPlugin from "src/main";
 import { App, Platform, PluginSettingTab, Setting, Notice } from "obsidian";
-import { ServerManager } from 'serverLogic';
+import { ServerManager } from 'src/utils/serverLogic';
 
 export class slidesStudioSettingsTab extends PluginSettingTab {
     plugin: slidesStudioPlugin;
@@ -17,13 +16,13 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
         // #region Server Settings
         new Setting(containerEl)
-            .setName("Slides Studio Server")
+            .setName("Plugin server")
             .setHeading();
 
         // ✅ Display Controls always
         new Setting(containerEl)
-            .setName("Enable Internal Server")
-            .setDesc("Start a local Fastify server to host the studio view.")
+            .setName("Enable plugin server")
+            .setDesc("Start the plugin server to host the studio view.")
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.serverEnabled)
                 .onChange(async (value) => {
@@ -35,10 +34,10 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                             if(!this.plugin.serverManager) {
                                 this.plugin.serverManager = new ServerManager(this.plugin.app, port);
                             }
-                            this.plugin.serverManager.start();
+                            void this.plugin.serverManager.start();
                     } else {
                         if(this.plugin.serverManager) {
-                            this.plugin.serverManager.stop();
+                            void this.plugin.serverManager.stop();
                             this.plugin.serverManager = null;
                         }
                     }
@@ -49,8 +48,8 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
         if (this.plugin.settings.serverEnabled) {
             new Setting(containerEl)
-                .setName("Server Port")
-                .setDesc("Port for the local Fastify server serving 'slideStudioView.html'")
+                .setName("Server port")
+                .setDesc("Port for the plugin server ")
                 .addText((text) => {
                     text.setValue(this.plugin.settings.serverPort)
                     .onChange(async (value) => {
@@ -59,11 +58,11 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     });
                 })
                 .addButton(btn => btn
-                    .setButtonText("Restart Server")
+                    .setButtonText("Restart server")
                     .onClick(() => {
                         const port = parseInt(this.plugin.settings.serverPort);
                         if (this.plugin.serverManager) {
-                            this.plugin.serverManager.restart(port);
+                            void this.plugin.serverManager.restart(port);
                         }
                     })
                 );
@@ -72,38 +71,38 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
         // #region OBS WSS Settings
         new Setting(containerEl)
-        .setName("OBS WebSocket Server")
+        .setName("Obs websocket server")
         .setHeading()
         
         new Setting(containerEl)
-        .setName("OBS WebSocket Server IP")
-        .setDesc("Enter the IP address or 'localhost'")
+        .setName("Obs websocket server IP")
+        .setDesc("Enter 'localhost'")
         .addText((item) => {
             item.setValue(this.plugin.settings.websocketIP_Text).onChange(
                 (value) => {
                     this.plugin.settings.websocketIP_Text = value;
-                    this.plugin.saveSettings()
+                    void this.plugin.saveSettings()
                 })
             });
             
         new Setting(containerEl)
-        .setName("OBS WebSocket Server Port")
+        .setName("Obs websocket server port")
         .addText((item) => {
             item.setValue(this.plugin.settings.websocketPort_Text).onChange(
                 (value) => {
                     this.plugin.settings.websocketPort_Text = value;
-                    this.plugin.saveSettings()
+                    void this.plugin.saveSettings()
                 })
             });
             
             new Setting(containerEl)
-            .setName("OBS WebSocket Server Password")
+            .setName("Obs websocket server password")
             .addText((item) => {
                 item.inputEl.type = 'password';
                 item.setValue(this.plugin.settings.websocketPW_Text).onChange(
                     (value) => {
                         this.plugin.settings.websocketPW_Text = value;
-                        this.plugin.saveSettings()
+                        void this.plugin.saveSettings()
                     })
                 }); 
         // #endregion
@@ -111,19 +110,19 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
         // #region OBS Launch Parameters
         
         new Setting(containerEl)
-                .setName("OBS Launch Parameters")
+                .setName("Obs launch parameters")
                 .setHeading()
-                .setDesc("Open OBS with these options.")
+                .setDesc("Open obs with these options.")
                 
                 if(Platform.isMacOS){
                     new Setting(containerEl)
                     .setName("Name")
-                    .setDesc("Enter 'OBS' or a custom name")
+                    .setDesc("Enter 'obs' or a custom name")
                     .addText((item) => {
                         item.setValue(this.plugin.settings.obsAppName_Text).onChange(
                             (value) => {
                                 this.plugin.settings.obsAppName_Text = value;
-                                this.plugin.saveSettings()
+                                void this.plugin.saveSettings()
                             })
                         });
                     }
@@ -136,17 +135,17 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         item.setValue(this.plugin.settings.obsAppName_Text).onChange(
                             (value) => {
                                 this.plugin.settings.obsAppName_Text = value;
-                                this.plugin.saveSettings()
+                                void this.plugin.saveSettings()
                             })
                         });
         
                     new Setting(containerEl)
-                    .setName("Path to OBS app")
+                    .setName("Path to obs app")
                     .addText((item) => {
                         item.setValue(this.plugin.settings.obsAppPath_Text).onChange(
                             (value) => {
                                 this.plugin.settings.obsAppPath_Text = value;
-                                this.plugin.saveSettings()
+                                void this.plugin.saveSettings()
                             })
                         });
                     }
@@ -157,36 +156,36 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     item.setValue(this.plugin.settings.obsCollection_Text).onChange(
                         (value) => {
                             this.plugin.settings.obsCollection_Text = value;
-                            this.plugin.saveSettings()
+                            void this.plugin.saveSettings()
                     })
                 });
 
                 //path to obs collection json file
                 let collectionPath = this.app.vault.adapter.basePath;
-                collectionPath += `/${this.app.plugins.plugins['slides-studio'].manifest.dir}/obs_collections/SlidesStudio.json`;
+                collectionPath += `/${this.plugin.manifest.dir}/obs_collections/SlidesStudio.json`;
                 collectionPath = Platform.isWin ? collectionPath.replace(/\//g, '\\') : collectionPath;
 
                 new Setting(containerEl)
-                .setName("Slide Studio Collection")
-                .setDesc("Copy the path to the Slide Studio Collection, and Import the collection in OBS")
+                .setName("Obs collection")
+                .setDesc("Copy the path to the slide studio collection, and import the collection in obs")
                 .addText((item) => {
                     item.setValue(collectionPath)
                     .setDisabled(true)
                 });
         
                 new Setting(containerEl)
-                .setName("OBS Browser Source Debug Port")
-                .setDesc("Enter a Port for the Remote Debugger, or leave blank to skip this option")
+                .setName("Obs browser source debug port")
+                .setDesc("Enter a port for the remote debugger, or leave blank to skip this option")
                 .addText((item) => {
                     item.setValue(this.plugin.settings.obsDebugPort_Text).onChange(
                         (value) => {
                             this.plugin.settings.obsDebugPort_Text = value;
-                            this.plugin.saveSettings()
+                            void this.plugin.saveSettings()
                         })
                     });
                     
                 new Setting(containerEl)
-                .setName("Open OBS")
+                .setName("Open obs")
                 .addButton((button) => {
                     button.setButtonText("Launch")
                     .onClick(() => { 
@@ -195,7 +194,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                 })
 
                 new Setting(containerEl)
-                .setName("Connect to OBS WebSocket Server")
+                .setName("Connect to obs websocket server")
                 .addButton((button) => {
                     const isConnected = this.plugin.isObsConnected;
                     
@@ -207,9 +206,9 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
                     if(isConnected) {
                         button.setCta();
-                        button.buttonEl.style.backgroundColor = "green";
-                        button.buttonEl.style.borderColor = "green";
-                        button.buttonEl.style.color = "white";
+                        button.buttonEl.setCssProps({'background-color': 'green'})
+                        button.buttonEl.setCssProps({'border-color': 'green'})
+                        button.buttonEl.setCssProps({'color': 'white'})
                     }
                 })
         // #endregion    
@@ -218,24 +217,27 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
         
         
         if (this.plugin.isObsConnected) {
-            
-            containerEl.createEl("h2", { text: "OSC Devices" });
-            containerEl.createEl("p", { text: "Add as many OSC devices as needed." });
+            new Setting(containerEl)
+                .setName("Osc devices")
+                .setHeading()
+
+            containerEl.createEl("p", { text: "Add as many osc devices as needed." });
+
 
             this.plugin.settings.oscDevices.forEach((device, index) => {
                 const deviceDiv = containerEl.createDiv();
-                deviceDiv.style.border = "1px solid var(--background-modifier-border)";
-                deviceDiv.style.padding = "10px";
-                deviceDiv.style.marginBottom = "10px";
-                deviceDiv.style.borderRadius = "5px";
+                deviceDiv.setCssProps({'border' : '1px solid var(--background-modifier-border)'});
+                deviceDiv.setCssProps({'padding' : '10px'});
+                deviceDiv.setCssProps({'marginBottom' : '10px'});
+                deviceDiv.setCssProps({'border-radius' : '5px'});
 
                 new Setting(deviceDiv)
                     .setName(`Device ${index + 1}`)
                     .setHeading();
 
                 new Setting(deviceDiv)
-                    .setName("OSC Device Name")
-                    .setDesc("Unique device name (used in OBS tags)")
+                    .setName("Osc device name")
+                    .setDesc("Unique device name (used in obs tags)")
                     .addText(text => text
                         .setValue(device.name)
                         .onChange(async (value) => {
@@ -244,7 +246,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         })
                     )
                     .addButton(btn => btn
-                        .setButtonText("Connect This Device")
+                        .setButtonText("Connect this device")
                         .onClick(() => {
                             if(this.plugin.oscManager){
                                 this.plugin.oscManager.connectDevice(this.plugin.settings.oscDevices[index]);
@@ -255,7 +257,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     );
 
                 new Setting(deviceDiv)
-                    .setName("OSC IP address")
+                    .setName("Osc IP address")
                     .setDesc("Enter the IP address or 'localhost'")
                     .addText(text => text
                         .setValue(device.ip)
@@ -266,7 +268,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     );
 
                 new Setting(deviceDiv)
-                    .setName("OSC Incoming Message Port")
+                    .setName("Osc incoming message port")
                     .addText(text => text
                         .setValue(device.inPort)
                         .onChange(async (value) => {
@@ -276,7 +278,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     );
 
                 new Setting(deviceDiv)
-                    .setName("OSC Outgoing Message Port")
+                    .setName("Osc outgoing message port")
                     .addText(text => text
                         .setValue(device.outPort)
                         .onChange(async (value) => {
@@ -287,7 +289,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
                 new Setting(deviceDiv)
                     .addButton(btn => btn
-                        .setButtonText("Remove Device")
+                        .setButtonText("Remove device")
                         .setWarning()
                         .onClick(async () => {
                             if(this.plugin.oscManager){
@@ -301,9 +303,9 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
             });
 
             new Setting(containerEl)
-                .setName("Add New OSC Device")
+                .setName("Add new osc device")
                 .addButton(btn => btn
-                    .setButtonText("Add Device")
+                    .setButtonText("Add device")
                     .setCta()
                     .onClick(async () => {
                         this.plugin.settings.oscDevices.push({
@@ -319,10 +321,10 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
         } else {
             const msgDiv = containerEl.createDiv();
-            msgDiv.style.padding = "20px";
-            msgDiv.style.border = "1px dashed var(--text-muted)";
-            msgDiv.style.textAlign = "center";
-            msgDiv.style.color = "var(--text-muted)";
+            msgDiv.setCssProps({'padding': '20px'});
+            msgDiv.setCssProps({'border': '1px dashed var(--text-muted)'});
+            msgDiv.setCssProps({'text-Align': 'center'});
+            msgDiv.setCssProps({'color': 'var(--text-muted)'});
             msgDiv.createSpan({ text: "Please connect to the OBS WebSocket Server (above) to configure OSC/MIDI devices." });
         }
         // #endregion end OSC Settings
@@ -330,8 +332,11 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
         // #region MIDI Settings
         
         if (this.plugin.isObsConnected) {
-            containerEl.createEl("h2", { text: "MIDI Devices" });
-            containerEl.createEl("p", { text: "Add MIDI inputs and outputs." });
+            new Setting(containerEl)
+                .setName("Midi devices")
+                .setHeading();
+            
+            containerEl.createEl("p", { text: "Add midi inputs and outputs." });
 
             if (this.plugin.midiManager) {
                 const availableInputs = this.plugin.midiManager.getInputs();
@@ -339,18 +344,18 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
                 this.plugin.settings.midiDevices.forEach((device, index) => {
                     const deviceDiv = containerEl.createDiv();
-                    deviceDiv.style.border = "1px solid var(--background-modifier-border)";
-                    deviceDiv.style.padding = "10px";
-                    deviceDiv.style.marginBottom = "10px";
-                    deviceDiv.style.borderRadius = "5px";
+                    deviceDiv.setCssProps({'border': '1px solid var(--background-modifier-border)'})
+                    deviceDiv.setCssProps({'padding': '10px'})
+                    deviceDiv.setCssProps({'margin-button': '10px'})
+                    deviceDiv.setCssProps({'border-radius': '5px'})
 
                 new Setting(deviceDiv)
                     .setName(`MIDI Device ${index + 1}`)
                     .setHeading();
 
                 new Setting(deviceDiv)
-                    .setName("Virtual Name")
-                    .setDesc("Alias used for OBS tags")
+                    .setName("Device name")
+                    .setDesc("Alias used for obs tags")
                     .addText(text => text
                         .setValue(device.name)
                         .onChange(async (value) => {
@@ -366,11 +371,11 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     );
 
                 new Setting(deviceDiv)
-                    .setName("Input Device")
-                    .setDesc("Select the hardware source")
+                    .setName("Input device")
+                    .setDesc("Device -> plugin")
                     .addDropdown(dropdown => {
-                        dropdown.addOption("", "Select Input");
-                        availableInputs.forEach(input => dropdown.addOption(input, input));
+                        dropdown.addOption("", "Select input");
+                        availableInputs.forEach(input => void dropdown.addOption(input, input));
                         dropdown.setValue(device.inputName);
                         dropdown.onChange(async (value) => {
                             this.plugin.settings.midiDevices[index].inputName = value;
@@ -379,11 +384,11 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     });
 
                 new Setting(deviceDiv)
-                    .setName("Output Device")
-                    .setDesc("Select the hardware destination (for sending from OBS)")
+                    .setName("Output device")
+                    .setDesc("Plugin -> device ")
                     .addDropdown(dropdown => {
-                        dropdown.addOption("", "Select Output");
-                        availableOutputs.forEach(output => dropdown.addOption(output, output));
+                        dropdown.addOption("", "Select output");
+                        availableOutputs.forEach(output => void dropdown.addOption(output, output));
                         dropdown.setValue(device.outputName);
                         dropdown.onChange(async (value) => {
                             this.plugin.settings.midiDevices[index].outputName = value;
@@ -393,7 +398,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
                 new Setting(deviceDiv)
                     .addButton(btn => btn
-                        .setButtonText("Remove MIDI Device")
+                        .setButtonText("Remove midi device")
                         .setWarning()
                         .onClick(async () => {
                             if(this.plugin.midiManager){
@@ -407,9 +412,9 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                 });
 
                 new Setting(containerEl)
-                    .setName("Add New MIDI Device")
+                    .setName("Add new midi device")
                     .addButton(btn => btn
-                        .setButtonText("Add Device")
+                        .setButtonText("Add device")
                         .setCta()
                         .onClick(async () => {
                             this.plugin.settings.midiDevices.push({

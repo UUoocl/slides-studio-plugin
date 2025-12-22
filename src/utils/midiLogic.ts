@@ -1,18 +1,19 @@
 import { WebMidi, Input, Output, MessageEvent } from "webmidi";
 import { Notice } from "obsidian";
+import { MidiDeviceSetting, MidiPayload } from "../types"; // Import from types
 
-export interface MidiDeviceSetting {
-    name: string;      // User defined alias (e.g. "My Keyboard")
-    inputName: string; // System Input Name (e.g. "Keystation 49")
-    outputName: string;// System Output Name
+interface WebMidiMessageInternal {
+    note?: { number: number };
+    velocity?: number;
+    value?: number;
+    controller?: { number: number };
 }
 
 export class MidiManager {
-    private isEnabled: boolean = false;
-    // Callback to send data back to main plugin (which sends to OBS)
-    private onMidiMessageReceived: (deviceName: string, msg: any) => void;
+    private isEnabled = false;
+    private onMidiMessageReceived: (deviceName: string, msg: MidiPayload) => void;
 
-    constructor(onMessage: (deviceName: string, msg: any) => void) {
+    constructor(onMessage: (deviceName: string, msg: MidiPayload) => void) {
         this.onMidiMessageReceived = onMessage;
     }
 
@@ -22,11 +23,10 @@ export class MidiManager {
         try {
             await WebMidi.enable();
             this.isEnabled = true;
-            console.log("WebMidi enabled!");
-            new Notice("MIDI System Enabled");
+            new Notice("Web midi enabled");
         } catch (err) {
-            console.error("WebMidi could not be enabled", err);
-            new Notice("Failed to enable MIDI system");
+            console.error("Web midi could not be enabled", err);
+            new Notice("Failed to enable web midi");
         }
     }
 
@@ -40,38 +40,32 @@ export class MidiManager {
         return WebMidi.outputs.map(o => o.name);
     }
 
-    public connectDevice(setting: MidiDeviceSetting) {
+    public connectDevice(setting: MidiDeviceSetting): void {
         if (!this.isEnabled) {
-            new Notice("MIDI not enabled. Cannot connect.");
+            new Notice("Midi not enabled. Cannot connect.");
             return;
         }
 
-        // 1. Connect Input
         const input: Input = WebMidi.getInputByName(setting.inputName);
         if (input) {
-            // Remove existing listeners to avoid duplicates if re-connecting
             input.removeListener("midimessage");
-            
-            console.log(`Connected to MIDI Input: ${setting.inputName}`);
             new Notice(`Listening to MIDI: ${setting.name}`);
 
-            // Listen to all MIDI messages
             input.addListener("midimessage", (e: MessageEvent) => {
-                // Simplify the object for OBS
-                const payload = {
+                // Cast to our internal interface to avoid 'any'
+                const msg = e.message as unknown as WebMidiMessageInternal;
+                
+                const payload: MidiPayload = {
                     type: e.message.type,
-                    // @ts-ignore - dataBytes exists on message
-                    data: e.message.dataBytes, 
+                    data: Array.from(e.message.data), 
                     channel: e.message.channel,
                     command: e.message.command,
-                    // specific helpers depending on type
-                    note: (e.message as any).note ? (e.message as any).note.number : null,
-                    velocity: (e.message as any).velocity,
-                    value: (e.message as any).value, // For CC
-                    controller: (e.message as any).controller ? (e.message as any).controller.number : null // For CC
+                    note: msg.note ? msg.note.number : null,
+                    velocity: msg.velocity,
+                    value: msg.value,
+                    controller: msg.controller ? msg.controller.number : null
                 };
 
-                // Send to main -> OBS
                 if (this.onMidiMessageReceived) {
                     this.onMidiMessageReceived(setting.name, payload);
                 }
@@ -81,24 +75,22 @@ export class MidiManager {
         }
     }
 
-    public disconnectDevice(setting: MidiDeviceSetting) {
+    public disconnectDevice(setting: MidiDeviceSetting): void {
         if (!this.isEnabled) return;
         const input = WebMidi.getInputByName(setting.inputName);
         if (input) {
             input.removeListener("midimessage");
-            console.log(`Disconnected MIDI Input: ${setting.inputName}`);
+            console.warn(`Disconnected MIDI Input: ${setting.inputName}`);
         }
     }
 
-    public disconnectAll(devices: MidiDeviceSetting[]) {
+    public disconnectAll(devices: MidiDeviceSetting[]): void {
         devices.forEach(d => this.disconnectDevice(d));
     }
 
-    // Handle outgoing messages from OBS -> MIDI Device
-    public sendMidiMessage(deviceName: string, deviceList: MidiDeviceSetting[], messageData: any) {
+    public sendMidiMessage(deviceName: string, deviceList: MidiDeviceSetting[], messageData: MidiPayload): void {
         if (!this.isEnabled) return;
 
-        // Find the settings for the target alias
         const deviceSetting = deviceList.find(d => d.name === deviceName);
         if (!deviceSetting) {
             console.warn(`MIDI Device alias '${deviceName}' not found in settings.`);
@@ -111,22 +103,26 @@ export class MidiManager {
             return;
         }
 
-        // Basic parsing of the request from OBS
-        // Expected format from OBS arg1: "noteon", "controlchange", etc.
         const type = messageData.type || "noteon";
         const channel = messageData.channel || 1;
         
         try {
             switch (type.toLowerCase()) {
                 case "noteon":
-                    output.playNote(messageData.note, { channels: channel, attack: messageData.velocity || 0.75 });
+                    if (messageData.note !== undefined && messageData.note !== null) {
+                        output.playNote(messageData.note, { channels: channel, attack: messageData.velocity || 0.75 });
+                    }
                     break;
                 case "noteoff":
-                    output.stopNote(messageData.note, { channels: channel });
+                    if (messageData.note !== undefined && messageData.note !== null) {
+                        output.stopNote(messageData.note, { channels: channel });
+                    }
                     break;
                 case "controlchange":
                 case "cc":
-                    output.sendControlChange(messageData.controller, messageData.value, { channels: channel });
+                    if (messageData.controller !== undefined && messageData.controller !== null && messageData.value !== undefined) {
+                        output.sendControlChange(messageData.controller, messageData.value, { channels: channel });
+                    }
                     break;
                 default:
                     console.warn("Unknown MIDI message type requested:", type);
