@@ -1,33 +1,53 @@
 //Establish Connection for OBS browser sources to the OBS Web Socket Server(WSS).
+//ways to get the OBS websocket credentials
 //1. Check if the URL query parameters includes WSS details
 //2. Check if the browser local storage includes WSS details
 //3. listen for a WSS details event message
 //4. listen for a button press to start
 //5. Check if a websocket details js variable has been defined
 //6. Check if css variables are defined
+//7. fetch from an api endpoint
 
 let obsWss = new OBSWebSocket();
 
 window.addEventListener('DOMContentLoaded', async function() {
   //obs css added after page load
   setTimeout(async () => {
-          
-  obsWss.connected = false;
-      console.log("obsWssConnectionManager.js loaded");
-  //get URL parameters
-  const params = new URLSearchParams(window.location.search);
-  //get local storage
-  const localStorageWssDetails = localStorage.getItem('wssDetails');
-  // console.log("varWebsocketDetails",typeof varWebsocketDetails,varWebsocketDetails);
-  let cssVarWSSdetails = getComputedStyle(document.body).getPropertyValue('--websocket-details');  
-  // const varWebsocketDetails = typeof websocketDetails;
-  // console.log("cssVarWSSdetails",typeof cssVarWSSdetails,cssVarWSSdetails);
+    
+    obsWss.connected = false;
+    console.log("obsWssConnectionManager.js loaded");
+    //get URL parameters
+    const params = new URLSearchParams(window.location.search);
+    //get local storage
+    const localStorageWssDetails = localStorage.getItem('wssDetails');
+    // console.log("varWebsocketDetails",typeof varWebsocketDetails,varWebsocketDetails);
+    let cssVarWSSdetails = getComputedStyle(document.body).getPropertyValue('--websocket-details');  
+    // const varWebsocketDetails = typeof websocketDetails;
+    // console.log("cssVarWSSdetails",typeof cssVarWSSdetails,cssVarWSSdetails);
+    
+    // fetch from local host
+    let apiWSSdetails;
+    try {
+      console.log("call api")
+      const res = await fetch('/api/obswss');
+    const creds = await res.json();
+    if(!creds.IP || !creds.PORT) {
+        apiWSSdetails = false;
+    }
+
+    apiWSSdetails = creds;
+  } catch (e) {
+    console.error(e);
+    apiWSSdetails = false;
+  }
+  
+  console.log(apiWSSdetails)
   switch(true){
-    //5. check if the variable named websocketDetails is defined
-    case (typeof websocketDetails !== 'undefined' && websocketDetails !== undefined):
-      const localVarConnected = await connectOBS(websocketDetails);
-      console.log("try websocketDetails variable",localVarConnected)
-      if(localVarConnected === 'connected'){break;}
+    //7. fetch the wss details from the local host api 
+    case (apiWSSdetails.hasOwnProperty("IP")):
+      const apiConnected = await connectOBS(apiWSSdetails);
+      console.log("try api credentials", apiConnected)
+      if(apiConnected === 'connected'){break;}
     //1. check if the URL has WSS details
     case params.has("wsspw"):
         wssDetails = {
@@ -47,6 +67,11 @@ window.addEventListener('DOMContentLoaded', async function() {
       if(localStorageConnected === 'connected'){
         console.log("localStorageConnected",localStorageConnected)
         break;}
+    //5. check if the variable named websocketDetails is defined
+    case (typeof websocketDetails !== 'undefined' && websocketDetails !== undefined):
+      const localVarConnected = await connectOBS(websocketDetails);
+      console.log("try websocketDetails variable",localVarConnected)
+      if(localVarConnected === 'connected'){break;}
     //6. check if css variables are defined
     case (getComputedStyle(document.body).getPropertyValue('--websocket-details') != 'undefined'):
       console.log("cssVarWSSdetails",getComputedStyle(document.body).getPropertyValue('--websocket-details'))
@@ -73,14 +98,12 @@ window.addEventListener(`ws-details`, async function (event) {
 //4. listen for a button press to start 
 async function wsConnectButton() {
   //change to this.
-  // wssDetails = {
-  //   IP: document.getElementById("IP").value,
-  //   PORT: document.getElementById("Port").value,
-  //   PW: document.getElementById("PW").value,
-  // };
+  wssDetails = {
+    IP: document.getElementById("IP").value,
+    PORT: document.getElementById("Port").value,
+    PW: document.getElementById("PW").value,
+  };
 
-  const wssDetails = JSON.parse(window.localStorage.getItem('wssDetails'))
-  console.log("connect button", wssDetails)
   await connectOBS(wssDetails).then(async (result) => {
     if (result === "failed") {
       document.getElementById("WSconnectButton").style.background = "#ff0000";
