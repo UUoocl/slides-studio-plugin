@@ -29,7 +29,7 @@ export class ServerManager {
         if (adapter instanceof FileSystemAdapter) {
             basePath = adapter.getBasePath();
         } else {
-            new Notice("Fastify Server: Cannot determine file system path.");
+            new Notice("Server cannot determine file system path.");
             return;
         }
 
@@ -76,7 +76,9 @@ export class ServerManager {
                 try {
                     fs.mkdirSync(targetDir, { recursive: true });
                 } catch(e) {
+                    console.error(e)
                     return reply.code(500).send({ error: "Failed to create directory" });
+                
                 }
             }
             
