@@ -68,13 +68,13 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
         }
         // #endregion
 
-        // #region ObsWSS Settings
+        // #region Obs WSS Settings
         new Setting(containerEl)
-            .setName("Obswebsocket server")
+            .setName("Obs websocket server")
             .setHeading();
         
         new Setting(containerEl)
-            .setName("Obswebsocket server IP")
+            .setName("Obs websocket server IP")
             .setDesc("Enter 'localhost'")
             .addText((item) => {
                 item.setValue(this.plugin.settings.websocketIP_Text).onChange(
@@ -85,7 +85,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
             });
             
         new Setting(containerEl)
-            .setName("Obswebsocket server port")
+            .setName("Obs websocket server port")
             .addText((item) => {
                 item.setValue(this.plugin.settings.websocketPort_Text).onChange(
                     (value) => {
@@ -95,7 +95,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
             });
             
         new Setting(containerEl)
-            .setName("Obswebsocket server password")
+            .setName("Obs websocket server password")
             .addText((item) => {
                 item.inputEl.type = 'password';
                 item.setValue(this.plugin.settings.websocketPW_Text).onChange(
@@ -108,7 +108,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     
         // #region ObsLaunch Parameters
         new Setting(containerEl)
-            .setName("Obslaunch parameters")
+            .setName("Obs launch parameters")
             .setHeading()
             .setDesc("Open obs with these options.");
                 
@@ -167,7 +167,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
         collectionPath = Platform.isWin ? collectionPath.replace(/\//g, '\\') : collectionPath;
 
         new Setting(containerEl)
-            .setName("Obscollection")
+            .setName("Obs collection")
             .setDesc("Copy the path to the slide studio collection and import the collection in obs")
             .addText((item) => {
                 item.setValue(collectionPath)
@@ -175,7 +175,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
             });
         
         new Setting(containerEl)
-            .setName("Obsbrowser source debug port")
+            .setName("Obs browser source debug port")
             .setDesc("Enter a port for the remote debugger or leave blank to skip")
             .addText((item) => {
                 item.setValue(this.plugin.settings.obsDebugPort_Text).onChange(
@@ -329,7 +329,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                 'text-align': 'center',
                 'color': 'var(--text-muted)'
             });
-            msgDiv.createSpan({ text: "Connect to the Obswebsocket server to configure osc/MIDI devices." });
+            msgDiv.createSpan({ text: "Connect to the obs websocket server to configure osc and midi devices." });
         }
         // #endregion
 
