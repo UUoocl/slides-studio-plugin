@@ -6,7 +6,7 @@
 	"type": "module",
 	"scripts": {
 		"lint": "eslint .",
-		"dev": "node esbuild.config.mjs",
+		"dev": "cp build/slides_studio ../testVault/.obsidian/plugins/slides-studio/ && cp build/manifest.json ../testVault/.obsidian/plugins/slides-studio/manifest.json && node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
