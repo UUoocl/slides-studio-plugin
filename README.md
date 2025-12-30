@@ -28,7 +28,7 @@ Slides Studio is the perfect companion for presenting Reveal.js slides with [Obs
 ## Documentation
 
 Usage documentation can be found here. 
-[Slides Studio Documentation](https://uuoocl.github.io/03-tutorials/slidesstudio-obsidian/)
+[Slides Studio Documentation](https://uuoocl.github.io/03-tutorials/slidesstudioplugin/)
 
 ## Acknowledgements
 
