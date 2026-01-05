@@ -8,6 +8,7 @@
 		"lint": "eslint .",
 		"dev": "cp -r build/slides_studio ../testVault/.obsidian/plugins/slides-studio/ && cp build/manifest.json ../testVault/.obsidian/plugins/slides-studio/manifest.json && node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"doc": "typedoc",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
 	"keywords": [],
@@ -24,6 +25,7 @@
 		"eslint-plugin-obsidianmd": "^0.1.9",
 		"obsidian-typings": "^4.70.0",
 		"tslib": "2.4.0",
+		"typedoc": "^0.28.15",
 		"typescript": "^5.9.3"
 	},
 	"dependencies": {
@@ -32,8 +34,8 @@
 		"fastify": "^5.6.2",
 		"node-osc": "^9.1.4",
 		"obs-websocket-js": "^5.0.6",
+		"obsidian": "latest",
 		"tabulator-tables": "^6.3.1",
-		"webmidi": "^3.1.14",
-		"obsidian": "latest"
+		"webmidi": "^3.1.14"
 	}
 }

@@ -9,6 +9,10 @@ interface WebMidiMessageInternal {
     controller?: { number: number };
 }
 
+/**
+ * Manages MIDI device connections and message routing.
+ * Uses WebMidi.js to interface with hardware MIDI controllers.
+ */
 export class MidiManager {
     private isEnabled = false;
     private onMidiMessageReceived: (deviceName: string, msg: MidiPayload) => void;
@@ -17,6 +21,10 @@ export class MidiManager {
         this.onMidiMessageReceived = onMessage;
     }
 
+    /**
+     * Enables the WebMidi subsystem.
+     * Must be called before any MIDI operations can occur.
+     */
     public async enable(): Promise<void> {
         if (this.isEnabled) return;
         
@@ -30,16 +38,27 @@ export class MidiManager {
         }
     }
 
+    /**
+     * Returns a list of available MIDI input device names.
+     */
     public getInputs(): string[] {
         if (!this.isEnabled) return [];
         return WebMidi.inputs.map(i => i.name);
     }
 
+    /**
+     * Returns a list of available MIDI output device names.
+     */
     public getOutputs(): string[] {
         if (!this.isEnabled) return [];
         return WebMidi.outputs.map(o => o.name);
     }
 
+    /**
+     * Connects to a specified MIDI input device.
+     * Starts listening for 'midimessage' events and forwards them to the handler.
+     * @param setting - The MIDI device configuration.
+     */
     public connectDevice(setting: MidiDeviceSetting): void {
         if (!this.isEnabled) {
             new Notice("Midi not enabled. Cannot connect.");
@@ -75,6 +94,11 @@ export class MidiManager {
         }
     }
 
+    /**
+     * Disconnects a MIDI input device.
+     * Stops listening for messages.
+     * @param setting - The MIDI device configuration.
+     */
     public disconnectDevice(setting: MidiDeviceSetting): void {
         if (!this.isEnabled) return;
         const input = WebMidi.getInputByName(setting.inputName);
@@ -84,10 +108,21 @@ export class MidiManager {
         }
     }
 
+    /**
+     * Disconnects all configured MIDI devices.
+     * @param devices - Array of MIDI device settings to disconnect.
+     */
     public disconnectAll(devices: MidiDeviceSetting[]): void {
         devices.forEach(d => this.disconnectDevice(d));
     }
 
+    /**
+     * Sends a MIDI message to a specific output device.
+     * Supports NoteOn, NoteOff, and ControlChange (CC) messages.
+     * @param deviceName - The alias name of the device (must match a configured device).
+     * @param deviceList - The list of configured devices to look up the output port.
+     * @param messageData - The MIDI message payload.
+     */
     public sendMidiMessage(deviceName: string, deviceList: MidiDeviceSetting[], messageData: MidiPayload): void {
         if (!this.isEnabled) return;
 

@@ -1,38 +1,60 @@
 # Slides Studio (for Obsidian)
 
-Slides Studio is the perfect companion for presenting Reveal.js slides with [Obsidian](https://obsidian.md) and [Open Broadcast Studio](https://obsproject.com/)
+Slides Studio is the perfect companion for presenting Reveal.js slides with [Obsidian](https://obsidian.md) and [Open Broadcast Studio](https://obsproject.com/).
+
+> [!IMPORTANT]
+> This project was developed and enhanced using the **Gemini CLI** agent.
 
 ## Features
 
-- Synchronize slide changes and OBS scene changes
-- Add tags to slides that control OBS
-- Serve presentations from Obsidian or slides.com
-- Control slides with MIDI or Open Sound Control(OSC) 
+- **OBS Synchronization**: Automatically sync slide changes in Obsidian with OBS scene changes.
+- **Smart Tags**: Use slide tags to trigger complex OBS actions, camera transitions, and layout changes.
+- **Integrated Server**: A built-in Fastify server enables communication between Obsidian, OBS, and external devices.
+- **Real-time Control**: Full support for MIDI and Open Sound Control (OSC) for professional presentation workflows.
+- **SSE Support**: Server-Sent Events (SSE) for real-time broadcasting of MIDI and OSC messages to webviews or external listeners.
 
-## Manual Installation
+## Usage
 
-1. Download the latest release from [GitHub](https://github.com/uuoocl/slides-studio-plugin/releases).
-   You need the files: `manifest.json`, `main.js`, `style.css` and `slides-studio.zip`.
-2. In Obsidian, open your vault's root folder in your file explorer.
-3. Navigate to the `.obsidian/plugins` directory. If it doesn't exist, create it.
-4. Extract the contents of the downloaded `.zip` file into a new folder within the `plugins` directory.
-5. Copy the file `manifest.json`, `main.js`, and `style.css` into the folder `slides-studio`.
-5. Restart Obsidian or reload your vault.
-6. Go to `Settings` > `Community Plugins` and make sure "Safe Mode" is turned off.
-7. Click on `Browse` under `Community Plugins`, find `Slides Studio`, and enable it.
+### 1. Connecting to OBS
+- Ensure [obs-websocket](https://github.com/obsproject/obs-websocket) is installed and enabled in OBS.
+- Configure your IP, Port, and Password in Slides Studio settings.
+- Use the `Connect OBS` command to establish the link.
 
-> [!NOTE]
-> The plugin folder is named `slides-studio` and contains the `.zip`-contents, `obs_collection` and `slides_studio`,
-> and the files `mainfest.json`, `main.js`, and `style.css`.
+### 2. Presentation Setup
+- Use **Slides Extended** or similar to create your Reveal.js content.
+- Add tags to your slides to define OBS behaviors (Scenes, Camera positions, etc.).
+- Use the "Open Slides Studio View" ribbon icon to manage your presentation tags.
 
-## Documentation
+### 3. External Devices
+- **OSC**: Configure input and output ports in settings to bridge Obsidian with software like TouchOSC or specialized hardware.
+- **MIDI**: Connect MIDI controllers to trigger slide changes or OBS transitions directly from your hardware.
 
-Usage documentation can be found here. 
-[Slides Studio Documentation](https://uuoocl.github.io/03-tutorials/slidesstudioplugin/)
+## Developer Overview
 
-## Acknowledgements
+Slides Studio is built as an Obsidian plugin with a modern TypeScript architecture.
 
-Slides Studio plugin is inspired by the plugin [Slides Extended](https://github.com/ebullient/obsidian-slides-extended). Use **Slides Extended** to create slides and **Slides Studio** for presentations. 
+### Architecture
+- **Core (`src/main.ts`)**: Manages the plugin lifecycle, Obsidian command registration, and event orchestration.
+- **Server (`src/utils/serverLogic.ts`)**: Implements a **Fastify** server that runs locally within Obsidian. It provides:
+    - **REST API**: For file management and sending device commands.
+    - **SSE (Server-Sent Events)**: Real-time streams at `/api/osc/events` and `/api/midi/events` allowing the OBS browser sources or other webviews to react instantly to hardware inputs.
+- **Hardware Integration**:
+    - **OSC Logic (`src/utils/oscLogic.ts`)**: Uses `node-osc` to handle bidirectional communication.
+    - **MIDI Logic (`src/utils/midiLogic.ts`)**: Leverages `webmidi` for low-latency hardware interaction.
+- **Commands**: Modular command pattern used for clean separation of concerns (see `src/commands/`).
+
+### Documentation
+API and code-level documentation can be generated using:
+```bash
+npm run doc
+```
+The output will be available in the `/docs` directory (configured for GitHub Pages).
+
+## Installation
+
+1. Download the latest release.
+2. Place the contents in your vault's `.obsidian/plugins/slides-studio` folder.
+3. Enable the plugin in Obsidian settings.
 
 ---
 

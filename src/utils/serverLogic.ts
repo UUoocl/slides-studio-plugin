@@ -9,6 +9,10 @@ import { Message } from 'node-osc';
 import type slidesStudioPlugin from '../main'; 
 import { SaveFileBody, FileListQuery, GetFileQuery, OscSendBody, MidiSendBody, MidiPayload } from '../types';
 
+/**
+ * Manages the local Fastify server.
+ * Handles file operations, API endpoints, and SSE broadcasting for MIDI/OSC events.
+ */
 export class ServerManager {
     private app: App;
     private plugin: slidesStudioPlugin;
@@ -24,6 +28,10 @@ export class ServerManager {
         this.port = port;
     }
 
+    /**
+     * Starts the Fastify server.
+     * Configures CORS, static file serving, API routes, and SSE endpoints.
+     */
     public async start(): Promise<void> {
         if (this.isRunning) return;
 
@@ -209,6 +217,11 @@ export class ServerManager {
         }
     }
 
+    /**
+     * Broadcasts an OSC message to all connected SSE clients.
+     * @param deviceName - The name of the device sending the message.
+     * @param message - The OSC message payload.
+     */
     public broadcastOscMessage(deviceName: string, message: unknown[]): void {
         const payload = JSON.stringify({ deviceName, message });
         const data = `data: ${payload}\n\n`;
@@ -218,6 +231,11 @@ export class ServerManager {
         }
     }
 
+    /**
+     * Broadcasts a MIDI message to all connected SSE clients.
+     * @param deviceName - The name of the device sending the message.
+     * @param message - The MIDI message payload.
+     */
     public broadcastMidiMessage(deviceName: string, message: MidiPayload): void {
         const payload = JSON.stringify({ deviceName, message });
         const data = `data: ${payload}\n\n`;
@@ -227,6 +245,9 @@ export class ServerManager {
         }
     }
 
+    /**
+     * Stops the server and closes all active SSE connections.
+     */
     public async stop(): Promise<void> {
         if (this.server) {
             for (const reply of this.sseOscConnections) {
@@ -245,12 +266,20 @@ export class ServerManager {
         }
     }
 
+    /**
+     * Restarts the server on a new port.
+     * @param newPort - The new port number to listen on.
+     */
     public async restart(newPort: number): Promise<void> {
         await this.stop();
         this.port = newPort;
         await this.start();
     }
 
+    /**
+     * Returns the base URL of the running server.
+     * @returns The local URL (e.g., http://127.0.0.1:57000).
+     */
     public getUrl(): string {
         return `http://127.0.0.1:${this.port}`;
     }

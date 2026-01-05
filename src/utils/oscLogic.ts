@@ -7,6 +7,10 @@ interface ActiveOscConnection {
     server: Server;
 }
 
+/**
+ * Manages Open Sound Control (OSC) connections.
+ * Handles creating clients/servers for bidirectional communication with OSC devices.
+ */
 export class OscManager {
     private activeOscDevices: Map<string, ActiveOscConnection> = new Map();
     
@@ -17,6 +21,11 @@ export class OscManager {
         this.onOscMessageReceived = onMessage;
     }
 
+    /**
+     * Connects to a specific OSC device.
+     * Sets up both a client (for sending) and a server (for receiving).
+     * @param deviceSettings - The configuration for the device (IP, ports).
+     */
     public connectDevice(deviceSettings: OscDeviceSetting): void {
         this.disconnectDevice(deviceSettings.name);
 
@@ -48,6 +57,11 @@ export class OscManager {
         }
     }
 
+    /**
+     * Disconnects a specific OSC device by name.
+     * Closes both the client and server connections.
+     * @param name - The name of the device to disconnect.
+     */
     public disconnectDevice(name: string): void {
         const active = this.activeOscDevices.get(name);
         if (active) {
@@ -58,6 +72,9 @@ export class OscManager {
         }
     }
 
+    /**
+     * Disconnects all active OSC devices.
+     */
     public disconnectAll(): void {
         this.activeOscDevices.forEach((conn) => {
             void conn.client.close(); 
@@ -66,6 +83,11 @@ export class OscManager {
         this.activeOscDevices.clear();
     }
 
+    /**
+     * Sends an OSC message to a connected device.
+     * @param deviceName - The name of the target device.
+     * @param message - The OSC Message object to send.
+     */
     // Outgoing messages use the Message class
     public sendMessage(deviceName: string, message: Message): void {
         const activeDevice = this.activeOscDevices.get(deviceName);

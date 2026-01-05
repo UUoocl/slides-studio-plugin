@@ -6,6 +6,9 @@ import { ServerManager } from 'src/utils/serverLogic';
 import { OscManager} from 'src/utils/oscLogic';
 import { MidiManager} from 'src/utils/midiLogic';
 
+// Re-export for Typedoc
+export { ServerManager, OscManager, MidiManager };
+
 import { Message } from 'node-osc';
 import { OBSWebSocket } from 'obs-websocket-js';
 
@@ -45,6 +48,10 @@ const DEFAULT_SETTINGS: Partial<SlidesStudioPluginSettings> = {
 	midiDevices: []
 };
 
+/**
+ * Main plugin class for Slides Studio.
+ * Handles lifecycle, settings, and core integrations with OBS, MIDI, and OSC.
+ */
 export default class slidesStudioPlugin extends Plugin {
 	settings: SlidesStudioPluginSettings;
 	public oscManager: OscManager;
@@ -53,17 +60,29 @@ export default class slidesStudioPlugin extends Plugin {
 	public obs: OBSWebSocket;
 	public isObsConnected = false;
 	
+	/**
+	 * Loads the plugin settings from the data store.
+	 * Merges with DEFAULT_SETTINGS to ensure all keys exist.
+	 */
 	async loadSettings(): Promise<void> {
 		// Use casting to avoid unsafe assignment from loadData()
 		const loadedData = await this.loadData() as SlidesStudioPluginSettings | null;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
 	}
 	
+	/**
+	 * Saves the current settings to the data store.
+	 * Also persists WebSocket details to a separate file for external use.
+	 */
 	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
 		await this.saveWebsocketDetailsToFile();
 	}
 
+	/**
+	 * Writes the configured OBS WebSocket details to a separate Javascript file.
+	 * This allows external scripts or webviews to access the connection details.
+	 */
 	async saveWebsocketDetailsToFile(): Promise<void> {
 		const pluginDir = this.manifest.dir;
 		const folderName = "obs_webSocket_details";
@@ -88,6 +107,10 @@ export default class slidesStudioPlugin extends Plugin {
 		}
 	}
 	
+	/**
+	 * Plugin initialization routine.
+	 * Sets up views, commands, server, and device managers.
+	 */
 	async onload(): Promise<void> {
 		await this.loadSettings();
 		this.obs = new OBSWebSocket();
@@ -142,6 +165,10 @@ export default class slidesStudioPlugin extends Plugin {
 		this.setupObsEventListeners();
 	}
 
+	/**
+	 * Sets up listeners for OBS WebSocket events.
+	 * Handles connection status, initial data synchronization, and custom events.
+	 */
 	private setupObsEventListeners(): void {
 		this.obs.on('ConnectionOpened', () => {
 			console.debug('Connection to OBS WebSocket successfully opened');
@@ -203,6 +230,10 @@ export default class slidesStudioPlugin extends Plugin {
 		});
 	}
 
+	/**
+	 * Fetches scenes and scene items from OBS to populate tag lists.
+	 * Identifies scenes starting with "Scene" and specific items like "Camera Position".
+	 */
 	async getObsTags(): Promise<void> {
 		new Notice("Getting obs tags");
 
@@ -245,6 +276,10 @@ export default class slidesStudioPlugin extends Plugin {
 		}
 	}
 
+	/**
+	 * Attempts to connect to the OBS WebSocket server.
+	 * @param wssDetails - The connection details (IP, Port, Password).
+	 */
 	async obsWSSconnect(wssDetails: WssDetails): Promise<void> {
 		try {
 			await this.disconnect();
@@ -256,6 +291,9 @@ export default class slidesStudioPlugin extends Plugin {
 		}
 	}
 	
+	/**
+	 * Disconnects from the OBS WebSocket server if currently connected.
+	 */
 	async disconnect(): Promise<void> {
 		try {
 			if (this.isObsConnected) {
@@ -267,6 +305,13 @@ export default class slidesStudioPlugin extends Plugin {
 		} 
 	}
 
+	/**
+	 * Sends a custom event to OBS browser sources.
+	 * Useful for relaying messages to browser sources embedded in OBS scenes.
+	 * 
+	 * @param msgParam - The payload containing device name and message content.
+	 * @param eventName - The name of the event to emit.
+	 */
 	sendToOBS(msgParam: { deviceName: string, message: unknown }, eventName: string): void {
 		const webSocketMessage = JSON.stringify(msgParam.message);
 		void this.obs.call("CallVendorRequest", {
@@ -282,6 +327,9 @@ export default class slidesStudioPlugin extends Plugin {
 		});
 	}
 
+	/**
+	 * Opens the dedicated Slides Studio sidebar view.
+	 */
 	async openView(): Promise<void> {
 		const { workspace } = this.app;
 		let leaf: WorkspaceLeaf | null = null;
@@ -296,6 +344,9 @@ export default class slidesStudioPlugin extends Plugin {
 		if (leaf) void workspace.revealLeaf(leaf);
 	}
 
+	/**
+	 * Opens a webview in a new tab pointing to the local server's slides studio page.
+	 */
 	async openWebView(): Promise<void> {
 		const { workspace } = this.app;
 	
@@ -311,6 +362,10 @@ export default class slidesStudioPlugin extends Plugin {
 		
 	}
 
+	/**
+	 * Plugin cleanup routine.
+	 * Stops servers and disconnects devices.
+	 */
 	onunload(): void {
 		new Notice("Disabled slides studio plugin");
 		if (this.serverManager) void this.serverManager.stop();

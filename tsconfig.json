@@ -14,6 +14,7 @@
     "allowSyntheticDefaultImports": true,
     "isolatedModules": false,
     "strictNullChecks": false,
+    "skipLibCheck": true,
     "importHelpers": true,
     "lib": [
       "DOM",
