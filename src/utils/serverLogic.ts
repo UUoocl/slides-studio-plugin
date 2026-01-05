@@ -1,12 +1,13 @@
 import { App, FileSystemAdapter, Notice } from 'obsidian';
-import fastify, { FastifyInstance } from 'fastify';
+import fastify, { FastifyInstance, FastifyReply } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyCors from '@fastify/cors';
 import path from 'path';
 import fs from 'fs';
+import { Message } from 'node-osc';
 
 import type slidesStudioPlugin from '../main'; 
-import { SaveFileBody, FileListQuery, GetFileQuery } from '../types';
+import { SaveFileBody, FileListQuery, GetFileQuery, OscSendBody, MidiSendBody, MidiPayload } from '../types';
 
 export class ServerManager {
     private app: App;
@@ -14,6 +15,8 @@ export class ServerManager {
     private server: FastifyInstance | null = null;
     private port: number;
     private isRunning = false;
+    private sseOscConnections: Set<FastifyReply> = new Set();
+    private sseMidiConnections: Set<FastifyReply> = new Set();
 
     constructor(app: App, plugin: slidesStudioPlugin, port: number) {
         this.app = app;
@@ -129,6 +132,73 @@ export class ServerManager {
             }
         });
 
+        // --- SSE: OSC Events ---
+        this.server.get('/api/osc/events', (request, reply) => {
+            reply.raw.setHeader('Content-Type', 'text/event-stream');
+            reply.raw.setHeader('Cache-Control', 'no-cache');
+            reply.raw.setHeader('Connection', 'keep-alive');
+            reply.raw.flushHeaders();
+
+            this.sseOscConnections.add(reply);
+
+            request.raw.on('close', () => {
+                this.sseOscConnections.delete(reply);
+            });
+        });
+
+        // --- SSE: MIDI Events ---
+        this.server.get('/api/midi/events', (request, reply) => {
+            reply.raw.setHeader('Content-Type', 'text/event-stream');
+            reply.raw.setHeader('Cache-Control', 'no-cache');
+            reply.raw.setHeader('Connection', 'keep-alive');
+            reply.raw.flushHeaders();
+
+            this.sseMidiConnections.add(reply);
+
+            request.raw.on('close', () => {
+                this.sseMidiConnections.delete(reply);
+            });
+        });
+
+        // --- API: Send OSC Message ---
+        this.server.post<{ Body: OscSendBody }>('/api/osc/send', async (request, reply) => {
+            const { deviceName, address, args } = request.body;
+
+            if (!deviceName || !address) {
+                return reply.code(400).send({ error: "Missing deviceName or address" });
+            }
+
+            const oscMessage = new Message(address);
+            if (args && Array.isArray(args)) {
+                args.forEach(arg => oscMessage.append(arg));
+            }
+
+            try {
+                this.plugin.oscManager.sendMessage(deviceName, oscMessage);
+                return { success: true };
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                return reply.code(500).send({ error: msg });
+            }
+        });
+
+        // --- API: Send MIDI Message ---
+        this.server.post<{ Body: MidiSendBody }>('/api/midi/send', async (request, reply) => {
+            const { deviceName, message } = request.body;
+
+            if (!deviceName || !message) {
+                return reply.code(400).send({ error: "Missing deviceName or message payload" });
+            }
+
+            try {
+                this.plugin.midiManager.sendMidiMessage(deviceName, this.plugin.settings.midiDevices, message);
+                return { success: true };
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                return reply.code(500).send({ error: msg });
+            }
+        });
+
         try {
             await this.server.listen({ port: this.port, host: '127.0.0.1' });
             this.isRunning = true;
@@ -139,8 +209,36 @@ export class ServerManager {
         }
     }
 
+    public broadcastOscMessage(deviceName: string, message: unknown[]): void {
+        const payload = JSON.stringify({ deviceName, message });
+        const data = `data: ${payload}\n\n`;
+
+        for (const reply of this.sseOscConnections) {
+            reply.raw.write(data);
+        }
+    }
+
+    public broadcastMidiMessage(deviceName: string, message: MidiPayload): void {
+        const payload = JSON.stringify({ deviceName, message });
+        const data = `data: ${payload}\n\n`;
+
+        for (const reply of this.sseMidiConnections) {
+            reply.raw.write(data);
+        }
+    }
+
     public async stop(): Promise<void> {
         if (this.server) {
+            for (const reply of this.sseOscConnections) {
+                reply.raw.end();
+            }
+            this.sseOscConnections.clear();
+
+            for (const reply of this.sseMidiConnections) {
+                reply.raw.end();
+            }
+            this.sseMidiConnections.clear();
+            
             await this.server.close();
             this.server = null;
             this.isRunning = false;

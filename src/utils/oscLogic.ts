@@ -25,9 +25,8 @@ export class OscManager {
         try {
             const oscClient = new Client(deviceSettings.ip, deviceSettings.outPort);
             const oscServer = new Server(deviceSettings.inPort, '0.0.0.0');
-
             oscServer.on("listening", () => {
-                new Notice(`OSC Server ${deviceSettings.name} is listening on ${deviceSettings.inPort}.`);
+                new Notice(`OSC Server: ${deviceSettings.name} is listening on ${deviceSettings.inPort}.`);
             });
 
             // FIX: Incoming messages are arrays, not Message instances

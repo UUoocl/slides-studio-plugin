@@ -129,11 +129,13 @@ export default class slidesStudioPlugin extends Plugin {
 				deviceName: name,
 				message: msg // msg is now the [address, ...args] array
 			};
-			this.sendToOBS(payload, "osc-message");
+			//this.sendToOBS(payload, "osc-message");
+			this.serverManager?.broadcastOscMessage(name, msg);
 		});
 
 		this.midiManager = new MidiManager((name, msg) => {
-			this.sendToOBS({ deviceName: name, message: msg }, "midi-message");
+			//this.sendToOBS({ deviceName: name, message: msg }, "midi-message");
+			this.serverManager?.broadcastMidiMessage(name, msg);
 		});
 		await this.midiManager.enable();
 

@@ -133,6 +133,17 @@ export interface GetFileQuery {
     filename: string;
 }
 
+export interface OscSendBody {
+    deviceName: string;
+    address: string;
+    args: (string | number | boolean)[];
+}
+
+export interface MidiSendBody {
+    deviceName: string;
+    message: MidiPayload;
+}
+
 export interface ISlidesStudioPlugin {
     manifest: {
         dir: string;

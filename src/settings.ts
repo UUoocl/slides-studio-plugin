@@ -16,7 +16,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
         // #region Server Settings
         new Setting(containerEl)
-            .setName("Plugin server")
+            .setName("Plugin server 1")
             .setHeading();
 
         new Setting(containerEl)
@@ -217,124 +217,112 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
         // #endregion    
 
         // #region osc Settings
-        if (this.plugin.isObsConnected) {
-            new Setting(containerEl)
-                .setName("Osc devices")
-                .setHeading();
+        new Setting(containerEl)
+            .setName("Osc devices")
+            .setHeading();
 
-            containerEl.createEl("p", { text: "Add as many osc devices as needed." });
+        containerEl.createEl("p", { text: "Add as many osc devices as needed." });
 
-            this.plugin.settings.oscDevices.forEach((device, index) => {
-                const deviceDiv = containerEl.createDiv();
-                deviceDiv.setCssProps({
-                    'border': '1px solid var(--background-modifier-border)',
-                    'padding': '10px',
-                    'margin-bottom': '10px',
-                    'border-radius': '5px'
-                });
-
-                new Setting(deviceDiv)
-                    .setName(`Device ${index + 1}`)
-                    .setHeading();
-
-                new Setting(deviceDiv)
-                    .setName("Osc device name")
-                    .setDesc("Unique device name (used in obs tags)")
-                    .addText(text => text
-                        .setValue(device.name)
-                        .onChange(async (value) => {
-                            this.plugin.settings.oscDevices[index].name = value;
-                            await this.plugin.saveSettings();
-                        })
-                    )
-                    .addButton(btn => btn
-                        .setButtonText("Connect device")
-                        .onClick(() => {
-                            if (this.plugin.oscManager) {
-                                this.plugin.oscManager.connectDevice(this.plugin.settings.oscDevices[index]);
-                            } else {
-                                new Notice("Plugin not fully loaded");
-                            }
-                        })
-                    );
-
-                new Setting(deviceDiv)
-                    .setName("Osc IP address")
-                    .setDesc("Enter the IP address or 'localhost'")
-                    .addText(text => text
-                        .setValue(device.ip)
-                        .onChange(async (value) => {
-                            this.plugin.settings.oscDevices[index].ip = value;
-                            await this.plugin.saveSettings();
-                        })
-                    );
-
-                new Setting(deviceDiv)
-                    .setName("Osc incoming port")
-                    .addText(text => text
-                        .setValue(device.inPort.toString())
-                        .onChange(async (value) => {
-                            this.plugin.settings.oscDevices[index].inPort = parseInt(value) || 0;
-                            await this.plugin.saveSettings();
-                        })
-                    );
-
-                new Setting(deviceDiv)
-                    .setName("Osc outgoing port")
-                    .addText(text => text
-                        .setValue(device.outPort.toString())
-                        .onChange(async (value) => {
-                            this.plugin.settings.oscDevices[index].outPort = parseInt(value) || 0;
-                            await this.plugin.saveSettings();
-                        })
-                    );
-
-                new Setting(deviceDiv)
-                    .addButton(btn => btn
-                        .setButtonText("Remove device")
-                        .setWarning()
-                        .onClick(async () => {
-                            if (this.plugin.oscManager) {
-                                this.plugin.oscManager.disconnectDevice(device.name);
-                            }
-                            this.plugin.settings.oscDevices.splice(index, 1);
-                            await this.plugin.saveSettings();
-                            this.display();
-                        })
-                    );
+        this.plugin.settings.oscDevices.forEach((device, index) => {
+            const deviceDiv = containerEl.createDiv();
+            deviceDiv.setCssProps({
+                'border': '1px solid var(--background-modifier-border)',
+                'padding': '10px',
+                'margin-bottom': '10px',
+                'border-radius': '5px'
             });
 
-            new Setting(containerEl)
-                .setName("Add new osc device")
+            new Setting(deviceDiv)
+                .setName(`Device ${index + 1}`)
+                .setHeading();
+
+            new Setting(deviceDiv)
+                .setName("Osc device name")
+                .setDesc("Unique device name (used in obs tags)")
+                .addText(text => text
+                    .setValue(device.name)
+                    .onChange(async (value) => {
+                        this.plugin.settings.oscDevices[index].name = value;
+                        await this.plugin.saveSettings();
+                    })
+                )
                 .addButton(btn => btn
-                    .setButtonText("Add device")
-                    .setCta()
+                    .setButtonText("Connect device")
+                    .onClick(() => {
+                        if (this.plugin.oscManager) {
+                            this.plugin.oscManager.connectDevice(this.plugin.settings.oscDevices[index]);
+                        } else {
+                            new Notice("Plugin not fully loaded");
+                        }
+                    })
+                );
+
+            new Setting(deviceDiv)
+                .setName("Osc IP address")
+                .setDesc("Enter the IP address or 'localhost'")
+                .addText(text => text
+                    .setValue(device.ip)
+                    .onChange(async (value) => {
+                        this.plugin.settings.oscDevices[index].ip = value;
+                        await this.plugin.saveSettings();
+                    })
+                );
+
+            new Setting(deviceDiv)
+                .setName("Osc incoming port")
+                .addText(text => text
+                    .setValue(device.inPort.toString())
+                    .onChange(async (value) => {
+                        this.plugin.settings.oscDevices[index].inPort = parseInt(value) || 0;
+                        await this.plugin.saveSettings();
+                    })
+                );
+
+            new Setting(deviceDiv)
+                .setName("Osc outgoing port")
+                .addText(text => text
+                    .setValue(device.outPort.toString())
+                    .onChange(async (value) => {
+                        this.plugin.settings.oscDevices[index].outPort = parseInt(value) || 0;
+                        await this.plugin.saveSettings();
+                    })
+                );
+
+            new Setting(deviceDiv)
+                .addButton(btn => btn
+                    .setButtonText("Remove device")
+                    .setWarning()
                     .onClick(async () => {
-                        this.plugin.settings.oscDevices.push({
-                            name: "NewDevice",
-                            ip: "127.0.0.1",
-                            inPort: 8000,
-                            outPort: 9000
-                        });
+                        if (this.plugin.oscManager) {
+                            this.plugin.oscManager.disconnectDevice(device.name);
+                        }
+                        this.plugin.settings.oscDevices.splice(index, 1);
                         await this.plugin.saveSettings();
                         this.display();
                     })
                 );
+        });
 
-        } else {
-            const msgDiv = containerEl.createDiv();
-            msgDiv.setCssProps({
-                'padding': '20px',
-                'border': '1px dashed var(--text-muted)',
-                'text-align': 'center',
-                'color': 'var(--text-muted)'
-            });
-            msgDiv.createSpan({ text: "Connect to the obs websocket server to configure osc and midi devices." });
-        }
+        new Setting(containerEl)
+            .setName("Add new osc device")
+            .addButton(btn => btn
+                .setButtonText("Add device")
+                .setCta()
+                .onClick(async () => {
+                    this.plugin.settings.oscDevices.push({
+                        name: "NewDevice",
+                        ip: "127.0.0.1",
+                        inPort: 8000,
+                        outPort: 9000
+                    });
+                    await this.plugin.saveSettings();
+                    this.display();
+                })
+            );
         // #endregion
 
         // #region MIDI Settings
-        if (this.plugin.isObsConnected && this.plugin.midiManager) {
+        if (this.plugin.midiManager) {
             new Setting(containerEl)
                 .setName("Midi devices")
                 .setHeading();
