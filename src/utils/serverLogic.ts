@@ -219,12 +219,13 @@ export class ServerManager {
 
     /**
      * Broadcasts an OSC message to all connected SSE clients.
+     * The device name is used as the SSE event name.
      * @param deviceName - The name of the device sending the message.
      * @param message - The OSC message payload.
      */
     public broadcastOscMessage(deviceName: string, message: unknown[]): void {
         const payload = JSON.stringify({ deviceName, message });
-        const data = `data: ${payload}\n\n`;
+        const data = `event: ${deviceName}\ndata: ${payload}\n\n`;
 
         for (const reply of this.sseOscConnections) {
             reply.raw.write(data);
@@ -233,12 +234,13 @@ export class ServerManager {
 
     /**
      * Broadcasts a MIDI message to all connected SSE clients.
+     * The device name is used as the SSE event name.
      * @param deviceName - The name of the device sending the message.
      * @param message - The MIDI message payload.
      */
     public broadcastMidiMessage(deviceName: string, message: MidiPayload): void {
         const payload = JSON.stringify({ deviceName, message });
-        const data = `data: ${payload}\n\n`;
+        const data = `event: ${deviceName}\ndata: ${payload}\n\n`;
 
         for (const reply of this.sseMidiConnections) {
             reply.raw.write(data);

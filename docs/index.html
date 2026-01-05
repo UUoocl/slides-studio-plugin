@@ -29,7 +29,7 @@ This project was developed and enhanced using the <strong>Gemini CLI</strong> ag
 <li><strong>Server (<code>src/utils/serverLogic.ts</code>)</strong>: Implements a <strong>Fastify</strong> server that runs locally within Obsidian. It provides:
 <ul>
 <li><strong>REST API</strong>: For file management and sending device commands.</li>
-<li><strong>SSE (Server-Sent Events)</strong>: Real-time streams at <code>/api/osc/events</code> and <code>/api/midi/events</code> allowing the OBS browser sources or other webviews to react instantly to hardware inputs.</li>
+<li><strong>SSE (Server-Sent Events)</strong>: Real-time streams at <code>/api/osc/events</code> and <code>/api/midi/events</code> allowing the OBS browser sources or other webviews to react instantly to hardware inputs. <strong>Device names are used as SSE event names</strong>, allowing targeted listeners (e.g., <code>eventSource.addEventListener('MyController', ...)</code>).</li>
 </ul>
 </li>
 <li><strong>Hardware Integration</strong>:

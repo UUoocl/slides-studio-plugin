@@ -37,7 +37,7 @@ Slides Studio is built as an Obsidian plugin with a modern TypeScript architectu
 - **Core (`src/main.ts`)**: Manages the plugin lifecycle, Obsidian command registration, and event orchestration.
 - **Server (`src/utils/serverLogic.ts`)**: Implements a **Fastify** server that runs locally within Obsidian. It provides:
     - **REST API**: For file management and sending device commands.
-    - **SSE (Server-Sent Events)**: Real-time streams at `/api/osc/events` and `/api/midi/events` allowing the OBS browser sources or other webviews to react instantly to hardware inputs.
+    - **SSE (Server-Sent Events)**: Real-time streams at `/api/osc/events` and `/api/midi/events` allowing the OBS browser sources or other webviews to react instantly to hardware inputs. **Device names are used as SSE event names**, allowing targeted listeners (e.g., `eventSource.addEventListener('MyController', ...)`).
 - **Hardware Integration**:
     - **OSC Logic (`src/utils/oscLogic.ts`)**: Uses `node-osc` to handle bidirectional communication.
     - **MIDI Logic (`src/utils/midiLogic.ts`)**: Leverages `webmidi` for low-latency hardware interaction.
