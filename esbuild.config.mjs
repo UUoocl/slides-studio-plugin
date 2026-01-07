@@ -1,6 +1,6 @@
 import esbuild from "esbuild";
 import process from "process";
-import builtins from "builtin-modules";
+import { builtinModules } from "node:module";
 
 const banner =
 `/*
@@ -10,6 +10,7 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = (process.argv[2] === "production");
+const dir = prod ? "../UUinsome/.obsidian/plugins/slides-studio/" : "../testVault/.obsidian/plugins/slides-studio/";
 
 const context = await esbuild.context({
 	banner: {
@@ -32,14 +33,13 @@ const context = await esbuild.context({
 		"@lezer/common",
 		"@lezer/highlight",
 		"@lezer/lr",
-		...builtins],
+		...builtinModules],
 	format: "cjs",
 	target: "es2022",
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
-	outfile: "../testVault/.obsidian/plugins/slides-studio/main.js",
-	// outfile: "./build/main.js",
+	outfile: `${dir}main.js`,
 	minify: prod,
 });
 
