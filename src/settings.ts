@@ -1,4 +1,4 @@
-import { App, Platform, PluginSettingTab, Setting, Notice, FileSystemAdapter } from "obsidian";
+import { App, Platform, PluginSettingTab, Setting, Notice, FileSystemAdapter, TFolder, TFile } from "obsidian";
 import type slidesStudioPlugin from "./main";
 import { ServerManager } from "./utils/serverLogic";
 
@@ -14,9 +14,138 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
+        // #region Settings Manager
+        new Setting(containerEl)
+            .setName("Settings manager")
+            .setHeading();
+
+        const allFolders = this.app.vault.getAllLoadedFiles()
+            .filter(f => f instanceof TFolder) as TFolder[];
+        
+        const settingsFolderOptions: Record<string, string> = { "": "Select a folder" };
+        allFolders.forEach(f => settingsFolderOptions[f.path] = f.path);
+
+        new Setting(containerEl)
+            .setName("Settings folder")
+            .setDesc("Select folder to save/load settings")
+            .addDropdown(dropdown => dropdown
+                .addOptions(settingsFolderOptions)
+                .setValue(this.plugin.settings.settingsFolder)
+                .onChange(async (value) => {
+                    this.plugin.settings.settingsFolder = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                })
+            );
+
+        if (this.plugin.settings.settingsFolder) {
+            const folderFiles = this.app.vault.getFiles()
+                .filter(f => f.path.startsWith(this.plugin.settings.settingsFolder) && f.name.endsWith('.md'));
+            
+            const fileOptions: Record<string, string> = { "": "Select an existing file (optional)" };
+            folderFiles.forEach(f => fileOptions[f.name] = f.name);
+
+            new Setting(containerEl)
+                .setName("Settings file")
+                .setDesc("Select existing or type new file name (ends in .md)")
+                .addDropdown(dropdown => dropdown
+                    .addOptions(fileOptions)
+                    .setValue(this.plugin.settings.settingsFile)
+                    .onChange((value) => {
+                        if (value) {
+                             // Update the text input below if a file is selected
+                            this.plugin.settings.settingsFile = value;
+                            this.display(); 
+                        }
+                    })
+                )
+                .addText(text => text
+                    .setValue(this.plugin.settings.settingsFile)
+                    .onChange(async (value) => {
+                        this.plugin.settings.settingsFile = value;
+                        await this.plugin.saveSettings();
+                    })
+                );
+
+             new Setting(containerEl)
+                .setName("Actions")
+                .addButton(btn => btn
+                    .setButtonText("Save settings")
+                    .setCta()
+                    .onClick(async () => {
+                        const { settingsFolder, settingsFile } = this.plugin.settings;
+                        if (settingsFolder && settingsFile) {
+                            let filePath = `${settingsFolder}/${settingsFile}`;
+                             if (!filePath.endsWith('.md')) filePath += '.md';
+                            
+                            const content = JSON.stringify(this.plugin.settings, null, 2);
+                            
+                            try {
+                                const file = this.app.vault.getAbstractFileByPath(filePath);
+                                if (file instanceof TFile) {
+                                    await this.app.vault.modify(file, content);
+                                    new Notice(`Settings saved to ${filePath}`);
+                                } else {
+                                    await this.app.vault.create(filePath, content);
+                                    new Notice(`Settings saved to new file ${filePath}`);
+                                }
+                            } catch (error) {
+                                new Notice("Error saving settings: " + error);
+                                console.error(error);
+                            }
+                        } else {
+                            new Notice("Please select a folder and file name");
+                        }
+                    })
+                )
+                .addButton(btn => btn
+                    .setButtonText("Load settings")
+                    .setWarning()
+                    .onClick(async () => {
+                        const { settingsFolder, settingsFile } = this.plugin.settings;
+                         if (settingsFolder && settingsFile) {
+                            let filePath = `${settingsFolder}/${settingsFile}`;
+                            // Handle if user didn't type extension in text box but it was saved with one or selected from dropdown
+                            if (!this.app.vault.getAbstractFileByPath(filePath) && this.app.vault.getAbstractFileByPath(filePath + '.md')) {
+                                filePath += '.md';
+                            }
+
+                            const file = this.app.vault.getAbstractFileByPath(filePath);
+                            if (file instanceof TFile) {
+                                try {
+                                    const content = await this.app.vault.read(file);
+                                    const loadedSettings = JSON.parse(content);
+                                    
+                                    // Merge loaded settings but preserve current settingsFolder/File to avoid confusion? 
+                                    // User probably wants to load EVERYTHING including device setups.
+                                    // Let's just load everything.
+                                    Object.assign(this.plugin.settings, loadedSettings);
+                                    
+                                    // Ensure these are kept consistent with what was just used to load, 
+                                    // unless we explicitly want the loaded file to override where we save next.
+                                    // Usually "Load" implies "State Restore", so we take what's in the file.
+                                    
+                                    await this.plugin.saveSettings();
+                                    this.plugin.onunload(); // Restart services
+                                    this.plugin.onload();   // Restart services
+                                    this.display();
+                                    new Notice("Settings loaded successfully");
+                                } catch (error) {
+                                    new Notice("Error loading settings: " + error);
+                                    console.error(error);
+                                }
+                            } else {
+                                new Notice("File not found: " + filePath);
+                            }
+                         }
+                    })
+                );
+        }
+        // #endregion
+
         // #region Server Settings
         new Setting(containerEl)
-            .setName("Plugin server 1")
+            .setName("Web Server")
             .setHeading();
 
         new Setting(containerEl)
@@ -216,6 +345,86 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
             });
         // #endregion    
 
+        // #region Cables.gl Settings
+        new Setting(containerEl)
+            .setName("Cables.gl Standalone")
+            .setHeading();
+
+        const folders = this.app.vault.getAllLoadedFiles()
+            .filter(f => f instanceof TFolder) as TFolder[];
+        
+        const folderOptions: Record<string, string> = { "": "Select a folder" };
+        folders.forEach(f => folderOptions[f.path] = f.path);
+
+        new Setting(containerEl)
+            .setName("Cables folder")
+            .setDesc("Select the folder containing cables files")
+            .addDropdown(dropdown => dropdown
+                .addOptions(folderOptions)
+                .setValue(this.plugin.settings.cablesFolder)
+                .onChange(async (value) => {
+                    this.plugin.settings.cablesFolder = value;
+                    await this.plugin.saveSettings();
+                    this.display(); 
+                })
+            );
+
+        if (this.plugin.settings.cablesFolder) {
+            containerEl.createEl("h4", { text: "Manage cables files" });
+            
+            const allFiles = this.app.vault.getFiles()
+                .filter(f => f.path.startsWith(this.plugin.settings.cablesFolder));
+            
+            const fileOptions: Record<string, string> = { "": "Select a file to add" };
+            allFiles.forEach(f => fileOptions[f.path] = f.name);
+
+            let selectedFileToAdd = "";
+
+            new Setting(containerEl)
+                .setName("Add file")
+                .setDesc("Select a file and click add")
+                .addDropdown(dropdown => dropdown
+                    .addOptions(fileOptions)
+                    .onChange((value) => {
+                        selectedFileToAdd = value;
+                    })
+                )
+                .addButton(btn => btn
+                    .setButtonText("Add")
+                    .setCta()
+                    .onClick(async () => {
+                        if (selectedFileToAdd && !this.plugin.settings.cablesFiles.includes(selectedFileToAdd)) {
+                            this.plugin.settings.cablesFiles.push(selectedFileToAdd);
+                            await this.plugin.saveSettings();
+                            this.display();
+                        }
+                    })
+                );
+
+            if (this.plugin.settings.cablesFiles.length > 0) {
+                 containerEl.createEl("h5", { text: "Selected files:" });
+                 
+                 this.plugin.settings.cablesFiles.forEach((filePath, index) => {
+                     const file = this.app.vault.getAbstractFileByPath(filePath);
+                     const fileName = file ? file.name : filePath;
+
+                     new Setting(containerEl)
+                        .setName(fileName)
+                        .setDesc(filePath)
+                        .addButton(btn => btn
+                            .setButtonText("Remove")
+                            .setWarning()
+                            .onClick(async () => {
+                                this.plugin.settings.cablesFiles.splice(index, 1);
+                                await this.plugin.saveSettings();
+                                this.display();
+                            })
+                        );
+                 });
+            }
+        }
+        // #endregion
+
         // #region osc Settings
         new Setting(containerEl)
             .setName("Osc devices")
@@ -238,7 +447,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
             new Setting(deviceDiv)
                 .setName("Osc device name")
-                .setDesc("Unique device name (used in obs tags)")
+                .setDesc("Unique device name (used in server sent events)")
                 .addText(text => text
                     .setValue(device.name)
                     .onChange(async (value) => {
@@ -347,7 +556,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
                 new Setting(deviceDiv)
                     .setName("Device name")
-                    .setDesc("Alias used for obs tags")
+                    .setDesc("Unique device name (used in server sent events)")
                     .addText(text => text
                         .setValue(device.name)
                         .onChange((value) => {

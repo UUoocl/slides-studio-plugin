@@ -36,6 +36,10 @@ export interface SlidesStudioPluginSettings {
     obsAppPath_Text: string;
     serverPort: string;
     serverEnabled: boolean;
+    cablesFolder: string;
+    cablesFiles: string[];
+    settingsFolder: string;
+    settingsFile: string;
     oscDevices: OscDeviceSetting[];
     midiDevices: MidiDeviceSetting[];
 }
