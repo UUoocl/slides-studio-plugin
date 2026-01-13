@@ -318,6 +318,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
             .setName("Open obs")
             .addButton((button) => {
                 button.setButtonText("Launch")
+                .setCta()
                     .onClick(() => { 
                         void this.app.commands.executeCommandById('slides-studio:open-obs');
                     });
@@ -422,6 +423,27 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         );
                  });
             }
+
+            new Setting(containerEl)
+                .setName("Open cables")
+                .setDesc("Open all selected cables files")
+                .addButton(btn => btn
+                    .setButtonText("Open")
+                    .setCta()
+                    .onClick(() => {
+                        const vaultName = this.app.vault.getName();
+                        if (this.plugin.settings.cablesFiles && this.plugin.settings.cablesFiles.length > 0) {
+                             this.plugin.settings.cablesFiles.forEach(file => {
+                                const encodedVault = encodeURIComponent(vaultName);
+                                const encodedFile = encodeURIComponent(file);
+                                const uri = `obsidian://open?vault=${encodedVault}&file=${encodedFile}`;
+                                window.open(uri);
+                            });
+                        } else {
+                            new Notice("No cables files selected.");
+                        }
+                    })
+                );
         }
         // #endregion
 

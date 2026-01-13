@@ -118,16 +118,6 @@ export default class slidesStudioPlugin extends Plugin {
 	async onload(): Promise<void> {
 		await this.loadSettings();
 
-		if (this.settings.cablesFiles && this.settings.cablesFiles.length > 0) {
-			const vaultName = this.app.vault.getName();
-			this.settings.cablesFiles.forEach(file => {
-				const encodedVault = encodeURIComponent(vaultName);
-				const encodedFile = encodeURIComponent(file);
-				const uri = `obsidian://open?vault=${encodedVault}&file=${encodedFile}`;
-				window.open(uri);
-			});
-		}
-
 		this.obs = new OBSWebSocket();
 
 		this.registerView(
