@@ -8,6 +8,7 @@ import { MidiManager} from 'src/utils/midiLogic';
 
 // Re-export for Typedoc
 export { ServerManager, OscManager, MidiManager };
+export * from './types';
 
 import { Message } from 'node-osc';
 import { OBSWebSocket } from 'obs-websocket-js';

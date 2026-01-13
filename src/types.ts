@@ -36,7 +36,9 @@ export interface SlidesStudioPluginSettings {
     obsAppPath_Text: string;
     serverPort: string;
     serverEnabled: boolean;
+    /** The folder path containing Cables.gl export files */
     cablesFolder: string;
+    /** List of specific cables files to open manually via the settings interface */
     cablesFiles: string[];
     settingsFolder: string;
     settingsFile: string;
