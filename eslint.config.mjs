@@ -1,7 +1,6 @@
 import tsparser from "@typescript-eslint/parser";
 import { defineConfig } from "eslint/config";
 import obsidianmd from "eslint-plugin-obsidianmd";
-import tseslint from 'typescript-eslint';
 import globals from "globals";
 import { globalIgnores } from "eslint/config";
 
@@ -20,6 +19,7 @@ export default defineConfig([
   // 1. Global Ignores: This tells ESLint to completely skip these files
   globalIgnores([
     "build/",
+    "docs",
     ".git/",
 		"node_modules",
 		"dist",

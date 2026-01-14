@@ -1,6 +1,7 @@
 import { App, Platform, PluginSettingTab, Setting, Notice, FileSystemAdapter, TFolder, TFile } from "obsidian";
 import type slidesStudioPlugin from "./main";
 import { ServerManager } from "./utils/serverLogic";
+import { SlidesStudioPluginSettings } from "./types";
 
 export class slidesStudioSettingsTab extends PluginSettingTab {
     plugin: slidesStudioPlugin;
@@ -16,11 +17,11 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
         // #region Settings Manager
         new Setting(containerEl)
-            .setName("Settings manager")
+            .setName("Configuration manager")
             .setHeading();
 
         const allFolders = this.app.vault.getAllLoadedFiles()
-            .filter(f => f instanceof TFolder) as TFolder[];
+            .filter(f => f instanceof TFolder);
         
         const settingsFolderOptions: Record<string, string> = { "": "Select a folder" };
         allFolders.forEach(f => settingsFolderOptions[f.path] = f.path);
@@ -114,7 +115,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                             if (file instanceof TFile) {
                                 try {
                                     const content = await this.app.vault.read(file);
-                                    const loadedSettings = JSON.parse(content);
+                                    const loadedSettings = JSON.parse(content) as SlidesStudioPluginSettings;
                                     
                                     // Merge loaded settings but preserve current settingsFolder/File to avoid confusion? 
                                     // User probably wants to load EVERYTHING including device setups.
@@ -127,7 +128,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                                     
                                     await this.plugin.saveSettings();
                                     this.plugin.onunload(); // Restart services
-                                    this.plugin.onload();   // Restart services
+                                    await this.plugin.onload();   // Restart services
                                     this.display();
                                     new Notice("Settings loaded successfully");
                                 } catch (error) {
@@ -145,7 +146,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
         // #region Server Settings
         new Setting(containerEl)
-            .setName("Web Server")
+            .setName("Web server")
             .setHeading();
 
         new Setting(containerEl)
@@ -348,11 +349,11 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
         // #region Cables.gl Settings
         new Setting(containerEl)
-            .setName("Cables.gl Standalone")
+            .setName("Cables.gl standalone")
             .setHeading();
 
         const folders = this.app.vault.getAllLoadedFiles()
-            .filter(f => f instanceof TFolder) as TFolder[];
+            .filter(f => f instanceof TFolder);
         
         const folderOptions: Record<string, string> = { "": "Select a folder" };
         folders.forEach(f => folderOptions[f.path] = f.path);
@@ -371,7 +372,9 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
             );
 
         if (this.plugin.settings.cablesFolder) {
-            containerEl.createEl("h4", { text: "Manage cables files" });
+            new Setting(containerEl)
+            .setName("Manage cables files")
+            .setHeading();
             
             const allFiles = this.app.vault.getFiles()
                 .filter(f => f.path.startsWith(this.plugin.settings.cablesFolder));
@@ -403,9 +406,11 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                 );
 
             if (this.plugin.settings.cablesFiles.length > 0) {
-                 containerEl.createEl("h5", { text: "Selected files:" });
+                new Setting(containerEl)
+                .setName("Selected files:")
+                .setHeading();
                  
-                 this.plugin.settings.cablesFiles.forEach((filePath, index) => {
+                this.plugin.settings.cablesFiles.forEach((filePath, index) => {
                      const file = this.app.vault.getAbstractFileByPath(filePath);
                      const fileName = file ? file.name : filePath;
 

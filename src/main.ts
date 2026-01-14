@@ -154,10 +154,6 @@ export default class slidesStudioPlugin extends Plugin {
 		}
 
 		this.oscManager = new OscManager((name, msg: unknown[]) => {
-			const payload = {
-				deviceName: name,
-				message: msg // msg is now the [address, ...args] array
-			};
 			//this.sendToOBS(payload, "osc-message");
 			this.serverManager?.broadcastOscMessage(name, msg);
 		});
