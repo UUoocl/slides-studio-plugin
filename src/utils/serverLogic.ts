@@ -8,6 +8,7 @@ import { Message } from 'node-osc';
 
 import type slidesStudioPlugin from '../main'; 
 import { SaveFileBody, FileListQuery, GetFileQuery, OscSendBody, MidiSendBody, MidiPayload } from '../types';
+import { ObsServer } from './obsEndpoints';
 
 /**
  * Manages the local Fastify server.
@@ -21,6 +22,7 @@ export class ServerManager {
     private isRunning = false;
     private sseOscConnections: Set<FastifyReply> = new Set();
     private sseMidiConnections: Set<FastifyReply> = new Set();
+    private obsServer: ObsServer | null = null;
 
     constructor(app: App, plugin: slidesStudioPlugin, port: number) {
         this.app = app;
@@ -56,6 +58,9 @@ export class ServerManager {
             root: [slidesFolder, libFolder, basePath],
             prefix: '/', 
         });
+
+        this.obsServer = new ObsServer(this.plugin);
+        this.obsServer.registerRoutes(this.server);
 
         // --- API: Get OBS Credentials ---
         // ✅ Removed async keyword as no await is used inside
@@ -262,6 +267,11 @@ export class ServerManager {
             }
             this.sseMidiConnections.clear();
             
+            if (this.obsServer) {
+                this.obsServer.cleanup();
+                this.obsServer = null;
+            }
+
             await this.server.close();
             this.server = null;
             this.isRunning = false;
