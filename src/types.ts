@@ -150,6 +150,11 @@ export interface MidiSendBody {
     message: MidiPayload;
 }
 
+export interface CustomMessageBody {
+    name: string;
+    data: Record<string, unknown>;
+}
+
 export interface ISlidesStudioPlugin {
     manifest: {
         dir: string;

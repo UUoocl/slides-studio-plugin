@@ -1,8 +1,12 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type slidesStudioPlugin from '../main';
+import { OBSRequestTypes } from 'obs-websocket-js';
+
+// Interface to allow dynamic event handling where specific types are not known at compile time
+interface DynamicObsEmitter {
+    on(event: string, handler: (data?: unknown) => void): void;
+    off(event: string, handler: (data?: unknown) => void): void;
+}
 
 export class ObsServer {
     private plugin: slidesStudioPlugin;
@@ -50,7 +54,10 @@ export class ObsServer {
 
             try {
                 // request.body should be the arguments object for the call
-                const result = await this.plugin.obs.call(name as any, data as any);
+                const requestType = name as keyof OBSRequestTypes;
+                const requestData = data as OBSRequestTypes[typeof requestType];
+                
+                const result = await this.plugin.obs.call(requestType, requestData);
                 return result || {};
             } catch (error) {
                 const msg = error instanceof Error ? error.message : String(error);
@@ -67,16 +74,16 @@ export class ObsServer {
         const events = ['CustomEvent', 'ConnectionOpened', 'ConnectionClosed', 'Identified'];
         
         events.forEach(event => {
-            const handler = (data: unknown) => this.broadcast(event, data);
+            const handler = (data?: unknown) => this.broadcast(event, data);
             this.boundHandlers.set(event, handler as (...args: unknown[]) => void);
-            this.plugin.obs.on(event as any, handler as any);
+            (this.plugin.obs as unknown as DynamicObsEmitter).on(event, handler);
         });
     }
 
     public cleanup() {
         // Remove listeners
         for (const [event, handler] of this.boundHandlers) {
-            this.plugin.obs.off(event as any, handler as any);
+            (this.plugin.obs as unknown as DynamicObsEmitter).off(event, handler);
         }
         this.boundHandlers.clear();
         

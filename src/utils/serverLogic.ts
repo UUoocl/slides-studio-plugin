@@ -7,7 +7,7 @@ import fs from 'fs';
 import { Message } from 'node-osc';
 
 import type slidesStudioPlugin from '../main'; 
-import { SaveFileBody, FileListQuery, GetFileQuery, OscSendBody, MidiSendBody, MidiPayload } from '../types';
+import { SaveFileBody, FileListQuery, GetFileQuery, OscSendBody, MidiSendBody, MidiPayload, CustomMessageBody } from '../types';
 import { ObsServer } from './obsEndpoints';
 
 /**
@@ -22,6 +22,7 @@ export class ServerManager {
     private isRunning = false;
     private sseOscConnections: Set<FastifyReply> = new Set();
     private sseMidiConnections: Set<FastifyReply> = new Set();
+    private sseCustomConnections: Set<FastifyReply> = new Set();
     private obsServer: ObsServer | null = null;
 
     constructor(app: App, plugin: slidesStudioPlugin, port: number) {
@@ -108,6 +109,7 @@ export class ServerManager {
             }
         });
 
+
         // --- API: Generic File List ---
         // ✅ Removed async keyword as no await is used inside
         this.server.get<{ Querystring: FileListQuery }>('/api/file/list', (request, reply) => {
@@ -173,6 +175,20 @@ export class ServerManager {
             });
         });
 
+        // --- SSE: Custom Events ---
+        this.server.get('/api/custom/events', (request, reply) => {
+            reply.raw.setHeader('Content-Type', 'text/event-stream');
+            reply.raw.setHeader('Cache-Control', 'no-cache');
+            reply.raw.setHeader('Connection', 'keep-alive');
+            reply.raw.flushHeaders();
+
+            this.sseCustomConnections.add(reply);
+
+            request.raw.on('close', () => {
+                this.sseCustomConnections.delete(reply);
+            });
+        });
+
         // --- API: Send OSC Message ---
         this.server.post<{ Body: OscSendBody }>('/api/osc/send', async (request, reply) => {
             const { deviceName, address, args } = request.body;
@@ -205,6 +221,23 @@ export class ServerManager {
 
             try {
                 this.plugin.midiManager.sendMidiMessage(deviceName, this.plugin.settings.midiDevices, message);
+                return { success: true };
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                return reply.code(500).send({ error: msg });
+            }
+        });
+
+        // --- API: Send Custom Message ---
+        this.server.post<{ Body: CustomMessageBody }>('/api/custom/message', async (request, reply) => {
+            const { name, data } = request.body;
+
+            if (!name || !data) {
+                return reply.code(400).send({ error: "Missing name or data" });
+            }
+
+            try {
+                this.broadcastCustomMessage(name, data);
                 return { success: true };
             } catch (err) {
                 const msg = err instanceof Error ? err.message : String(err);
@@ -253,6 +286,20 @@ export class ServerManager {
     }
 
     /**
+     * Broadcasts a custom message to all connected SSE clients.
+     * @param name - The event name.
+     * @param message - The data payload.
+     */
+    public broadcastCustomMessage(name: string, message: Record<string, unknown>): void {
+        const payload = JSON.stringify(message);
+        const data = `event: ${name}\ndata: ${payload}\n\n`;
+
+        for (const reply of this.sseCustomConnections) {
+            reply.raw.write(data);
+        }
+    }
+
+    /**
      * Stops the server and closes all active SSE connections.
      */
     public async stop(): Promise<void> {
@@ -266,6 +313,11 @@ export class ServerManager {
                 reply.raw.end();
             }
             this.sseMidiConnections.clear();
+
+            for (const reply of this.sseCustomConnections) {
+                reply.raw.end();
+            }
+            this.sseCustomConnections.clear();
             
             if (this.obsServer) {
                 this.obsServer.cleanup();
