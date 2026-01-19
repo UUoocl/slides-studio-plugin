@@ -47,6 +47,5 @@ if (prod) {
 	await context.rebuild();
 	process.exit(0);
 } else {
-	process.exit(0);
 	await context.watch();
 }

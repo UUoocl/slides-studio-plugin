@@ -27,8 +27,8 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
         allFolders.forEach(f => settingsFolderOptions[f.path] = f.path);
 
         new Setting(containerEl)
-            .setName("Settings folder")
-            .setDesc("Select folder to save/load settings")
+            .setName("Configurations folder")
+            .setDesc("Select folder to save/load configuration")
             .addDropdown(dropdown => dropdown
                 .addOptions(settingsFolderOptions)
                 .setValue(this.plugin.settings.settingsFolder)
@@ -47,7 +47,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
             folderFiles.forEach(f => fileOptions[f.name] = f.name);
 
             new Setting(containerEl)
-                .setName("Settings file")
+                .setName("Configuration file name")
                 .setDesc("Select existing or type new file name (ends in .md)")
                 .addDropdown(dropdown => dropdown
                     .addOptions(fileOptions)
@@ -71,7 +71,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
              new Setting(containerEl)
                 .setName("Actions")
                 .addButton(btn => btn
-                    .setButtonText("Save settings")
+                    .setButtonText("Save configuration")
                     .setCta()
                     .onClick(async () => {
                         const { settingsFolder, settingsFile } = this.plugin.settings;
@@ -85,13 +85,13 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                                 const file = this.app.vault.getAbstractFileByPath(filePath);
                                 if (file instanceof TFile) {
                                     await this.app.vault.modify(file, content);
-                                    new Notice(`Settings saved to ${filePath}`);
+                                    new Notice(`Configuration saved to ${filePath}`);
                                 } else {
                                     await this.app.vault.create(filePath, content);
-                                    new Notice(`Settings saved to new file ${filePath}`);
+                                    new Notice(`Configuration saved to new file ${filePath}`);
                                 }
                             } catch (error) {
-                                new Notice("Error saving settings: " + error);
+                                new Notice("Error saving configuration: " + error);
                                 console.error(error);
                             }
                         } else {

@@ -156,15 +156,16 @@ export class slidesStudioView extends ItemView {
             .setName("Create a new tag")
             .addText((text) => {    
                 text.setPlaceholder("Key")
-                    .onChange((value) => { this.plugin.settings.newTag = value; });
+                    .onChange((value) => { this.plugin.settings.newTagKey = value });
             })
             .addText((text) => {    
                 text.setPlaceholder("Value")
-                    .onChange((value) => { this.plugin.settings.newTag = `${this.plugin.settings.newTag}:${value}`; });
+                    .onChange((value) => { this.plugin.settings.newTagValue = value });
             })
             .addButton(item => {                
                 item.setButtonText("Create")
                     .onClick(async () => {
+                        this.plugin.settings.newTag = `${this.plugin.settings.newTagKey}:${this.plugin.settings.newTagValue}`;
                         userTagsSet.add(this.plugin.settings.newTag);
                         this.plugin.settings.user_tags = Array.from(userTagsSet);
                         await this.plugin.saveSettings(); 
