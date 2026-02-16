@@ -10,7 +10,7 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = (process.argv[2] === "production");
-const dir = prod ? "../UUinsome/.obsidian/plugins/slides-studio/" : "../testVault/.obsidian/plugins/slides-studio/";
+const dir = prod ? "../slidesStudio-vault/.obsidian/plugins/slides-studio/" : "../testVault/.obsidian/plugins/slides-studio/";
 
 const context = await esbuild.context({
 	banner: {

@@ -5,9 +5,11 @@ import fastifyCors from '@fastify/cors';
 import path from 'path';
 import fs from 'fs';
 import { Message } from 'node-osc';
+import { spawn, ChildProcess } from 'child_process';
+import * as net from 'net';
 
 import type slidesStudioPlugin from '../main'; 
-import { SaveFileBody, FileListQuery, GetFileQuery, OscSendBody, MidiSendBody, MidiPayload, CustomMessageBody } from '../types';
+import { SaveFileBody, FileListQuery, GetFileQuery, OscSendBody, MidiSendBody, MidiPayload, CustomMessageBody, MouseEventData } from '../types';
 import { ObsServer } from './obsEndpoints';
 
 /**
@@ -20,15 +22,56 @@ export class ServerManager {
     private server: FastifyInstance | null = null;
     private port: number;
     private isRunning = false;
-    private sseOscConnections: Set<FastifyReply> = new Set();
-    private sseMidiConnections: Set<FastifyReply> = new Set();
+    
+    // Connections are now mapped by device name (Topic-based Pub/Sub pattern)
+    private sseOscConnections: Map<string, Set<FastifyReply>> = new Map();
+    private sseMidiConnections: Map<string, Set<FastifyReply>> = new Map();
+    private sseMouseConnections: Map<string, Set<FastifyReply>> = new Map();
+    private sseKeyboardConnections: Map<string, Set<FastifyReply>> = new Map();
     private sseCustomConnections: Set<FastifyReply> = new Set();
     private obsServer: ObsServer | null = null;
+
+    private mouseMonitorProcess: ChildProcess | null = null;
+    private keyboardMonitorProcess: ChildProcess | null = null;
+    private uvcUtilBridgeProcess: ChildProcess | null = null;
+    private monitorSocketServer: net.Server | null = null;
 
     constructor(app: App, plugin: slidesStudioPlugin, port: number) {
         this.app = app;
         this.plugin = plugin;
         this.port = port;
+    }
+
+    /**
+     * Helper to initialize an SSE connection.
+     */
+    private setupSSE(reply: FastifyReply): void {
+        reply.raw.setHeader('Content-Type', 'text/event-stream');
+        reply.raw.setHeader('Cache-Control', 'no-cache');
+        reply.raw.setHeader('Connection', 'keep-alive');
+        reply.raw.flushHeaders();
+    }
+
+    /**
+     * Helper to manage connection sets in a map.
+     */
+    private addConnection(map: Map<string, Set<FastifyReply>>, key: string, reply: FastifyReply): void {
+        let connections = map.get(key);
+        if (!connections) {
+            connections = new Set();
+            map.set(key, connections);
+        }
+        connections.add(reply);
+    }
+
+    private removeConnection(map: Map<string, Set<FastifyReply>>, key: string, reply: FastifyReply): void {
+        const connections = map.get(key);
+        if (connections) {
+            connections.delete(reply);
+            if (connections.size === 0) {
+                map.delete(key);
+            }
+        }
     }
 
     /**
@@ -64,7 +107,6 @@ export class ServerManager {
         this.obsServer.registerRoutes(this.server);
 
         // --- API: Get OBS Credentials ---
-        // ✅ Removed async keyword as no await is used inside
         this.server.get('/api/obswss', (_request, _reply) => {
             const settings = this.plugin.settings;
             return {
@@ -100,7 +142,6 @@ export class ServerManager {
             }
             
             try {
-                // Using synchronous write here for safety within the async route
                 fs.writeFileSync(fullPath, JSON.stringify(data, null, 2));
                 return { success: true, path: fullPath };
             } catch (err) {
@@ -111,7 +152,6 @@ export class ServerManager {
 
 
         // --- API: Generic File List ---
-        // ✅ Removed async keyword as no await is used inside
         this.server.get<{ Querystring: FileListQuery }>('/api/file/list', (request, reply) => {
             const { folder } = request.query;
             const targetDir = path.join(basePath, folder);
@@ -129,7 +169,6 @@ export class ServerManager {
         });
 
         // --- API: Generic File Get ---
-        // ✅ Removed async keyword as no await is used inside
         this.server.get<{ Querystring: GetFileQuery }>('/api/file/get', (request, reply) => {
             const { folder, filename } = request.query;
             const targetDir = path.join(basePath, folder);
@@ -147,41 +186,74 @@ export class ServerManager {
             }
         });
 
-        // --- SSE: OSC Events ---
-        this.server.get('/api/osc/events', (request, reply) => {
-            reply.raw.setHeader('Content-Type', 'text/event-stream');
-            reply.raw.setHeader('Cache-Control', 'no-cache');
-            reply.raw.setHeader('Connection', 'keep-alive');
-            reply.raw.flushHeaders();
+        // --- SSE: OSC Device Events (Explicit Route per Device) ---
+        this.plugin.settings.oscDevices.forEach(device => {
+            if (!device.name) return;
+            this.server.get(`/api/osc/events/${device.name}`, (request, reply) => {
+                this.setupSSE(reply);
+                this.addConnection(this.sseOscConnections, device.name, reply);
 
-            this.sseOscConnections.add(reply);
-
-            request.raw.on('close', () => {
-                this.sseOscConnections.delete(reply);
+                request.raw.on('close', () => {
+                    this.removeConnection(this.sseOscConnections, device.name, reply);
+                });
             });
         });
 
-        // --- SSE: MIDI Events ---
-        this.server.get('/api/midi/events', (request, reply) => {
-            reply.raw.setHeader('Content-Type', 'text/event-stream');
-            reply.raw.setHeader('Cache-Control', 'no-cache');
-            reply.raw.setHeader('Connection', 'keep-alive');
-            reply.raw.flushHeaders();
+        // --- SSE: MIDI Device Events (Explicit Route per Device) ---
+        this.plugin.settings.midiDevices.forEach(device => {
+            if (!device.name) return;
+            this.server.get(`/api/midi/events/${device.name}`, (request, reply) => {
+                this.setupSSE(reply);
+                this.addConnection(this.sseMidiConnections, device.name, reply);
 
-            this.sseMidiConnections.add(reply);
-
-            request.raw.on('close', () => {
-                this.sseMidiConnections.delete(reply);
+                request.raw.on('close', () => {
+                    this.removeConnection(this.sseMidiConnections, device.name, reply);
+                });
             });
+        });
+
+        // --- SSE: Mouse Events ---
+        ['mousePosition', 'mouseClick', 'mouseScroll'].forEach(eventType => {
+            this.server?.get(`/api/mouse/events/${eventType}`, (request, reply) => {
+                this.setupSSE(reply);
+                this.addConnection(this.sseMouseConnections, eventType, reply);
+
+                request.raw.on('close', () => {
+                    this.removeConnection(this.sseMouseConnections, eventType, reply);
+                });
+            });
+        });
+
+        // --- SSE: Keyboard Events ---
+        ['keyboardPress', 'keyboardRelease'].forEach(eventType => {
+            this.server?.get(`/api/keyboard/events/${eventType}`, (request, reply) => {
+                this.setupSSE(reply);
+                this.addConnection(this.sseKeyboardConnections, eventType, reply);
+
+                request.raw.on('close', () => {
+                    this.removeConnection(this.sseKeyboardConnections, eventType, reply);
+                });
+            });
+        });
+
+        // --- API: Keyboard Monitor Settings ---
+        this.server.get('/api/keyboard/settings', (_request, _reply) => {
+            return {
+                showCombinations: this.plugin.settings.keyboardMonitorShowCombinations
+            };
+        });
+
+        // --- API: UVC Util Settings ---
+        this.server.get('/api/uvc/settings', (_request, _reply) => {
+            return {
+                enabled: this.plugin.settings.uvcUtilEnabled,
+                wsPort: 8081 // Fixed port for UVC bridge WebSocket
+            };
         });
 
         // --- SSE: Custom Events ---
         this.server.get('/api/custom/events', (request, reply) => {
-            reply.raw.setHeader('Content-Type', 'text/event-stream');
-            reply.raw.setHeader('Cache-Control', 'no-cache');
-            reply.raw.setHeader('Connection', 'keep-alive');
-            reply.raw.flushHeaders();
-
+            this.setupSSE(reply);
             this.sseCustomConnections.add(reply);
 
             request.raw.on('close', () => {
@@ -249,6 +321,16 @@ export class ServerManager {
             await this.server.listen({ port: this.port, host: '127.0.0.1' });
             this.isRunning = true;
             new Notice(`Slides Studio Server started on port ${this.port}`);
+
+            if (this.plugin.settings.mouseMonitorEnabled) {
+                void this.startMouseMonitor();
+            }
+            if (this.plugin.settings.keyboardMonitorEnabled) {
+                void this.startKeyboardMonitor();
+            }
+            if (this.plugin.settings.uvcUtilEnabled) {
+                void this.startUvcUtilBridge();
+            }
         } catch (err) {
             console.error("Failed to start Fastify server", err);
             this.isRunning = false;
@@ -256,32 +338,70 @@ export class ServerManager {
     }
 
     /**
-     * Broadcasts an OSC message to all connected SSE clients.
-     * The device name is used as the SSE event name.
+     * Broadcasts an OSC message to SSE clients subscribed to the specific device.
      * @param deviceName - The name of the device sending the message.
      * @param message - The OSC message payload.
      */
     public broadcastOscMessage(deviceName: string, message: unknown[]): void {
+        const connections = this.sseOscConnections.get(deviceName);
+        if (!connections) return;
+
         const payload = JSON.stringify({ deviceName, message });
         const data = `event: ${deviceName}\ndata: ${payload}\n\n`;
 
-        for (const reply of this.sseOscConnections) {
+        for (const reply of connections) {
             reply.raw.write(data);
         }
     }
 
     /**
-     * Broadcasts a MIDI message to all connected SSE clients.
-     * The device name is used as the SSE event name.
+     * Broadcasts a MIDI message to SSE clients subscribed to the specific device.
      * @param deviceName - The name of the device sending the message.
      * @param message - The MIDI message payload.
      */
     public broadcastMidiMessage(deviceName: string, message: MidiPayload): void {
+        const connections = this.sseMidiConnections.get(deviceName);
+        if (!connections) return;
+
         const payload = JSON.stringify({ deviceName, message });
         const data = `event: ${deviceName}\ndata: ${payload}\n\n`;
 
-        for (const reply of this.sseMidiConnections) {
+        for (const reply of connections) {
             reply.raw.write(data);
+        }
+    }
+
+    /**
+     * Broadcasts a mouse event to SSE clients.
+     * @param topic - The mouse event topic (mousePosition, mouseClick, mouseScroll).
+     * @param data - The event data.
+     */
+    public broadcastMouseMessage(topic: string, data: unknown): void {
+        const connections = this.sseMouseConnections.get(topic);
+        if (!connections) return;
+
+        const payload = JSON.stringify(data);
+        const sseData = `event: ${topic}\ndata: ${payload}\n\n`;
+
+        for (const reply of connections) {
+            reply.raw.write(sseData);
+        }
+    }
+
+    /**
+     * Broadcasts a keyboard event to SSE clients.
+     * @param topic - The keyboard event topic (keyboardPress, keyboardRelease).
+     * @param data - The event data.
+     */
+    public broadcastKeyboardMessage(topic: string, data: unknown): void {
+        const connections = this.sseKeyboardConnections.get(topic);
+        if (!connections) return;
+
+        const payload = JSON.stringify(data);
+        const sseData = `event: ${topic}\ndata: ${payload}\n\n`;
+
+        for (const reply of connections) {
+            reply.raw.write(sseData);
         }
     }
 
@@ -300,19 +420,303 @@ export class ServerManager {
     }
 
     /**
+     * Ensures the shared monitor socket server is running.
+     */
+    private ensureMonitorSocketServer(): void {
+        if (this.monitorSocketServer) return;
+
+        this.monitorSocketServer = net.createServer((socket) => {
+            let buffer = '';
+            socket.on('data', (data) => {
+                buffer += data.toString();
+                let boundary = buffer.indexOf('\n');
+                while (boundary !== -1) {
+                    const line = buffer.substring(0, boundary);
+                    buffer = buffer.substring(boundary + 1);
+                    try {
+                        const event = JSON.parse(line) as MouseEventData;
+                        if (event.topic && event.data) {
+                            if (event.topic.startsWith('mouse')) {
+                                this.broadcastMouseMessage(event.topic, event.data);
+                            } else if (event.topic.startsWith('keyboard')) {
+                                this.broadcastKeyboardMessage(event.topic, event.data);
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse monitor event", e);
+                    }
+                    boundary = buffer.indexOf('\n');
+                }
+            });
+        });
+
+        const socketPort = 57001; 
+        this.monitorSocketServer.listen(socketPort, '127.0.0.1');
+    }
+
+    /**
+     * Starts the global mouse monitor Python script.
+     */
+    public async startMouseMonitor(): Promise<void> {
+        if (this.mouseMonitorProcess) return;
+
+        const adapter = this.app.vault.adapter;
+        if (!(adapter instanceof FileSystemAdapter)) return;
+        const basePath = adapter.getBasePath();
+        const pythonScriptPath = path.join(basePath, this.plugin.manifest.dir, 'pythonScripts/mouse_monitor.py');
+
+        this.ensureMonitorSocketServer();
+
+        const socketPort = 57001; 
+        const args = [
+            pythonScriptPath,
+            `127.0.0.1:${socketPort}`,
+            this.plugin.settings.mouseMonitorPosition ? '1' : '0',
+            this.plugin.settings.mouseMonitorClicks ? '1' : '0',
+            this.plugin.settings.mouseMonitorScroll ? '1' : '0'
+        ];
+
+        const pythonPath = this.plugin.settings.pythonPath || 'python3';
+
+        try {
+            this.mouseMonitorProcess = spawn(pythonPath, args);
+            
+            this.mouseMonitorProcess.on('error', (err) => {
+                new Notice(`Failed to start mouse monitor with path: ${pythonPath}. Check your settings.`);
+                console.error("Failed to start mouse monitor", err);
+                this.stopMouseMonitor();
+            });
+
+            this.setupMouseProcessHandlers();
+            new Notice("Mouse monitor started.");
+        } catch (err) {
+            new Notice(`Failed to start mouse monitor: ${err instanceof Error ? err.message : String(err)}`);
+        }
+    }
+
+    private setupMouseProcessHandlers(): void {
+        if (!this.mouseMonitorProcess) return;
+        
+        this.mouseMonitorProcess.on('exit', (code) => {
+            console.warn(`Mouse monitor exited with code ${code}`);
+            this.mouseMonitorProcess = null;
+            this.checkMonitorSocketServerCleanup();
+        });
+
+        this.mouseMonitorProcess.stderr?.on('data', (data) => {
+            console.error(`Mouse Monitor Error: ${data}`);
+        });
+    }
+
+    /**
+     * Starts the global keyboard monitor Python script.
+     */
+    public async startKeyboardMonitor(): Promise<void> {
+        if (this.keyboardMonitorProcess) return;
+
+        const adapter = this.app.vault.adapter;
+        if (!(adapter instanceof FileSystemAdapter)) return;
+        const basePath = adapter.getBasePath();
+        const pythonScriptPath = path.join(basePath, this.plugin.manifest.dir, 'pythonScripts/keyboard_monitor.py');
+
+        this.ensureMonitorSocketServer();
+
+        const socketPort = 57001; 
+        const args = [
+            pythonScriptPath,
+            `127.0.0.1:${socketPort}`,
+            this.plugin.settings.keyboardMonitorShowCombinations ? '1' : '0'
+        ];
+
+        const pythonPath = this.plugin.settings.pythonPath || 'python3';
+
+        try {
+            this.keyboardMonitorProcess = spawn(pythonPath, args);
+            
+            this.keyboardMonitorProcess.on('error', (err) => {
+                new Notice(`Failed to start keyboard monitor with path: ${pythonPath}. Check your settings.`);
+                console.error("Failed to start keyboard monitor", err);
+                this.stopKeyboardMonitor();
+            });
+
+            this.setupKeyboardProcessHandlers();
+            new Notice("Keyboard monitor started.");
+        } catch (err) {
+            new Notice(`Failed to start keyboard monitor: ${err instanceof Error ? err.message : String(err)}`);
+        }
+    }
+
+    private setupKeyboardProcessHandlers(): void {
+        if (!this.keyboardMonitorProcess) return;
+        
+        this.keyboardMonitorProcess.on('exit', (code) => {
+            console.warn(`Keyboard monitor exited with code ${code}`);
+            this.keyboardMonitorProcess = null;
+            this.checkMonitorSocketServerCleanup();
+        });
+
+        this.keyboardMonitorProcess.stderr?.on('data', (data) => {
+            console.error(`Keyboard Monitor Error: ${data}`);
+        });
+    }
+
+    /**
+     * Starts the UVC Util bridge Python script.
+     */
+    public async startUvcUtilBridge(): Promise<void> {
+        if (this.uvcUtilBridgeProcess) return;
+
+        const adapter = this.app.vault.adapter;
+        if (!(adapter instanceof FileSystemAdapter)) return;
+        const basePath = adapter.getBasePath();
+        const pluginDir = this.plugin.manifest.dir;
+        const pythonScriptPath = path.join(basePath, pluginDir, 'pythonScripts/uvc-util/uvc_util_bridge.py');
+        
+        let libPath = this.plugin.settings.uvcUtilLibPath;
+        if (!path.isAbsolute(libPath)) {
+            // Assume relative to plugin directory
+            libPath = path.join(basePath, pluginDir, libPath);
+        }
+
+        const pythonPath = this.plugin.settings.pythonPath || 'python3';
+        const wsPort = 8081;
+
+        const args = [
+            pythonScriptPath,
+            "--port", wsPort.toString(),
+            "--lib", libPath
+        ];
+
+        console.warn(`Starting UVC bridge: ${pythonPath} ${args.join(' ')}`);
+
+        try {
+            this.uvcUtilBridgeProcess = spawn(pythonPath, args);
+            
+            this.uvcUtilBridgeProcess.on('error', (err) => {
+                new Notice(`Failed to start UVC bridge with path: ${pythonPath}. Check your settings.`);
+                console.error("Failed to start UVC bridge", err);
+                this.stopUvcUtilBridge();
+            });
+
+            this.uvcUtilBridgeProcess.on('exit', (code) => {
+                console.warn(`UVC bridge exited with code ${code}`);
+                this.uvcUtilBridgeProcess = null;
+            });
+
+            this.uvcUtilBridgeProcess.stdout?.on('data', (data) => {
+                console.warn(`UVC Bridge: ${data}`);
+            });
+
+            this.uvcUtilBridgeProcess.stderr?.on('data', (data) => {
+                console.error(`UVC Bridge Error: ${data}`);
+            });
+
+            new Notice("Uvc bridge started.");
+        } catch (err) {
+            new Notice(`Failed to start UVC bridge: ${err instanceof Error ? err.message : String(err)}`);
+        }
+    }
+
+    /**
+     * Stops the UVC Util bridge Python script.
+     */
+    public stopUvcUtilBridge(): void {
+        if (this.uvcUtilBridgeProcess) {
+            this.uvcUtilBridgeProcess.kill();
+            this.uvcUtilBridgeProcess = null;
+        }
+        new Notice("Uvc bridge stopped.");
+    }
+
+    /**
+     * Restarts the UVC Util bridge with updated settings.
+     */
+    public async restartUvcUtilBridge(): Promise<void> {
+        this.stopUvcUtilBridge();
+        if (this.plugin.settings.uvcUtilEnabled) {
+            await this.startUvcUtilBridge();
+        }
+    }
+
+    private checkMonitorSocketServerCleanup(): void {
+        if (!this.mouseMonitorProcess && !this.keyboardMonitorProcess && this.monitorSocketServer) {
+            this.monitorSocketServer.close();
+            this.monitorSocketServer = null;
+        }
+    }
+
+    /**
+     * Stops the mouse monitor Python script.
+     */
+    public stopMouseMonitor(): void {
+        if (this.mouseMonitorProcess) {
+            this.mouseMonitorProcess.kill();
+            this.mouseMonitorProcess = null;
+        }
+        this.checkMonitorSocketServerCleanup();
+        new Notice("Mouse monitor stopped.");
+    }
+
+    /**
+     * Restarts the mouse monitor with updated settings.
+     */
+    public async restartMouseMonitor(): Promise<void> {
+        this.stopMouseMonitor();
+        if (this.plugin.settings.mouseMonitorEnabled) {
+            await this.startMouseMonitor();
+        }
+    }
+
+    /**
+     * Stops the keyboard monitor Python script.
+     */
+    public stopKeyboardMonitor(): void {
+        if (this.keyboardMonitorProcess) {
+            this.keyboardMonitorProcess.kill();
+            this.keyboardMonitorProcess = null;
+        }
+        this.checkMonitorSocketServerCleanup();
+        new Notice("Keyboard monitor stopped.");
+    }
+
+    /**
+     * Restarts the keyboard monitor with updated settings.
+     */
+    public async restartKeyboardMonitor(): Promise<void> {
+        this.stopKeyboardMonitor();
+        if (this.plugin.settings.keyboardMonitorEnabled) {
+            await this.startKeyboardMonitor();
+        }
+    }
+
+    /**
      * Stops the server and closes all active SSE connections.
      */
     public async stop(): Promise<void> {
+        this.stopMouseMonitor();
+        this.stopKeyboardMonitor();
+        this.stopUvcUtilBridge();
+
         if (this.server) {
-            for (const reply of this.sseOscConnections) {
-                reply.raw.end();
-            }
+            this.sseOscConnections.forEach(connections => {
+                connections.forEach(reply => reply.raw.end());
+            });
             this.sseOscConnections.clear();
 
-            for (const reply of this.sseMidiConnections) {
-                reply.raw.end();
-            }
+            this.sseMidiConnections.forEach(connections => {
+                connections.forEach(reply => reply.raw.end());
+            });
             this.sseMidiConnections.clear();
+
+            this.sseMouseConnections.forEach(connections => {
+                connections.forEach(reply => reply.raw.end());
+            });
+            this.sseMouseConnections.clear();
+
+            this.sseKeyboardConnections.forEach(connections => {
+                connections.forEach(reply => reply.raw.end());
+            });
+            this.sseKeyboardConnections.clear();
 
             for (const reply of this.sseCustomConnections) {
                 reply.raw.end();

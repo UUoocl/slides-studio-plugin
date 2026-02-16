@@ -7,7 +7,7 @@
 	"scripts": {
 		"lint": "eslint .",
 		"dev": "cp -r build/slides_studio ../testVault/.obsidian/plugins/slides-studio/ && cp build/manifest.json ../testVault/.obsidian/plugins/slides-studio/manifest.json && node esbuild.config.mjs",
-		"build": "cp -r build/slides_studio ../UUinsome/.obsidian/plugins/slides-studio/ && cp build/manifest.json ../UUinsome/.obsidian/plugins/slides-studio/manifest.json && node esbuild.config.mjs production",
+		"build": "cp -r build/slides_studio ../slidesStudio-vault/.obsidian/plugins/slides-studio/ && cp build/manifest.json ../slidesStudio-vault/.obsidian/plugins/slides-studio/manifest.json && node esbuild.config.mjs production",
 		"doc": "typedoc",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},

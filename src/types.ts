@@ -36,10 +36,15 @@ export interface SlidesStudioPluginSettings {
     obsAppPath_Text: string;
     serverPort: string;
     serverEnabled: boolean;
-    /** The folder path containing Cables.gl export files */
-    cablesFolder: string;
-    /** List of specific cables files to open manually via the settings interface */
-    cablesFiles: string[];
+    pythonPath: string;
+    mouseMonitorEnabled: boolean;
+    mouseMonitorPosition: boolean;
+    mouseMonitorClicks: boolean;
+    mouseMonitorScroll: boolean;
+    keyboardMonitorEnabled: boolean;
+    keyboardMonitorShowCombinations: boolean;
+    uvcUtilEnabled: boolean;
+    uvcUtilLibPath: string;
     settingsFolder: string;
     settingsFile: string;
     oscDevices: OscDeviceSetting[];
@@ -153,6 +158,11 @@ export interface MidiSendBody {
 export interface CustomMessageBody {
     name: string;
     data: Record<string, unknown>;
+}
+
+export interface MouseEventData {
+    topic: string;
+    data: unknown;
 }
 
 export interface ISlidesStudioPlugin {

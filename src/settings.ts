@@ -2,13 +2,43 @@ import { App, Platform, PluginSettingTab, Setting, Notice, FileSystemAdapter, TF
 import type slidesStudioPlugin from "./main";
 import { ServerManager } from "./utils/serverLogic";
 import { SlidesStudioPluginSettings } from "./types";
+import { exec } from "child_process";
 
 export class slidesStudioSettingsTab extends PluginSettingTab {
     plugin: slidesStudioPlugin;
+    private pythonStatusEl: HTMLElement;
 
     constructor(app: App, plugin: slidesStudioPlugin) {
         super(app, plugin);
         this.plugin = plugin;
+    }
+
+    private validatePythonPath(path: string) {
+        if (!this.pythonStatusEl) return;
+
+        if (!path) {
+            this.pythonStatusEl.setText("No python path provided.");
+            this.pythonStatusEl.setCssProps({
+                'color': 'var(--text-muted)'
+            });
+            return;
+        }
+
+        // Use double quotes around the path to handle spaces
+        exec(`"${path}" --version`, (error, stdout, stderr) => {
+            if (error) {
+                this.pythonStatusEl.setText("Python not found or invalid path.");
+                this.pythonStatusEl.setCssProps({
+                    'color': 'red'
+                });
+            } else {
+                const version = stdout.trim() || stderr.trim();
+                this.pythonStatusEl.setText(`Python loaded: ${version}`);
+                this.pythonStatusEl.setCssProps({
+                    'color': 'green'
+                });
+            }
+        });
     }
 
     display() {
@@ -347,111 +377,6 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
             });
         // #endregion    
 
-        // #region Cables.gl Settings
-        new Setting(containerEl)
-            .setName("Cables.gl standalone")
-            .setHeading();
-
-        const folders = this.app.vault.getAllLoadedFiles()
-            .filter(f => f instanceof TFolder);
-        
-        const folderOptions: Record<string, string> = { "": "Select a folder" };
-        folders.forEach(f => folderOptions[f.path] = f.path);
-
-        new Setting(containerEl)
-            .setName("Cables folder")
-            .setDesc("Select the folder containing cables files")
-            .addDropdown(dropdown => dropdown
-                .addOptions(folderOptions)
-                .setValue(this.plugin.settings.cablesFolder)
-                .onChange(async (value) => {
-                    this.plugin.settings.cablesFolder = value;
-                    await this.plugin.saveSettings();
-                    this.display(); 
-                })
-            );
-
-        if (this.plugin.settings.cablesFolder) {
-            new Setting(containerEl)
-            .setName("Manage cables files")
-            .setHeading();
-            
-            const allFiles = this.app.vault.getFiles()
-                .filter(f => f.path.startsWith(this.plugin.settings.cablesFolder));
-            
-            const fileOptions: Record<string, string> = { "": "Select a file to add" };
-            allFiles.forEach(f => fileOptions[f.path] = f.name);
-
-            let selectedFileToAdd = "";
-
-            new Setting(containerEl)
-                .setName("Add file")
-                .setDesc("Select a file and click add")
-                .addDropdown(dropdown => dropdown
-                    .addOptions(fileOptions)
-                    .onChange((value) => {
-                        selectedFileToAdd = value;
-                    })
-                )
-                .addButton(btn => btn
-                    .setButtonText("Add")
-                    .setCta()
-                    .onClick(async () => {
-                        if (selectedFileToAdd && !this.plugin.settings.cablesFiles.includes(selectedFileToAdd)) {
-                            this.plugin.settings.cablesFiles.push(selectedFileToAdd);
-                            await this.plugin.saveSettings();
-                            this.display();
-                        }
-                    })
-                );
-
-            if (this.plugin.settings.cablesFiles.length > 0) {
-                new Setting(containerEl)
-                .setName("Selected files:")
-                .setHeading();
-                 
-                this.plugin.settings.cablesFiles.forEach((filePath, index) => {
-                     const file = this.app.vault.getAbstractFileByPath(filePath);
-                     const fileName = file ? file.name : filePath;
-
-                     new Setting(containerEl)
-                        .setName(fileName)
-                        .setDesc(filePath)
-                        .addButton(btn => btn
-                            .setButtonText("Remove")
-                            .setWarning()
-                            .onClick(async () => {
-                                this.plugin.settings.cablesFiles.splice(index, 1);
-                                await this.plugin.saveSettings();
-                                this.display();
-                            })
-                        );
-                 });
-            }
-
-            new Setting(containerEl)
-                .setName("Open cables")
-                .setDesc("Open all selected cables files")
-                .addButton(btn => btn
-                    .setButtonText("Open")
-                    .setCta()
-                    .onClick(() => {
-                        const vaultName = this.app.vault.getName();
-                        if (this.plugin.settings.cablesFiles && this.plugin.settings.cablesFiles.length > 0) {
-                             this.plugin.settings.cablesFiles.forEach(file => {
-                                const encodedVault = encodeURIComponent(vaultName);
-                                const encodedFile = encodeURIComponent(file);
-                                const uri = `obsidian://open?vault=${encodedVault}&file=${encodedFile}`;
-                                window.open(uri);
-                            });
-                        } else {
-                            new Notice("No cables files selected.");
-                        }
-                    })
-                );
-        }
-        // #endregion
-
         // #region osc Settings
         new Setting(containerEl)
             .setName("Osc devices")
@@ -534,6 +459,9 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         }
                         this.plugin.settings.oscDevices.splice(index, 1);
                         await this.plugin.saveSettings();
+                        if (this.plugin.settings.serverEnabled && this.plugin.serverManager) {
+                            await this.plugin.serverManager.restart(parseInt(this.plugin.settings.serverPort));
+                        }
                         this.display();
                     })
                 );
@@ -552,6 +480,9 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         outPort: 9000
                     });
                     await this.plugin.saveSettings();
+                    if (this.plugin.settings.serverEnabled && this.plugin.serverManager) {
+                        await this.plugin.serverManager.restart(parseInt(this.plugin.settings.serverPort));
+                    }
                     this.display();
                 })
             );
@@ -637,6 +568,9 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                             }
                             this.plugin.settings.midiDevices.splice(index, 1);
                             await this.plugin.saveSettings();
+                            if (this.plugin.settings.serverEnabled && this.plugin.serverManager) {
+                                await this.plugin.serverManager.restart(parseInt(this.plugin.settings.serverPort));
+                            }
                             this.display();
                         })
                     );
@@ -654,10 +588,195 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                             outputName: ""
                         });
                         await this.plugin.saveSettings();
+                        if (this.plugin.settings.serverEnabled && this.plugin.serverManager) {
+                            await this.plugin.serverManager.restart(parseInt(this.plugin.settings.serverPort));
+                        }
                         this.display();
                     })
                 );
         }
+        // #endregion
+
+        // #region Mouse Monitor Settings
+        new Setting(containerEl)
+            .setName("Python installation")
+            .setHeading();
+
+        new Setting(containerEl)
+            .setName("Python install path")
+            .setDesc("The full path to the python executable. macOS example: /Library/Frameworks/Python.framework/Versions/3.12/bin/python3")
+            .addText(text => text
+                .setPlaceholder("/usr/bin/python3")
+                .setValue(this.plugin.settings.pythonPath)
+                .onChange(async (value) => {
+                    this.plugin.settings.pythonPath = value;
+                    await this.plugin.saveSettings();
+                    this.validatePythonPath(value);
+                    if (this.plugin.settings.mouseMonitorEnabled && this.plugin.serverManager) {
+                        void this.plugin.serverManager.restartMouseMonitor();
+                    }
+                })
+            );
+        
+        this.pythonStatusEl = containerEl.createEl("p", { 
+            text: "Checking python...",
+            cls: "python-status" 
+        });
+        this.pythonStatusEl.setCssProps({
+            'font-size': '0.8em',
+            'margin-top': '-10px',
+            'margin-bottom': '20px'
+        });
+        this.validatePythonPath(this.plugin.settings.pythonPath);
+
+        new Setting(containerEl)
+            .setName("Mouse monitor")
+            .setHeading();
+
+        new Setting(containerEl)
+            .setName("Enable mouse monitor")
+            .setDesc("Monitor global mouse input via a python script.")
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.mouseMonitorEnabled)
+                .onChange(async (value) => {
+                    this.plugin.settings.mouseMonitorEnabled = value;
+                    await this.plugin.saveSettings();
+                    
+                    if (this.plugin.serverManager) {
+                        if (value) {
+                            void this.plugin.serverManager.startMouseMonitor();
+                        } else {
+                            void this.plugin.serverManager.stopMouseMonitor();
+                        }
+                    } else if (value) {
+                        new Notice("Server must be enabled to use mouse monitor.");
+                    }
+                })
+            );
+
+        new Setting(containerEl)
+            .setName("Monitor position")
+            .setDesc("Monitor mouse movement.")
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.mouseMonitorPosition)
+                .onChange(async (value) => {
+                    this.plugin.settings.mouseMonitorPosition = value;
+                    await this.plugin.saveSettings();
+                    if (this.plugin.settings.mouseMonitorEnabled && this.plugin.serverManager) {
+                        void this.plugin.serverManager.restartMouseMonitor();
+                    }
+                })
+            );
+
+        new Setting(containerEl)
+            .setName("Monitor clicks")
+            .setDesc("Monitor mouse button clicks.")
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.mouseMonitorClicks)
+                .onChange(async (value) => {
+                    this.plugin.settings.mouseMonitorClicks = value;
+                    await this.plugin.saveSettings();
+                    if (this.plugin.settings.mouseMonitorEnabled && this.plugin.serverManager) {
+                        void this.plugin.serverManager.restartMouseMonitor();
+                    }
+                })
+            );
+
+        new Setting(containerEl)
+            .setName("Monitor scroll")
+            .setDesc("Monitor mouse scroll wheel.")
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.mouseMonitorScroll)
+                .onChange(async (value) => {
+                    this.plugin.settings.mouseMonitorScroll = value;
+                    await this.plugin.saveSettings();
+                    if (this.plugin.settings.mouseMonitorEnabled && this.plugin.serverManager) {
+                        void this.plugin.serverManager.restartMouseMonitor();
+                    }
+                })
+            );
+        // #endregion
+
+        // #region Keyboard Monitor Settings
+        new Setting(containerEl)
+            .setName("Keyboard monitor")
+            .setHeading();
+
+        new Setting(containerEl)
+            .setName("Enable keyboard monitor")
+            .setDesc("Monitor global keyboard input via a python script.")
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.keyboardMonitorEnabled)
+                .onChange(async (value) => {
+                    this.plugin.settings.keyboardMonitorEnabled = value;
+                    await this.plugin.saveSettings();
+                    
+                    if (this.plugin.serverManager) {
+                        if (value) {
+                            void this.plugin.serverManager.startKeyboardMonitor();
+                        } else {
+                            void this.plugin.serverManager.stopKeyboardMonitor();
+                        }
+                    } else if (value) {
+                        new Notice("Server must be enabled to use keyboard monitor.");
+                    }
+                })
+            );
+
+        new Setting(containerEl)
+            .setName("Show key combinations")
+            .setDesc("Display key combinations (eg ctrl + p) instead of single keys.")
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.keyboardMonitorShowCombinations)
+                .onChange(async (value) => {
+                    this.plugin.settings.keyboardMonitorShowCombinations = value;
+                    await this.plugin.saveSettings();
+                    if (this.plugin.settings.keyboardMonitorEnabled && this.plugin.serverManager) {
+                        void this.plugin.serverManager.restartKeyboardMonitor();
+                    }
+                })
+            );
+        // #endregion
+
+        // #region Uvc-util Settings
+        new Setting(containerEl)
+            .setName("Uvc-util bridge")
+            .setHeading();
+
+        new Setting(containerEl)
+            .setName("Enable uvc-util bridge")
+            .setDesc("Start the uvc-util bridge to control camera settings.")
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.uvcUtilEnabled)
+                .onChange(async (value) => {
+                    this.plugin.settings.uvcUtilEnabled = value;
+                    await this.plugin.saveSettings();
+                    
+                    if (this.plugin.serverManager) {
+                        if (value) {
+                            void this.plugin.serverManager.startUvcUtilBridge();
+                        } else {
+                            void this.plugin.serverManager.stopUvcUtilBridge();
+                        }
+                    } else if (value) {
+                        new Notice("Server must be enabled to use uvc-util bridge.");
+                    }
+                })
+            );
+
+        new Setting(containerEl)
+            .setName("Uvc library path")
+            .setDesc("Path to libuvcutil.dylib (relative to plugin directory or absolute)")
+            .addText(text => text
+                .setValue(this.plugin.settings.uvcUtilLibPath)
+                .onChange(async (value) => {
+                    this.plugin.settings.uvcUtilLibPath = value;
+                    await this.plugin.saveSettings();
+                    if (this.plugin.settings.uvcUtilEnabled && this.plugin.serverManager) {
+                        void this.plugin.serverManager.restartUvcUtilBridge();
+                    }
+                })
+            );
         // #endregion
     }
 }

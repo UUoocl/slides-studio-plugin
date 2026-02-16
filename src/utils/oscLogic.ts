@@ -40,6 +40,7 @@ export class OscManager {
 
             // FIX: Incoming messages are arrays, not Message instances
             oscServer.on("message", (msg: unknown[]) => {
+                console.warn(msg)
                 if (this.onOscMessageReceived) {
                     this.onOscMessageReceived(deviceSettings.name, msg);
                 }
