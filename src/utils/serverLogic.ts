@@ -457,7 +457,7 @@ export class ServerManager {
     /**
      * Starts the global mouse monitor Python script.
      */
-    public async startMouseMonitor(): Promise<void> {
+    public startMouseMonitor(): void {
         if (this.mouseMonitorProcess) return;
 
         const adapter = this.app.vault.adapter;
@@ -511,7 +511,7 @@ export class ServerManager {
     /**
      * Starts the global keyboard monitor Python script.
      */
-    public async startKeyboardMonitor(): Promise<void> {
+    public startKeyboardMonitor(): void {
         if (this.keyboardMonitorProcess) return;
 
         const adapter = this.app.vault.adapter;
@@ -563,7 +563,7 @@ export class ServerManager {
     /**
      * Starts the UVC Util bridge Python script.
      */
-    public async startUvcUtilBridge(): Promise<void> {
+    public startUvcUtilBridge(): void {
         if (this.uvcUtilBridgeProcess) return;
 
         const adapter = this.app.vault.adapter;
@@ -631,10 +631,10 @@ export class ServerManager {
     /**
      * Restarts the UVC Util bridge with updated settings.
      */
-    public async restartUvcUtilBridge(): Promise<void> {
+    public restartUvcUtilBridge(): void {
         this.stopUvcUtilBridge();
         if (this.plugin.settings.uvcUtilEnabled) {
-            await this.startUvcUtilBridge();
+            this.startUvcUtilBridge();
         }
     }
 
@@ -660,10 +660,10 @@ export class ServerManager {
     /**
      * Restarts the mouse monitor with updated settings.
      */
-    public async restartMouseMonitor(): Promise<void> {
+    public restartMouseMonitor(): void {
         this.stopMouseMonitor();
         if (this.plugin.settings.mouseMonitorEnabled) {
-            await this.startMouseMonitor();
+            this.startMouseMonitor();
         }
     }
 
@@ -682,10 +682,10 @@ export class ServerManager {
     /**
      * Restarts the keyboard monitor with updated settings.
      */
-    public async restartKeyboardMonitor(): Promise<void> {
+    public restartKeyboardMonitor(): void {
         this.stopKeyboardMonitor();
         if (this.plugin.settings.keyboardMonitorEnabled) {
-            await this.startKeyboardMonitor();
+            this.startKeyboardMonitor();
         }
     }
 
