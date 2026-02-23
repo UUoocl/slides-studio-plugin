@@ -3,6 +3,7 @@ import type slidesStudioPlugin from "./main";
 import { ServerManager } from "./utils/serverLogic";
 import { SlidesStudioPluginSettings } from "./types";
 import { exec } from "child_process";
+import * as net from "net";
 
 export class slidesStudioSettingsTab extends PluginSettingTab {
     plugin: slidesStudioPlugin;
@@ -39,6 +40,35 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                 });
             }
         });
+    }
+
+    private async checkPort(port: number): Promise<boolean> {
+        return new Promise((resolve) => {
+            const server = net.createServer();
+            server.once('error', () => {
+                resolve(false);
+            });
+            server.once('listening', () => {
+                server.close();
+                resolve(true);
+            });
+            server.listen(port, '127.0.0.1');
+        });
+    }
+
+    private async updatePortStatus(port: string, setting: Setting, baseDesc: string) {
+        const portNum = parseInt(port);
+        if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+            setting.setDesc(`${baseDesc} (Invalid port number)`);
+            return;
+        }
+
+        const isAvailable = await this.checkPort(portNum);
+        if (isAvailable) {
+            setting.setDesc(`${baseDesc} (Port ${portNum} is available)`);
+        } else {
+            setting.setDesc(`${baseDesc} (Port ${portNum} is IN USE)`);
+        }
     }
 
     display() {
@@ -206,7 +236,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
             );
 
         if (this.plugin.settings.serverEnabled) {
-            new Setting(containerEl)
+            const serverPortSetting = new Setting(containerEl)
                 .setName("Server port")
                 .setDesc("Port for the plugin server")
                 .addText((text) => {
@@ -214,6 +244,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         .onChange(async (value) => {
                             this.plugin.settings.serverPort = value;
                             await this.plugin.saveSettings();
+                            void this.updatePortStatus(value, serverPortSetting, "Port for the plugin server");
                         });
                 })
                 .addButton(btn => btn
@@ -225,6 +256,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         }
                     })
                 );
+            void this.updatePortStatus(this.plugin.settings.serverPort, serverPortSetting, "Port for the plugin server");
         }
         // #endregion
 
@@ -244,15 +276,18 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     });
             });
             
-        new Setting(containerEl)
+        const obsPortSetting = new Setting(containerEl)
             .setName("Obs websocket server port")
+            .setDesc("The port OBS WebSocket is listening on")
             .addText((item) => {
                 item.setValue(this.plugin.settings.websocketPort_Text).onChange(
                     (value) => {
                         this.plugin.settings.websocketPort_Text = value;
                         void this.plugin.saveSettings();
+                        void this.updatePortStatus(value, obsPortSetting, "The port OBS WebSocket is listening on");
                     });
             });
+        void this.updatePortStatus(this.plugin.settings.websocketPort_Text, obsPortSetting, "The port OBS WebSocket is listening on");
             
         new Setting(containerEl)
             .setName("Obs websocket server password")
@@ -334,7 +369,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     .setDisabled(true);
             });
         
-        new Setting(containerEl)
+        const obsDebugPortSetting = new Setting(containerEl)
             .setName("Obs browser source debug port")
             .setDesc("Enter a port for the remote debugger or leave blank to skip")
             .addText((item) => {
@@ -342,8 +377,16 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     (value) => {
                         this.plugin.settings.obsDebugPort_Text = value;
                         void this.plugin.saveSettings();
+                        if (value) {
+                            void this.updatePortStatus(value, obsDebugPortSetting, "Enter a port for the remote debugger or leave blank to skip");
+                        } else {
+                            obsDebugPortSetting.setDesc("Enter a port for the remote debugger or leave blank to skip");
+                        }
                     });
             });
+        if (this.plugin.settings.obsDebugPort_Text) {
+            void this.updatePortStatus(this.plugin.settings.obsDebugPort_Text, obsDebugPortSetting, "Enter a port for the remote debugger or leave blank to skip");
+        }
                     
         new Setting(containerEl)
             .setName("Open obs")
@@ -429,15 +472,18 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     })
                 );
 
-            new Setting(deviceDiv)
+            const oscInPortSetting = new Setting(deviceDiv)
                 .setName("Osc incoming port")
+                .setDesc("Port to receive OSC messages")
                 .addText(text => text
                     .setValue(device.inPort.toString())
                     .onChange(async (value) => {
                         this.plugin.settings.oscDevices[index].inPort = parseInt(value) || 0;
                         await this.plugin.saveSettings();
+                        void this.updatePortStatus(value, oscInPortSetting, "Port to receive OSC messages");
                     })
                 );
+            void this.updatePortStatus(device.inPort.toString(), oscInPortSetting, "Port to receive OSC messages");
 
             new Setting(deviceDiv)
                 .setName("Osc outgoing port")
@@ -628,6 +674,24 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
             'margin-bottom': '20px'
         });
         this.validatePythonPath(this.plugin.settings.pythonPath);
+
+        const pythonSocketPortSetting = new Setting(containerEl)
+            .setName("Python socket port")
+            .setDesc("Port for communication between python and node")
+            .addText(text => text
+                .setValue(this.plugin.settings.pythonSocketPort)
+                .onChange(async (value) => {
+                    this.plugin.settings.pythonSocketPort = value;
+                    await this.plugin.saveSettings();
+                    void this.updatePortStatus(value, pythonSocketPortSetting, "Port for communication between python and node");
+                    if (this.plugin.serverManager) {
+                        // Restart monitors if port changed
+                        if (this.plugin.settings.mouseMonitorEnabled) void this.plugin.serverManager.restartMouseMonitor();
+                        if (this.plugin.settings.keyboardMonitorEnabled) void this.plugin.serverManager.restartKeyboardMonitor();
+                    }
+                })
+            );
+        void this.updatePortStatus(this.plugin.settings.pythonSocketPort, pythonSocketPortSetting, "Port for communication between python and node");
 
         new Setting(containerEl)
             .setName("Mouse monitor")

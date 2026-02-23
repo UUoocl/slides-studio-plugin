@@ -46,6 +46,7 @@ const DEFAULT_SETTINGS: Partial<SlidesStudioPluginSettings> = {
     serverPort: "57000",
     serverEnabled: false,
     pythonPath: "python3",
+    pythonSocketPort: "57001",
     mouseMonitorEnabled: false,
     mouseMonitorPosition: true,
     mouseMonitorClicks: true,
@@ -161,12 +162,10 @@ export default class slidesStudioPlugin extends Plugin {
 		}
 
 		this.oscManager = new OscManager((name, msg: unknown[]) => {
-			//this.sendToOBS(payload, "osc-message");
 			this.serverManager?.broadcastOscMessage(name, msg);
 		});
 
 		this.midiManager = new MidiManager((name, msg) => {
-			//this.sendToOBS({ deviceName: name, message: msg }, "midi-message");
 			this.serverManager?.broadcastMidiMessage(name, msg);
 		});
 		await this.midiManager.enable();
@@ -180,14 +179,20 @@ export default class slidesStudioPlugin extends Plugin {
 	 */
 	private setupObsEventListeners(): void {
 		this.obs.on('ConnectionOpened', () => {
-			console.debug('Connection to OBS WebSocket successfully opened');
+			console.log('[Plugin] Connection to OBS WebSocket successfully opened');
 		});
 		
 		this.obs.on('ConnectionClosed', () => {
+			console.warn('[Plugin] Connection to OBS WebSocket closed');
 			this.isObsConnected = false;
+		});
+
+		this.obs.on('ConnectionError', (err) => {
+			console.error('[Plugin] OBS WebSocket connection error:', err);
 		});
 		
 		this.obs.on("Identified", () => {
+			console.log('[Plugin] OBS WebSocket identified successfully');
 			this.isObsConnected = true;
 			
 			const wssDetails = {
@@ -211,7 +216,10 @@ export default class slidesStudioPlugin extends Plugin {
 				'slides-studio:update-browsers-url',
 				'slides-studio:set-slides-studio-obs-receiver'
 			];
-			commands.forEach(id => this.app.commands.executeCommandById(id));
+			commands.forEach(id => {
+				console.log(`[Plugin] Executing automatic command: ${id}`);
+				this.app.commands.executeCommandById(id);
+			});
 		});
 
 		this.obs.on("CustomEvent", (eventData) => {
@@ -315,28 +323,6 @@ export default class slidesStudioPlugin extends Plugin {
 	}
 
 	/**
-	 * Sends a custom event to OBS browser sources.
-	 * Useful for relaying messages to browser sources embedded in OBS scenes.
-	 * 
-	 * @param msgParam - The payload containing device name and message content.
-	 * @param eventName - The name of the event to emit.
-	 */
-	sendToOBS(msgParam: { deviceName: string, message: unknown }, eventName: string): void {
-		const webSocketMessage = JSON.stringify(msgParam.message);
-		void this.obs.call("CallVendorRequest", {
-			vendorName: "obs-browser",
-			requestType: "emit_event",
-			requestData: {
-				event_name: eventName,
-				event_data: { 
-					"deviceName": msgParam.deviceName,
-					webSocketMessage,
-				},
-			},
-		});
-	}
-
-	/**
 	 * Opens the dedicated Slides Studio sidebar view.
 	 */
 	async openView(): Promise<void> {
@@ -361,7 +347,7 @@ export default class slidesStudioPlugin extends Plugin {
 	
 		const leaf = workspace.getLeaf('tab');
 		const port = this.settings.serverPort;
-		const url = `http://localhost:${port}/${this.manifest.dir}/slides_studio/`;
+		const url = `http://localhost:${port}/${this.manifest.dir}/slide-studio-app/`;
 		await leaf.setViewState({
 			type: 'webviewer',
 			state: { url, navigate: true },

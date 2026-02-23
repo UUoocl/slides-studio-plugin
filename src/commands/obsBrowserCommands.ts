@@ -23,7 +23,7 @@ export const SetObsReceiverCommand = (plugin: slidesStudioPlugin): Command => ({
     name: 'Set the URL for slides studio receiver OBS browser source',
     callback: () => {
         const port = plugin.settings.serverPort;
-        const obsURL = `http://localhost:${port}/${plugin.manifest.dir}/slides_studio/slides_studio_OBS_browser_source.html`;
+        const obsURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slide-studio-app/slide_view/slides_studio_slide_view.html`;
         
         // Use void for floating promise and handle error properly
         void plugin.obs.call("SetInputSettings", {

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE Debugger</title>
+    <style>
+        body { font-family: monospace; white-space: pre-wrap; background-color: #1e1e1e; color: #d4d4d4; padding: 10px; }
+        .event { border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 5px; }
+        .event-name { color: #569cd6; font-weight: bold; }
+        .event-data { color: #9cd656; }
+        .timestamp { color: #888; font-size: 0.8em; float: right; }
+    </style>
+</head>
+<body>
+    <h1>SSE Debugger (Custom Events)</h1>
+    <div id="messages"></div>
+
+    <script>
+        const messagesDiv = document.getElementById('messages');
+        const eventSource = new EventSource('/api/custom/events'); // Listen to custom events from the plugin server
+
+        eventSource.onopen = function() {
+            logMessage('Connection opened.', 'system');
+        };
+
+        eventSource.onerror = function(err) {
+            logMessage('EventSource failed: ' + err, 'error');
+            eventSource.close();
+        };
+
+        // Listen for all custom events
+        eventSource.onmessage = function(event) {
+            // event.data contains the message, event.event contains the event name (if specified by server)
+            try {
+                const parsedData = JSON.parse(event.data);
+                logMessage(`Event: ${event.event || 'message'}
+Data: ${JSON.stringify(parsedData, null, 2)}`, 'event');
+            } catch (e) {
+                logMessage(`Event: ${event.event || 'message'}
+Raw Data: ${event.data}`, 'event');
+            }
+        };
+
+        function logMessage(message, type) {
+            const messageElement = document.createElement('div');
+            messageElement.className = 'event';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            
+            if (type === 'system') {
+                messageElement.innerHTML = `<span class="timestamp">${timestamp}</span> <span style="color: yellow;">${message}</span>`;
+            } else if (type === 'error') {
+                messageElement.innerHTML = `<span class="timestamp">${timestamp}</span> <span style="color: red;">${message}</span>`;
+            } else {
+                // Assuming 'event' type, try to highlight event name and data
+                const match = message.match(/Event: (.*?)[\s\S]*?Data: (.*)/);
+                if (match) {
+                    messageElement.innerHTML = `<span class="timestamp">${timestamp}</span> <span class="event-name">Event: ${match[1]}</span><br><span class="event-data">Data: ${match[2]}</span>`;
+                } else {
+                    messageElement.innerHTML = `<span class="timestamp">${timestamp}</span> ${message}`;
+                }
+            }
+            messagesDiv.prepend(messageElement); // Add new messages to the top
+        }
+    </script>
+</body>
+</html>

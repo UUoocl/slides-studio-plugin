@@ -1,0 +1,94 @@
+  <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Magic Wand Overlay</title>
+    <style>
+      body { margin: 0; padding: 0; overflow: hidden; background: transparent; }
+      canvas { display: block; background: transparent; }
+    </style>
+  </head>
+  <body>
+    <main>
+    </main>
+    
+    <script>
+      let mousePosX = 0, mousePosY = 0;
+      let displayXmin = 0;
+      let displayXmax = 1920;
+      let displayYmin = 0;
+      let displayYmax = 1080;
+      
+      const desktopBoundsChannel = new BroadcastChannel('desktop_bounds');
+
+      function remap(n, start1, stop1, start2, stop2) {
+        return (n - start1) / (stop1 - start1) * (stop2 - start2) + start2;
+      }
+
+      // Listen for bounds updates from other apps
+      desktopBoundsChannel.onmessage = (event) => {
+          if(event.data && typeof event.data.minX !== 'undefined') {
+             updateLocalBounds(event.data);
+          }
+      };
+      
+      function updateLocalBounds(bounds) {
+          displayXmin = bounds.minX;
+          displayXmax = bounds.maxX;
+          displayYmin = bounds.minY;
+          displayYmax = bounds.maxY;
+      }
+
+      // Logic to find desktop size directly via OBS Proxy
+      async function fetchDesktopBounds() {
+          try {
+              const res = await fetch('/api/v1/obs/GetMonitorList', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({})
+              });
+              const data = await res.json();
+              const monitors = data.monitors || [];
+              if (monitors.length > 0) {
+                  const bounds = {
+                      minX: Math.min(...monitors.map(m => m.monitorPositionX)),
+                      maxX: Math.max(...monitors.map(m => m.monitorPositionX + m.monitorWidth)),
+                      minY: Math.min(...monitors.map(m => m.monitorPositionY)),
+                      maxY: Math.max(...monitors.map(m => m.monitorPositionY + m.monitorHeight))
+                  };
+                  updateLocalBounds(bounds);
+              }
+          } catch (e) {
+              console.error("Failed to fetch desktop bounds from OBS Proxy", e);
+          }
+      }
+
+      // Initialize SSE connections
+      const mousePosSource = new EventSource('/api/mouse/events/mousePosition');
+      const mouseClickSource = new EventSource('/api/mouse/events/mouseClick');
+
+      mousePosSource.addEventListener('mousePosition', (event) => {
+          const data = JSON.parse(event.data);
+          mousePosX = Math.round(remap(data.x, displayXmin, displayXmax, 0, window.innerWidth));
+          mousePosY = Math.round(remap(data.y, displayYmin, displayYmax, 0, window.innerHeight));
+      });
+
+      mouseClickSource.addEventListener('mouseClick', (event) => {
+          const data = JSON.parse(event.data);
+          if (data.pressed) {
+             if (typeof mousePressed === 'function') {
+                 mousePressed(data.button);
+             }
+          }
+      });
+
+      // Initial setup
+      fetchDesktopBounds();
+      desktopBoundsChannel.postMessage('request_bounds');
+      
+      </script>
+    <script src="../lib/p5.min.js"></script>
+    <script src="sketch/magicWandMouse_Sketch.js"></script>
+    <script src="sketch/magicWandMouse_Class.js"></script>
+  </body>
+</html>

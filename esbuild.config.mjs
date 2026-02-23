@@ -1,6 +1,8 @@
 import esbuild from "esbuild";
 import process from "process";
 import { builtinModules } from "node:module";
+import fs from "node:fs";
+import path from "node:path";
 
 const banner =
 `/*
@@ -11,6 +13,23 @@ if you want to view the source, please visit the github repository of this plugi
 
 const prod = (process.argv[2] === "production");
 const dir = prod ? "../slidesStudio-vault/.obsidian/plugins/slides-studio/" : "../testVault/.obsidian/plugins/slides-studio/";
+
+// Helper to copy files and folders
+function copyFiles() {
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+
+    const itemsToCopy = ["manifest.json", "styles.css", "pythonScripts", "slide-studio-app"];
+    
+    for (const item of itemsToCopy) {
+        if (fs.existsSync(item)) {
+            const dest = path.join(dir, item);
+            fs.cpSync(item, dest, { recursive: true, force: true });
+            console.log(`Copied ${item} to ${dest}`);
+        }
+    }
+}
 
 const context = await esbuild.context({
 	banner: {
@@ -39,13 +58,15 @@ const context = await esbuild.context({
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
-	outfile: `${dir}main.js`,
+	outfile: path.join(dir, "main.js"),
 	minify: prod,
 });
 
 if (prod) {
 	await context.rebuild();
+    copyFiles();
 	process.exit(0);
 } else {
+    copyFiles();
 	await context.watch();
 }

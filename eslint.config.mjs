@@ -23,6 +23,7 @@ export default defineConfig([
     ".git/",
 		"node_modules",
 		"dist",
+		"apps/",
 		"esbuild.config.mjs",
 		"eslint.config.js",
 		"version-bump.mjs",
@@ -30,7 +31,7 @@ export default defineConfig([
 		"main.js",
 	]),
   {
-    files: ["**/*.ts"],
+    files: ["src/**/*.ts"],
     languageOptions: {
       parser: tsparser,
       parserOptions: { project: "./tsconfig.json" },

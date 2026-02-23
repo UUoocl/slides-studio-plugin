@@ -37,6 +37,7 @@ export interface SlidesStudioPluginSettings {
     serverPort: string;
     serverEnabled: boolean;
     pythonPath: string;
+    pythonSocketPort: string;
     mouseMonitorEnabled: boolean;
     mouseMonitorPosition: boolean;
     mouseMonitorClicks: boolean;

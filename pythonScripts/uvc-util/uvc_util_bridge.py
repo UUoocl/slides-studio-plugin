@@ -2,17 +2,15 @@ import json
 import os
 import threading
 import ctypes
-import socketserver
-import base64
-import hashlib
-import struct
+import socket
 import sys
 import argparse
+import time
 
 # Global variables
 lib_path = os.path.join(os.path.dirname(__file__), "libuvcutil.dylib")
-server_port = 8081
 uvc_lib = None
+monitor_socket = None
 
 # --- UVC Library Interface ---
 class UVCLib:
@@ -90,188 +88,125 @@ class UVCLib:
             return json.loads(res_ptr.decode('utf-8'))
         return None
 
-# --- WebSocket Server ---
+def send_to_node(data):
+    global monitor_socket
+    if monitor_socket:
+        try:
+            payload = json.dumps({"topic": "uvc", "data": data}) + "\n"
+            monitor_socket.sendall(payload.encode('utf-8'))
+        except Exception as e:
+            print(f"Error sending to node: {e}")
 
-class WebSocketHandler(socketserver.StreamRequestHandler):
-    def handle(self):
-        print(f"New connection from {self.client_address}")
-        if not self.handshake():
-            print("Handshake failed.")
-            return
+def process_command(payload):
+    global uvc_lib
+    if not uvc_lib or not uvc_lib.is_loaded():
+        return {"error": "UVC library not loaded"}
         
-        print("Handshake successful.")
-        while True:
-            try:
-                data = self.read_frame()
-                if data is None: 
-                    print("Connection closed by client.")
-                    break 
-                
-                # Process Command
-                try:
-                    payload = json.loads(data)
-                    response = self.process_command(payload)
-                    if response:
-                        self.send_frame(json.dumps(response))
-                except json.JSONDecodeError:
-                    self.send_frame(json.dumps({"error": "Invalid JSON"}))
-                except Exception as e:
-                    print(f"Command processing error: {e}")
-                    self.send_frame(json.dumps({"error": str(e)}))
-                    
-            except Exception as e:
-                print(f"WebSocket read error: {e}")
+    action = payload.get("action")
+    
+    if action == "list_devices":
+        return {"action": "list_devices", "data": uvc_lib.get_devices()}
+        
+    elif action == "select_device":
+        idx = payload.get("index")
+        if idx is not None:
+            success = uvc_lib.select_device(int(idx))
+            return {"action": "select_device", "success": success}
+        return {"error": "Missing index"}
+        
+    elif action == "get_controls":
+        return {"action": "get_controls", "data": uvc_lib.get_controls()}
+        
+    elif action == "get_value":
+        control = payload.get("control")
+        if control:
+            return {"action": "get_value", "data": uvc_lib.get_value(control)}
+        return {"error": "Missing control name"}
+        
+    elif action == "set_value":
+        control = payload.get("control")
+        value = payload.get("value")
+        if control and value is not None:
+            return {"action": "set_value", "data": uvc_lib.set_value(control, value)}
+        return {"error": "Missing control name or value"}
+        
+    return {"error": "Unknown action"}
+
+def listen_for_commands():
+    global monitor_socket
+    buffer = ""
+    while monitor_socket:
+        try:
+            data = monitor_socket.recv(4096).decode('utf-8')
+            if not data:
+                print("Connection closed by Node.")
                 break
-
-    def handshake(self):
-        headers = {}
-        while True:
-            line = self.rfile.readline().decode('utf-8').strip()
-            if not line: break
-            if ':' in line:
-                key, value = line.split(':', 1)
-                headers[key.strip().lower()] = value.strip()
-        
-        if 'sec-websocket-key' not in headers:
-            return False
             
-        key = headers['sec-websocket-key']
-        accept_key = base64.b64encode(hashlib.sha1((key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode('utf-8')).digest()).decode('utf-8')
-        
-        response = (
-            "HTTP/1.1 101 Switching Protocols\r\n"
-            "Upgrade: websocket\r\n"
-            "Connection: Upgrade\r\n"
-            f"Sec-WebSocket-Accept: {accept_key}\r\n\r\n"
-        )
-        self.wfile.write(response.encode('utf-8'))
-        self.wfile.flush()
-        return True
-
-    def read_frame(self):
-        try:
-            head1 = self.rfile.read(1)
-            if not head1: return None
-            b1 = head1[0]
-            opcode = b1 & 0x0F
-            
-            if opcode == 8: return None # Close frame
-            
-            head2 = self.rfile.read(1)
-            if not head2: return None
-            b2 = head2[0]
-            masked = b2 & 0x80
-            length = b2 & 0x7F
-            
-            if length == 126:
-                length = struct.unpack(">H", self.rfile.read(2))[0]
-            elif length == 127:
-                length = struct.unpack(">Q", self.rfile.read(8))[0]
-                
-            masks = None
-            if masked:
-                masks = self.rfile.read(4)
-                
-            payload = self.rfile.read(length)
-            
-            if masked:
-                decoded = bytearray(length)
-                for i in range(length):
-                    decoded[i] = payload[i] ^ masks[i % 4]
-                return decoded.decode('utf-8')
-            
-            return payload.decode('utf-8')
+            buffer += data
+            while "\n" in buffer:
+                line, buffer = buffer.split("\n", 1)
+                if not line.strip(): continue
+                try:
+                    command = json.loads(line)
+                    response = process_command(command)
+                    if response:
+                        send_to_node(response)
+                except Exception as e:
+                    print(f"Error processing command: {e}")
+                    send_to_node({"error": str(e)})
         except Exception as e:
-            print(f"Error reading frame: {e}")
-            return None
-
-    def send_frame(self, message):
-        try:
-            encoded = message.encode('utf-8')
-            length = len(encoded)
-            
-            header = bytearray()
-            header.append(0x81) # Text frame, FIN
-            
-            if length <= 125:
-                header.append(length)
-            elif length <= 65535:
-                header.append(126)
-                header.extend(struct.pack(">H", length))
-            else:
-                header.append(127)
-                header.extend(struct.pack(">Q", length))
-                
-            self.wfile.write(header + encoded)
-            self.wfile.flush()
-        except Exception as e:
-            print(f"Error sending frame: {e}")
-
-    def process_command(self, payload):
-        global uvc_lib
-        if not uvc_lib or not uvc_lib.is_loaded():
-            return {"error": "UVC library not loaded"}
-            
-        action = payload.get("action")
-        
-        if action == "list_devices":
-            return {"action": "list_devices", "data": uvc_lib.get_devices()}
-            
-        elif action == "select_device":
-            idx = payload.get("index")
-            if idx is not None:
-                success = uvc_lib.select_device(int(idx))
-                return {"action": "select_device", "success": success}
-            return {"error": "Missing index"}
-            
-        elif action == "get_controls":
-            return {"action": "get_controls", "data": uvc_lib.get_controls()}
-            
-        elif action == "get_value":
-            control = payload.get("control")
-            if control:
-                return {"action": "get_value", "data": uvc_lib.get_value(control)}
-            return {"error": "Missing control name"}
-            
-        elif action == "set_value":
-            control = payload.get("control")
-            value = payload.get("value")
-            if control and value is not None:
-                return {"action": "set_value", "data": uvc_lib.set_value(control, value)}
-            return {"error": "Missing control name or value"}
-            
-        return {"error": "Unknown action"}
-
-class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-    allow_reuse_address = True
-    daemon_threads = True
+            print(f"Socket read error: {e}")
+            break
 
 def main():
-    global uvc_lib, server_port, lib_path
+    global uvc_lib, lib_path, monitor_socket
     
-    parser = argparse.ArgumentParser(description="UVC Utility WebSocket Bridge")
-    parser.add_argument("--port", type=int, default=8081, help="WebSocket port (default: 8081)")
+    parser = argparse.ArgumentParser(description="UVC Utility TCP Bridge")
+    parser.add_argument("--port", type=str, default="57001", help="Node monitor socket (e.g. 127.0.0.1:57001 or just 57001)")
     parser.add_argument("--lib", type=str, default=lib_path, help="Path to libuvcutil.dylib")
     args = parser.parse_args()
     
-    server_port = args.port
     lib_path = args.lib
+    target = args.port
+    if ":" in target:
+        host, port = target.split(":")
+        port = int(port)
+    else:
+        host = "127.0.0.1"
+        port = int(target)
     
-    print(f"Initializing UVC Bridge on port {server_port}...")
+    print(f"Initializing UVC Bridge, connecting to {host}:{port}...")
     uvc_lib = UVCLib(lib_path)
     
-    # We allow the server to start even if the lib is not loaded, 
-    # so we can report errors via WebSocket if a client connects.
-        
-    try:
-        server = ThreadedTCPServer(('127.0.0.1', server_port), WebSocketHandler)
-        print(f"UVC WebSocket server started on ws://127.0.0.1:{server_port}")
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print("\nStopping server...")
-    except Exception as e:
-        print(f"Failed to start WebSocket server: {e}")
+    # Retry connection a few times
+    for _ in range(5):
+        try:
+            monitor_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            monitor_socket.connect((host, port))
+            print(f"Connected to Node monitor socket at {host}:{port}")
+            break
+        except Exception as e:
+            print(f"Connection failed: {e}. Retrying...")
+            time.sleep(1)
+    else:
+        print("Could not connect to Node. Exiting.")
         sys.exit(1)
+
+    # Send initial status
+    send_to_node({"status": "connected", "lib_loaded": uvc_lib.is_loaded()})
+
+    # Start command listener thread
+    cmd_thread = threading.Thread(target=listen_for_commands, daemon=True)
+    cmd_thread.start()
+
+    try:
+        while monitor_socket:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nStopping bridge...")
+    finally:
+        if monitor_socket:
+            monitor_socket.close()
 
 if __name__ == "__main__":
     main()
