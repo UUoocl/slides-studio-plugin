@@ -21,10 +21,4 @@ data.json
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
 
-#dev build folder
-build/
-slides-studio.zip
-geminiChat.md
-OSC_MIDI_update.md
-
 apps_backup/*
