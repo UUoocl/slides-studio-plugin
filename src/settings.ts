@@ -278,7 +278,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
             
         const obsPortSetting = new Setting(containerEl)
             .setName("Obs websocket server port")
-            .setDesc("The port OBS WebSocket is listening on")
+            .setDesc("The port obs websocket is listening on")
             .addText((item) => {
                 item.setValue(this.plugin.settings.websocketPort_Text).onChange(
                     (value) => {
@@ -474,7 +474,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
             const oscInPortSetting = new Setting(deviceDiv)
                 .setName("Osc incoming port")
-                .setDesc("Port to receive OSC messages")
+                .setDesc("Port to receive osc messages")
                 .addText(text => text
                     .setValue(device.inPort.toString())
                     .onChange(async (value) => {

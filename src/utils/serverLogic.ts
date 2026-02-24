@@ -86,13 +86,12 @@ export class ServerManager {
         const libFolder = path.join(basePath, `${pluginManifest.dir}/lib`);
         const appFolder = path.join(basePath, `${pluginManifest.dir}/slide-studio-app`);
 
-        console.log(`[Server] Starting with basePath: ${basePath}`);
-        console.log(`[Server] Serving libs from: ${libFolder} (Exists: ${fs.existsSync(libFolder)})`);
-        console.log(`[Server] Serving app from: ${appFolder} (Exists: ${fs.existsSync(appFolder)})`);
+        console.warn(`[Server] Starting with basePath: ${basePath}`);
+        console.warn(`[Server] Serving libs from: ${libFolder} (Exists: ${fs.existsSync(libFolder)})`);
+        console.warn(`[Server] Serving app from: ${appFolder} (Exists: ${fs.existsSync(appFolder)})`);
 
         try {
-            const vaultFiles = fs.readdirSync(basePath);
-            console.log(`[Server] Vault root contents: ${vaultFiles.join(', ')}`);
+            fs.readdirSync(basePath);
         } catch (e) {
             console.error("[Server] Failed to read vault root", e);
         }
@@ -100,9 +99,9 @@ export class ServerManager {
         this.server = fastify();
 
         // Add a global logger for all requests to help debug OBS loading issues
-        this.server.addHook('onRequest', async (request) => {
-            console.log(`[Server] Request: ${request.method} ${request.url}`);
-        });
+        // this.server.addHook('onRequest', async (request) => {
+        //     console.log(`[Server] Request: ${request.method} ${request.url}`);
+        // });
 
         // Set security headers globally at the earliest possible stage
         this.server.addHook('preHandler', async (request, reply) => {
@@ -246,7 +245,7 @@ export class ServerManager {
         });
 
         // --- API: UVC Commands ---
-        this.server.post<{ Body: { action: string, [key: string]: any } }>('/api/uvc/command', async (request, reply) => {
+        this.server.post<{ Body: { action: string, [key: string]: unknown } }>('/api/uvc/command', async (request, reply) => {
             if (!this.uvcSocket) {
                 return reply.code(503).send({ error: "UVC Bridge not connected" });
             }
@@ -272,7 +271,7 @@ export class ServerManager {
         try {
             await this.server.listen({ port: this.port, host: '127.0.0.1' });
             this.isRunning = true;
-            console.log(`[Server] Listening on http://127.0.0.1:${this.port}`);
+            console.warn(`[Server] Listening on http://127.0.0.1:${this.port}`);
             
             if (this.plugin.settings.mouseMonitorEnabled) void this.startMouseMonitor();
             if (this.plugin.settings.keyboardMonitorEnabled) void this.startKeyboardMonitor();
@@ -284,7 +283,6 @@ export class ServerManager {
     }
 
     public broadcastCustomMessage(name: string, message: Record<string, unknown>): void {
-        console.log(`[Server] Broadcasting: ${name}. Connections: ${this.sseCustomConnections.size}`, message);
         const data = `event: ${name}\ndata: ${JSON.stringify(message)}\n\n`;
         for (const reply of this.sseCustomConnections) reply.raw.write(data);
     }
@@ -334,7 +332,9 @@ export class ServerManager {
                         }
                         else if (event.topic.startsWith('mouse')) this.broadcastMouseMessage(event.topic, event.data);
                         else if (event.topic.startsWith('keyboard')) this.broadcastKeyboardMessage(event.topic, event.data);
-                    } catch (e) {}
+                    } catch {
+                        /* ignore parse errors */
+                    }
                     boundary = buffer.indexOf('\n');
                 }
             });

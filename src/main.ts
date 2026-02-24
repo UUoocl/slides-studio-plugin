@@ -179,7 +179,7 @@ export default class slidesStudioPlugin extends Plugin {
 	 */
 	private setupObsEventListeners(): void {
 		this.obs.on('ConnectionOpened', () => {
-			console.log('[Plugin] Connection to OBS WebSocket successfully opened');
+			console.warn('[Plugin] Connection to OBS WebSocket successfully opened');
 		});
 		
 		this.obs.on('ConnectionClosed', () => {
@@ -192,7 +192,7 @@ export default class slidesStudioPlugin extends Plugin {
 		});
 		
 		this.obs.on("Identified", () => {
-			console.log('[Plugin] OBS WebSocket identified successfully');
+			console.warn('[Plugin] OBS WebSocket identified successfully');
 			this.isObsConnected = true;
 			
 			const wssDetails = {
@@ -217,7 +217,7 @@ export default class slidesStudioPlugin extends Plugin {
 				'slides-studio:set-slides-studio-obs-receiver'
 			];
 			commands.forEach(id => {
-				console.log(`[Plugin] Executing automatic command: ${id}`);
+				console.warn(`[Plugin] Executing automatic command: ${id}`);
 				this.app.commands.executeCommandById(id);
 			});
 		});

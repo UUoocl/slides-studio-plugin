@@ -24,6 +24,8 @@ export default defineConfig([
 		"node_modules",
 		"dist",
 		"apps/",
+    "pythonScripts/",
+    "slide-studio-app/",
 		"esbuild.config.mjs",
 		"eslint.config.js",
 		"version-bump.mjs",

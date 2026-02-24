@@ -46,10 +46,8 @@ export class ObsServer {
         // Proxy OBS batch calls
         server.post<{ Body: { requests: RequestBatchRequest[], options?: RequestBatchOptions } }>('/api/v1/obs/batch', async (request, reply) => {
             const { requests, options } = request.body;
-            console.log(`[ObsServer] Received batch request with ${requests?.length || 0} items.`);
             if (requests) {
                 requests.forEach((req, idx) => {
-                    console.log(`  [${idx}] ${req.requestType}`, req.requestData);
                 });
             }
 
@@ -60,7 +58,6 @@ export class ObsServer {
 
             try {
                 const result = await this.plugin.obs.callBatch(requests, options);
-                console.log("[ObsServer] Batch request executed successfully.");
                 return result || [];
             } catch (error) {
                 const msg = error instanceof Error ? error.message : String(error);
@@ -73,8 +70,7 @@ export class ObsServer {
         server.post<{ Params: { name: string }, Body: Record<string, unknown> }>('/api/v1/obs/:name', async (request, reply) => {
             const { name } = request.params;
             const data = request.body || {};
-            console.log(`[ObsServer] Proxying call: ${name}`, data);
-
+            
             if (!this.plugin.isObsConnected) {
                 console.warn(`[ObsServer] Call to ${name} failed: OBS not connected`);
                 return reply.code(503).send({ error: 'OBS not connected' });
@@ -86,7 +82,6 @@ export class ObsServer {
                 const requestData = data as OBSRequestTypes[typeof requestType];
                 
                 const result = await this.plugin.obs.call(requestType, requestData);
-                console.log(`[ObsServer] Call to ${name} successful.`);
                 return result || {};
             } catch (error) {
                 const msg = error instanceof Error ? error.message : String(error);
