@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gamepad Input Broadcaster</title>
+    <style>
+        :root {
+            font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+            line-height: 1.5;
+            font-weight: 400;
+            color-scheme: light dark;
+            color: rgba(255, 255, 255, 0.87);
+            background-color: #242424;
+        }
+
+        body {
+            margin: 0;
+            padding: 1rem;
+        }
+
+        .axes {
+            padding: 1em;
+        }
+
+        .buttons {
+            margin-left: 1em;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .axis {
+            min-width: 200px;
+            margin: 0.5em;
+            font-family: monospace;
+        }
+
+        .button {
+            display: inline-block;
+            width: 2em;
+            height: 2em;
+            line-height: 2em;
+            text-align: center;
+            border-radius: 50%;
+            border: 1px solid #555;
+            background-color: #333;
+            font-size: 0.8rem;
+            transition: background-color 0.1s;
+        }
+
+        .button.pressed {
+            background-color: #646cff;
+            border-color: #fff;
+            color: white;
+        }
+
+        .card {
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background-color: #2a2a2a;
+        }
+
+        h3 { margin-top: 0; }
+        .channel-info { font-size: 0.9rem; color: #646cff; font-weight: bold; margin-bottom: 0.5rem; }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Gamepad Input Broadcaster</h1>
+        <div id="status-area">
+            <h4 id="startGP">Press a button on your controller to start</h4>
+        </div>
+        <div id="gpData"></div>
+    </main>
+
+    <script>
+        const controllers = {};
+        const channels = {};
+        let previousState = [];
+
+        function addGamepad(gamepad) {
+            controllers[gamepad.index] = gamepad;
+            
+            // Map index to gp1, gp2, gp3, gp4
+            const channelName = `gp${gamepad.index + 1}`;
+            channels[gamepad.index] = new BroadcastChannel(channelName);
+            
+            const d = document.createElement("div");
+            d.className = "card";
+            d.id = "controller" + gamepad.index;
+            
+            const chanInfo = document.createElement("div");
+            chanInfo.className = "channel-info";
+            chanInfo.textContent = `Channel: ${channelName}`;
+            d.appendChild(chanInfo);
+
+            const t = document.createElement("h3");
+            t.textContent = `Gamepad ${gamepad.index}: ${gamepad.id}`;
+            d.appendChild(t);
+
+            const b = document.createElement("div");
+            b.className = "buttons";
+            for (let i = 0; i < gamepad.buttons.length; i++) {
+                const s = document.createElement("span");
+                s.className = "button";
+                s.textContent = i;
+                b.appendChild(s);
+            }
+            d.appendChild(b);
+
+            const a = document.createElement("div");
+            a.className = "axes";
+            for (let i = 0; i < gamepad.axes.length; i++) {
+                const ax = document.createElement("div");
+                ax.className = "axis";
+                ax.id = `axis-${gamepad.index}-${i}`;
+                ax.textContent = `Axis ${i}: 0.0000`;
+                a.appendChild(ax);
+            }
+            d.appendChild(a);
+
+            document.getElementById("startGP").style.display = "none";
+            document.getElementById("gpData").appendChild(d);
+            
+            requestAnimationFrame(updateStatus);
+        }
+
+        function removeGamepad(gamepad) {
+            const d = document.getElementById("controller" + gamepad.index);
+            if (d) d.remove();
+            
+            if (channels[gamepad.index]) {
+                channels[gamepad.index].close();
+                delete channels[gamepad.index];
+            }
+            delete controllers[gamepad.index];
+        }
+
+        function updateStatus() {
+            const gamepads = navigator.getGamepads();
+            for (let i = 0; i < gamepads.length; i++) {
+                if (gamepads[i]) {
+                    controllers[gamepads[i].index] = gamepads[i];
+                }
+            }
+
+            for (const j in controllers) {
+                const controller = controllers[j];
+                const card = document.getElementById("controller" + j);
+                if (!card) continue;
+
+                const buttons = card.getElementsByClassName("button");
+                const state = {
+                    index: controller.index,
+                    id: controller.id,
+                    buttons: [],
+                    axes: []
+                };
+
+                for (let i = 0; i < controller.buttons.length; i++) {
+                    const b = buttons[i];
+                    const val = controller.buttons[i];
+                    const pressed = typeof val === "object" ? val.pressed : val === 1.0;
+                    const value = typeof val === "object" ? val.value : val;
+                    
+                    state.buttons.push({ pressed, value });
+                    
+                    if (pressed) b.classList.add("pressed");
+                    else b.classList.remove("pressed");
+                }
+
+                for (let i = 0; i < controller.axes.length; i++) {
+                    const axisVal = controller.axes[i];
+                    const axisEl = document.getElementById(`axis-${j}-${i}`);
+                    if (axisEl) axisEl.textContent = `Axis ${i}: ${axisVal.toFixed(4)}`;
+                    state.axes.push(axisVal);
+                }
+
+                // Broadcast if state changed
+                const currentStateString = JSON.stringify(state);
+                if (previousState[j] !== currentStateString) {
+                    previousState[j] = currentStateString;
+                    if (channels[j]) {
+                        channels[j].postMessage(state);
+                    }
+                }
+            }
+            
+            if (Object.keys(controllers).length > 0) {
+                requestAnimationFrame(updateStatus);
+            }
+        }
+
+        window.addEventListener("gamepadconnected", (e) => {
+            console.log("Gamepad connected at index %d: %s. %d buttons, %d axes.",
+                e.gamepad.index, e.gamepad.id,
+                e.gamepad.buttons.length, e.gamepad.axes.length);
+            addGamepad(e.gamepad);
+        });
+
+        window.addEventListener("gamepaddisconnected", (e) => {
+            console.log("Gamepad disconnected from index %d: %s",
+                e.gamepad.index, e.gamepad.id);
+            removeGamepad(e.gamepad);
+        });
+    </script>
+</body>
+</html>

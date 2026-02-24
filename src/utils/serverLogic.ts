@@ -122,10 +122,19 @@ export class ServerManager {
         void this.server.register(fastifyStatic, {
             root: [libFolder, appFolder, basePath],
             prefix: '/', 
-            setHeaders: (res) => {
+            setHeaders: (res, path) => {
                 res.setHeader('X-Frame-Options', 'ALLOWALL');
                 res.setHeader('Access-Control-Allow-Origin', '*');
                 res.setHeader('Content-Security-Policy', "frame-ancestors *; frame-src *; default-src * 'unsafe-inline' 'unsafe-eval'; img-src * data:; media-src *;");
+                
+                // Explicitly set MIME types for MediaPipe and ES Modules
+                if (path.endsWith('.mjs')) {
+                    res.setHeader('Content-Type', 'application/javascript');
+                } else if (path.endsWith('.task')) {
+                    res.setHeader('Content-Type', 'application/octet-stream');
+                } else if (path.endsWith('.wasm')) {
+                    res.setHeader('Content-Type', 'application/wasm');
+                }
             }
         });
 
