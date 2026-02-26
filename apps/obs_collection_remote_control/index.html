@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='utf-8'>
+    <title>OBS Collection Remote Control Settings</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <link href="css/style.css" rel="stylesheet" type="text/css" />
+</head>
+
+<body>
+    <article class="contents">
+        <h1>OBS Collection Remote Control Settings</h1>
+        <h4>Configure Browser source settings (Proxied via Slides Studio Plugin)</h4>
+
+        <section>
+            <div id="sheetURL">
+                <h3>Set Google Sheet ID</h3>
+                <form class="form-grid">
+                    <label for="sheetID">Enter Google Sheet ID:</label>
+                    <input type="text" id="sheetID" name="sheetID" value="sheet ID" />
+                </form>
+            </div>
+        </section>
+        
+        <section>
+            <div id="postURL">
+                <h3>Set Google Apps Script web app ID</h3>
+                <form class="form-grid">
+                    <label for="gasID">Enter Google Apps Script ID:</label>
+                    <input type="text" id="gasID" name="gasID" value="Apps Script ID" />
+                </form>
+            </div>
+        </section>
+
+        <section>
+            <div id="collectonURLs">
+                <h3>Collection Remote Control Links</h3>
+                <div id="remotes"></div>
+            </div>
+        </section>
+        
+        <section>
+            <div id="srvr">
+                <h3>Post the OBS Collection Details to Google Sheets</h3>
+                <form class="form-grid">
+                    <p></p><input class="form-button" type="button" id="WSconnectButton" value="Refresh Collection" />
+                </form>
+            </div>
+        </section>
+
+        <section>
+            <div id="setBrowser">
+                <h3>OBS Browser Sources</h3>
+                <div id="browserSources"></div>
+
+            </div>
+        </section>
+        <section>
+            <div id="collectionDetails">
+                <h3>OBS Collection</h3>
+                <div id="obsCollection"></div>
+            </div>
+        </section>
+        
+        <section hidden>
+            <div id="collectionTabulatorFormat">
+                <h3>OBS Collection Tabulator Format</h3>
+                <div id="obsCollectionTabulator"></div>
+            </div>
+        </section>
+    </article>
+
+    <script src='js/obsCollectionCopy.js'></script>
+    <script>
+        // Use proxy instead of direct WebSocket
+        const obs = {
+            call: async (requestType, requestData = {}) => {
+                const response = await fetch(`/api/v1/obs/${requestType}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                });
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'OBS Proxy error');
+                }
+                return await response.json();
+            }
+        };
+
+        document.addEventListener("DOMContentLoaded", (event) => {
+            document
+                .getElementById("WSconnectButton")
+                .addEventListener("click", getOBScollection);
+            
+            document
+                .getElementById("sheetID")
+                .addEventListener('change', updateCollectionControlLinks);
+            
+            document
+                .getElementById("gasID")
+                .addEventListener('change', updateCollectionControlLinks);
+
+            updateCollectionControlLinks();
+            getOBScollection(); // Auto-load
+        })
+        
+        //OBS Collection Remote Control Source Url
+        function updateCollectionControlLinks(){
+            const host = window.location.host;
+            const sheetID = document.getElementById("sheetID").value;
+            const gasID = document.getElementById("gasID").value;
+            
+            const localSourceURL = `http://${host}/apps/obs_collection_remote_control/collectionControl.html?sheetID=${sheetID}&gasID=${gasID}`;
+            const remoteControlURL = `https://uuoocl.github.io/Collection_Remote_Control/collectionControl_Remote.html?sheetID=${sheetID}&gasID=${gasID}`;
+
+            document.getElementById(`remotes`).innerHTML = `
+            <div><div>OBS Source URL - create a Browser Source in OBS with this URL.<div><button id="obsSourceLink" onclick="copyCode('obsSourceLink', 'sourceLink', 'Copy Link')">Copy Link</button><input type="text" id="sourceLink" value='${localSourceURL}'/></div>
+            <br/>
+            <div><div>Collection Remote Control Link<div><button id="remoteLink" onclick="copyCode('remoteLink', 'remoteControlLink', 'Copy Link')">Copy Link</button><input type="text" id="remoteControlLink" value='${remoteControlURL}'/></div>
+            `;
+        }
+
+        async function copyCode(triggerButton, elementToCopy, buttonText) {
+            event.preventDefault()
+         
+            const button = document.getElementById(triggerButton)
+            if(button.innerText.endsWith("Copied")){
+                return //copied
+            }else{
+                let copyText = document.getElementById(elementToCopy).value;
+                await navigator.clipboard.writeText(copyText);
+            }
+
+            // visual feedback that task is completed
+            button.innerText = `${buttonText} Copied`;
+
+            setTimeout(() => {
+                button.innerText = buttonText;
+            }, 7000);
+        }
+
+        //Get OBS Collection
+        let collection = new Object
+        let browserSources = [];
+        async function getOBScollection() {
+            //create collection object
+            collection.scenes = [];
+            //get scenes from OBS
+            collection = await obs.call("GetSceneList");
+
+            //get scene and sources
+            for (let scene = 0; scene < collection.scenes.length; scene++) {
+                const sources = await obs.call("GetSceneItemList", { sceneName: collection.scenes[scene].sceneName })
+
+                //get the source settings
+                for (let source = 0; source < sources.sceneItems.length; source++) {
+                    //if source is group, get group items
+                    if (sources.sceneItems[source].isGroup === true) {
+                        const groupSources = await obs.call("GetGroupSceneItemList", { sceneName: sources.sceneItems[source].sourceName })
+                        for (let groupSource = 0; groupSource < groupSources.sceneItems.length; groupSource++) {
+                            if (groupSources.sceneItems[groupSource].sourceType === 'OBS_SOURCE_TYPE_INPUT') {
+                            const groupSourceSettings = await obs.call("GetInputSettings", { inputName: groupSources.sceneItems[groupSource].sourceName })
+                            groupSources.sceneItems[groupSource] = Object.assign(groupSources.sceneItems[groupSource], groupSourceSettings)
+                            }
+                        }
+                        sources.sceneItems[source] = Object.assign(sources.sceneItems[source], groupSources)
+                    }
+                    if (sources.sceneItems[source].sourceType === 'OBS_SOURCE_TYPE_INPUT') {
+                        const sourceSettings = await obs.call("GetInputSettings", { inputName: sources.sceneItems[source].sourceName })
+                        sources.sceneItems[source] = Object.assign(sources.sceneItems[source], sourceSettings)
+                    }
+
+                }
+                //add the sources and settings to the scene object
+                collection.scenes[scene] = Object.assign(collection.scenes[scene], sources)
+
+            }
+            getBrowserSource();
+            
+            await makeTabulatorData();
+            
+            const postURL = `https://script.google.com/macros/s/${document.getElementById("gasID").value}/exec`
+            
+            postData({data: `${JSON.stringify(collectionTabulator)}`}, postURL);
+                    
+            document.getElementById("obsCollection").innerHTML =`
+            <pre><code>${JSON.stringify(collection,null,2)}</code></pre>
+            `;
+
+            document.getElementById("obsCollectionTabulator").innerHTML =`
+            <pre><code>${JSON.stringify(collectionTabulator,null,4)}</code></pre>
+            `;
+
+        }
+
+        async function getBrowserSource() {
+            //clear browser sources section
+            document.getElementById("browserSources").innerHTML ='';
+
+            //get the browser sources from OBS
+            const browserSources = await obs.call("GetInputList", { inputKind: 'browser_source' })
+            //get the browser settings from OBS
+            for (let i = 0; i < browserSources.inputs.length; i++) {
+                const sourceSettings = await obs.call("GetInputSettings", { inputName: browserSources.inputs[i].inputName })
+                browserSources.inputs[i] = Object.assign(browserSources.inputs[i], sourceSettings)
+            }
+
+            //create input forms for each browser
+            for (let i = 0; i < browserSources.inputs.length; i++) {
+                const browserSettings = browserSources.inputs[i].inputSettings;
+
+                const urlType = browserSettings.is_local_file === true ? 'local_file' : 'url';
+                let browserLocation = urlType === "local_file" ? browserSettings.local_file : browserSettings.url;
+                
+                let browserURL = "";
+                //check if the browser source is a local file
+                if(browserSettings.is_local_file === true){
+                    //if protocol is included
+                    if(browserLocation.startsWith("file://")){
+                        browserURL =  encodeURI(browserSettings.local_file) 
+                    }else{
+                        browserURL =  encodeURI('file://' + browserSettings.local_file) 
+                    }
+                }
+                else{
+                    if(browserLocation.startsWith("http")){
+                        browserURL = encodeURI(browserSettings.url);
+                    }else{
+                        browserURL = encodeURI('http://' + browserSettings.url);
+                    }
+                }
+                const urlObject = new URL(browserURL);
+                const searchParams = new URLSearchParams(urlObject.search);
+                const urlHostPath = `${urlObject.origin}${urlObject.pathname}`;
+                let browserQueryParameterHTML = "";
+
+                //get query parameter values
+                if (browserURL.includes('?')) {
+                    searchParams.forEach((value, key) => {
+                        browserQueryParameterHTML += `
+                        <div class="form-grid-browser-card-div">
+                            <label for="${browserSources.inputs[i].inputName}-${key}">${key}:</label>
+                            <input type="text" id="${browserSources.inputs[i].inputName}-${key}" name="${browserSources.inputs[i].inputName}-${key}"  data-key="${key}" value="${value}" />
+                        </div>`
+                    });
+                }
+
+                const parentElement = document.getElementById("browserSources");
+                parentElement.innerHTML += `
+                    <form class="form-grid-browser">
+                        <div class="form-grid-browser-card">
+                            <fieldset>
+                                <legend>${browserSources.inputs[i].inputName}:</legend>
+                                    <div class="form-grid-browser-card-div">
+                                        <label for="${browserSources.inputs[i].inputName}-host">${urlType}</label>
+                                        <input type="text" id="${browserSources.inputs[i].inputName}-host" data-is-local-file=${browserSettings.is_local_file} name="${browserSources.inputs[i].inputName}-host" value="${urlHostPath}" required />
+                                    </div>
+                                <div id="queryParams-${i}">
+                                    </div>
+                            </fieldset>
+                        </div>
+                    </form>
+                                        `
+                if (browserQueryParameterHTML.length > 0) {
+                    document.getElementById(`queryParams-${i}`).innerHTML = `                    
+                    <details>
+                        <summary>Query Parameters</summary>
+                        ${browserQueryParameterHTML}    
+                        <p></p><input type="submit" id="button-${browserSources.inputs[i].inputName}"  onclick="modifyBrowser()" value="Modify" />
+                    </details>`
+                    document.getElementById(`queryParams-${i}`).innerHTML += `<div><button id="remoteLink-${i}" onclick="copyCode('remoteLink-${i}', 'remoteControl-${i}', 'Copy Link')">Copy Link</button><input type="text" id="remoteControl-${i}" value="${browserLocation.replace(".html","_Remote.html")}"/></div>`;
+                } else {
+                    document.getElementById(`queryParams-${i}`).innerHTML = `                    
+                        <p></p><input type="submit" id="button-${browserSources.inputs[i].inputName}"  onclick="modifyBrowser()" value="Modify" />
+                    `
+                }
+            }
+
+        }
+
+        async function modifyBrowser() {
+
+            if (event.target.form[1].value.length > 0) {
+                event.preventDefault()
+                const browser = event.target.id.replace("button-", "");
+                const urlType = event.target.form[1].dataset.isLocalFile === 'true' ? 'local_file' : 'url';
+
+                let browserURL = event.target.form[1].value;
+
+                if (event.target.form.length > 3) {
+                    browserURL += `?${event.target.form[2].dataset.key}=${event.target.form[2].value}`
+                    for (let i = 3; i < event.target.form.length - 3; i++) {
+                        //append query parameters to host. 
+                        browserURL += `&${event.target.form[i].dataset.key}=${event.target.form[i].value}`
+                    }
+                }
+
+                await obs.call("SetInputSettings", {
+                    "inputName": browser,
+                    "inputSettings": {
+                        [urlType]: ``
+                    }
+                })
+
+                await obs.call("SetInputSettings", {
+                    "inputName": browser,
+                    "inputSettings": {
+                        [urlType]: `${browserURL}`
+                    }
+                })
+                getBrowserSource();
+            } else {
+                event.target.form[1].setCustomValidity('Enter the page location');
+            }
+        }
+
+        //Post obs collection (tabulator and sheet version) to google sheet
+        //Google Apps Script API Post
+        async function postData(bodyData, fullURL){
+            const now = new Date();
+            const seconds = now.getSeconds();
+            bodyData.now = `${now.getMinutes()}:${now.getSeconds()}`;
+            bodyData.row = 1 + seconds;
+            bodyData.sheet = "Collection";
+            fetch(fullURL,{
+                method: 'POST',
+                mode:'no-cors',
+                redirect:'follow',
+                body: JSON.stringify(bodyData)
+            })
+            .then(res => {
+                res.json()
+            })
+            .then(data => {
+                console.log("post called",data)
+            })
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS Collection Control</title>
+</head>
+
+<body style="color:aqua">
+    <h1>OBS Browser Controls</h1>
+    <p>A browser source the gets instructions from a Google Sheet</p>
+    <p id="sheetID">Command SheetID</p>
+
+    <!-- OBS Proxy via Slides Studio Plugin -->
+    <script>
+        const obs = {
+            call: async (requestType, requestData = {}) => {
+                const response = await fetch(`/api/v1/obs/${requestType}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                });
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'OBS Proxy error');
+                }
+                return await response.json();
+            }
+        };
+    </script>
+
+    <script>
+        window.addEventListener(`load`, async function (event) {
+            //event wss details
+            console.log("page loaded: ", event);
+            const paramsString = window.location.search;
+            const searchParams = new URLSearchParams(paramsString);
+            console.log(searchParams)
+
+            let SHEET_ID = searchParams.get("sheetID");
+            let SHEET_TITLE = searchParams.get("sheetName");
+            let SHEET_RANGE = searchParams.get("sheetRange");
+            SHEET_TITLE = "Commands"
+            SHEET_RANGE = "A2:A"
+            let data;
+            let sheetUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_TITLE}&range=${SHEET_RANGE}`;
+            let currentData;
+
+            async function fetchData() {
+                fetch(sheetUrl)
+                    .then((res) => res.text())
+                    .then(async (rep) => {
+                        data = JSON.parse(rep.substr(47).slice(0, -2));
+                        console.log(data)
+                        //if(!Array.isArray(currentData)){
+
+                        //set the currentData variable on page load
+                        if ((typeof currentData) !== 'object') {
+                            console.log("init currentData", data.table.rows)
+                            //update currentData variable for next comparison
+                            currentData = data.table.rows;
+                        }
+
+                        //if Sheet values changed
+                        if (JSON.stringify(currentData) !== JSON.stringify(data.table.rows)) {
+                            //convert new sheet data to an object
+                            console.log("set New Data")
+                            const newDataObj = rowsToObject(data.table.rows);
+                            // sheet array data to Object
+                            
+                            console.log("set Current Data")
+                            const currentDataObj = rowsToObject(currentData);
+                            //find changed values
+
+                            const newValues = findChanges(currentDataObj, newDataObj);
+                            console.log("newValues", newValues)
+
+                            console.log(newDataObj); // Output: 
+
+                            newValues.forEach( async (value) => {
+                                value = JSON.parse(value)
+                                console.log(value)
+                                console.log(Number(value.itemID), typeof Number(value.itemID))
+                                //run OBS command
+                                switch(value.type){
+                                    //SetCurrentProgramScene, sceneName
+                                    case 'Scene':{
+                                        await obs.call("SetCurrentProgramScene",{sceneName: value.name})
+                                        break;
+                                    }
+                                    //SetSceneItemEnabled, sceneItemId
+                                    case 'Group':
+                                    case 'Source':{
+                                        await obs.call("SetSceneItemEnabled",{
+                                            sceneName: value.sceneName,
+                                      		sceneItemId: Number(value.itemID),
+				                            sceneItemEnabled: value.visibility,
+                                        })
+                                        break;
+                                    }
+                                    //SetSourceFilterEnabled, filterName                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+                                    case 'Filter':{
+                                        await obs.call("SetSourceFilterEnabled",{
+                                            sourceName: value.sourceName,
+                                      		filterName: value.name,
+				                            filterEnabled: value.visibility
+                                        })
+                                        break;
+                                    }
+
+                                }
+                                                                
+                                
+                            })
+                        }
+                        //update currentData variable for next comparison
+                        currentData = data.table.rows;
+                    });
+            }
+            //fetchData();
+            setInterval(fetchData, 1200);
+        })
+
+        async function enableSource(sceneName, sourceName) {
+            //Get the Scene Item Id number
+            const sceneItemId = await obs.call("GetSceneItemId", {
+                sceneName: sceneName,
+                sourceName: sourceName,
+            })
+            //Set the 'Next Slide' Source to Enabled    
+            await obs.call("SetSceneItemEnabled", {
+                sceneName: sceneName,
+                sceneItemId: Number(sceneItemId.sceneItemId),
+                sceneItemEnabled: true
+            });
+        }
+
+        async function disableSource(sceneName, sourceName) {
+            //Get the Scene Item Id number
+            const sceneItemId = await obs.call("GetSceneItemId", {
+                sceneName: sceneName,
+                sourceName: sourceName,
+            })
+            //Set the 'Next Slide' Source to Enabled    
+            await obs.call("SetSceneItemEnabled", {
+                sceneName: sceneName,
+                sceneItemId: Number(sceneItemId.sceneItemId),
+                sceneItemEnabled: false
+            });
+        }
+
+        function rowsToObject(sheetRows) {
+            const keysLength = Object.keys(sheetRows).length
+            const obj = {};
+            console.log(sheetRows)
+            for (let i = 0; i < keysLength; i++) {
+                obj[sheetRows[i].c[0].v] = sheetRows[i].c[0].v;
+            }
+            return obj;
+        }
+
+        function arrayToObject(arr) {
+            if (Array.isArray(arr)) {
+                const keys = arr[0].c;
+                const values = arr[1].c
+                const obj = {};
+                for (let i = 0; i < keys.length; i++) {
+                    if (!(Object.is(values[i], null))) {
+                        obj[keys[i].v] = values[i].v;
+                    }
+                }
+                return obj;
+            }
+        }
+
+        function findChanges(original, modified) {
+            const changes = [];
+            console.log("original", original)
+            console.log("modified", modified)
+
+            for (const key in modified) {
+                if (modified.hasOwnProperty(key)) {
+                    if (!original.hasOwnProperty(key) || original[key] !== modified[key]) {
+                        changes.push(modified[key]);
+                    }
+                }
+            }
+            console.log("changes", typeof changes, changes)
+            return changes;
+        }
+    </script>
+
+</body>
+
+</html>
