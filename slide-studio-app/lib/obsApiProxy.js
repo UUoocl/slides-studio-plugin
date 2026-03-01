@@ -146,7 +146,8 @@ class ObsApiProxy {
     startEventStream() {
         if (this.eventSource) return;
 
-        this.eventSource = new EventSource('/api/v1/obs/events');
+        console.log("ObsApiProxy: starting unified event stream...");
+        this.eventSource = new EventSource('/api/events');
         
         const eventNames = ['CustomEvent', 'ConnectionOpened', 'ConnectionClosed', 'Identified'];
         eventNames.forEach(name => {

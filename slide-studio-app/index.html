@@ -415,6 +415,10 @@ body[data-speaker-layout="teleprompter"] #current-slide,
 
         // Connect to OBS via proxy
         try {
+            // Use the same unified connection to save browser connection slots
+            if (typeof customSse !== 'undefined') {
+                obsWss.eventSource = customSse;
+            }
             await obsWss.connect();
         } catch (e) {
             console.warn("Continuing without OBS connection:", e);
@@ -438,18 +442,20 @@ body[data-speaker-layout="teleprompter"] #current-slide,
             slideDeckURL = new URL(locationValue)
             slideDeck = `${locationValue}`
             
-            //send slide url to OBS browser source
-            console.log("[SpeakerView] Broadcasting slide deck URL to other views:", slideDeck);
-            // Small delay to ensure SSE stability and receiver readiness
-            setTimeout(() => {
-                broadcastSlidesCommand("set-slides-studio-url", {url: slideDeck});
-            }, 500);
-
             // Extract a deck ID from the URL for storage purposes
             const deckId = slideDeckURL.pathname.split('/').filter(p => p && p !== 'index.html').pop() || 'default-deck';
             
-            // Broadcast deck ID to other views (Studio, etc.) via SSE
-            broadcastSlidesCommand("set-deck-id", { deckId: deckId });
+            setupLayout();
+            setupIframes();
+
+            // Send initialization data to other views (Studio, etc.) via SSE
+            // Small delay to ensure SSE stability and receiver readiness
+            setTimeout(() => {
+                console.log("[SpeakerView] Broadcasting deck initialization via SSE...");
+                broadcastSlidesCommand("set-slides-studio-url", {url: slideDeck});
+                broadcastSlidesCommand("set-deck-id", { deckId: deckId });
+            }, 1000);
+
             slidesLoaded = true;
         } catch (e) {
             console.error("Invalid URL provided:", locationValue, e);
@@ -457,8 +463,6 @@ body[data-speaker-layout="teleprompter"] #current-slide,
             return;
         }
         
-        setupLayout();
-        setupIframes();
         handleConnectMessage();
         window.document.getElementById("speaker-controls").focus();
       }
@@ -587,6 +591,8 @@ body[data-speaker-layout="teleprompter"] #current-slide,
                 if (data.eventName === 'slidechanged') {
                     console.log("[SpeakerView] Detected slidechanged. Attributes:", data.attributes);
                     broadcastSlidesCommand('slide-changed', data.attributes);
+                    // Request notes for the teleprompter
+                    currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes' }), "*");
                 } else if (['overviewhidden', 'overviewshown'].includes(data.eventName)) {
                     console.log("[SpeakerView] Detected overview toggle. State:", data.state);
                     broadcastSlidesCommand('overview-toggled', data.state);

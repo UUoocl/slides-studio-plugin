@@ -5,9 +5,10 @@ import { ServerManager } from 'src/utils/serverLogic';
 
 import { OscManager} from 'src/utils/oscLogic';
 import { MidiManager} from 'src/utils/midiLogic';
+import { AudioManager } from 'src/utils/audioLogic';
 
 // Re-export for Typedoc
-export { ServerManager, OscManager, MidiManager };
+export { ServerManager, OscManager, MidiManager, AudioManager };
 export * from './types';
 
 import { Message } from 'node-osc';
@@ -26,10 +27,10 @@ import { OpenObsCommand } from './commands/openObs';
 import { GetObsTagsCommand } from './commands/getObsTags';
 import { OpenWebviewCommand } from './commands/webviewCommands';
 import { SetObsReceiverCommand, UpdateBrowsersUrlCommand, RefreshObsBrowsersCommand } from './commands/obsBrowserCommands';
-import { ConnectOscCommand, ConnectMidiCommand } from './commands/deviceCommands';
+import { ConnectOscCommand, ConnectMidiCommand, ConnectAudioCommand } from './commands/deviceCommands';
 
 const DEFAULT_SETTINGS: Partial<SlidesStudioPluginSettings> = {
-	websocketIP_Text: "localhost",
+	websocketIP_Text: "127.0.0.1",
 	websocketPort_Text: "4455",
 	websocketPW_Text: "password",
 	slidesPort_Text: "5000",
@@ -58,7 +59,8 @@ const DEFAULT_SETTINGS: Partial<SlidesStudioPluginSettings> = {
     settingsFolder: "",
     settingsFile: "slides-studio-settings.md",
 	oscDevices: [],
-	midiDevices: []
+	midiDevices: [],
+    audioDevices: []
 };
 
 /**
@@ -69,10 +71,11 @@ export default class slidesStudioPlugin extends Plugin {
 	settings: SlidesStudioPluginSettings;
 	public oscManager: OscManager;
 	public midiManager: MidiManager; 
+    public audioManager: AudioManager;
 	public serverManager: ServerManager | null = null; 
 	public obs: OBSWebSocket;
 	public isObsConnected = false;
-	
+
 	/**
 	 * Loads the plugin settings from the data store.
 	 * Merges with DEFAULT_SETTINGS to ensure all keys exist.
@@ -82,7 +85,7 @@ export default class slidesStudioPlugin extends Plugin {
 		const loadedData = await this.loadData() as SlidesStudioPluginSettings | null;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
 	}
-	
+
 	/**
 	 * Saves the current settings to the data store.
 	 * Also persists WebSocket details to a separate file for external use.
@@ -100,7 +103,7 @@ export default class slidesStudioPlugin extends Plugin {
 		const pluginDir = this.manifest.dir;
 		const folderName = "obs_webSocket_details";
 		const fileName = "websocketDetails.js";
-		
+
 		const targetFolder = `${pluginDir}/${folderName}`;
 		let filePath = `${targetFolder}/${fileName}`;
 		filePath = Platform.isWin ? filePath.replace(/\//g, '\\') : filePath;
@@ -110,16 +113,16 @@ export default class slidesStudioPlugin extends Plugin {
 			if (!(await adapter.exists(targetFolder))) {
 				await this.app.vault.createFolder(targetFolder);
 			}
-			
+
 			const port = parseInt(this.settings.websocketPort_Text) || 4455;
 			const content = `let websocketDetails = {"IP": "${this.settings.websocketIP_Text}", "PW": "${this.settings.websocketPW_Text}", "PORT": ${port}}`;
-			
+
 			await adapter.write(filePath, content);
 		} catch (error) {
 			console.error("Error writing websocket details file:", error);
 		}
 	}
-	
+
 	/**
 	 * Plugin initialization routine.
 	 * Sets up views, commands, server, and device managers.
@@ -149,6 +152,7 @@ export default class slidesStudioPlugin extends Plugin {
 		this.addCommand(RefreshObsBrowsersCommand(this));
 		this.addCommand(ConnectOscCommand(this));
 		this.addCommand(ConnectMidiCommand(this));
+        this.addCommand(ConnectAudioCommand(this));
 
 		new Notice("Enabled slides studio plugin");
 
@@ -170,6 +174,11 @@ export default class slidesStudioPlugin extends Plugin {
 		});
 		await this.midiManager.enable();
 
+        this.audioManager = new AudioManager((name, data) => {
+            // Broadcast to 'audioFFT' topic with 'name' as event
+            this.serverManager?.broadcastAudioMessage('audioFFT', name, data);
+        });
+
 		this.setupObsEventListeners();
 	}
 
@@ -181,7 +190,7 @@ export default class slidesStudioPlugin extends Plugin {
 		this.obs.on('ConnectionOpened', () => {
 			console.warn('[Plugin] Connection to OBS WebSocket successfully opened');
 		});
-		
+
 		this.obs.on('ConnectionClosed', () => {
 			console.warn('[Plugin] Connection to OBS WebSocket closed');
 			this.isObsConnected = false;
@@ -190,11 +199,11 @@ export default class slidesStudioPlugin extends Plugin {
 		this.obs.on('ConnectionError', (err) => {
 			console.error('[Plugin] OBS WebSocket connection error:', err);
 		});
-		
+
 		this.obs.on("Identified", () => {
 			console.warn('[Plugin] OBS WebSocket identified successfully');
 			this.isObsConnected = true;
-			
+
 			const wssDetails = {
 				IP: this.settings.websocketIP_Text,
 				PORT: this.settings.websocketPort_Text,
@@ -209,7 +218,7 @@ export default class slidesStudioPlugin extends Plugin {
 					event_data: { wssDetails },
 				},
 			});
-			
+
 			// Use command IDs to trigger logic
 			const commands = [
 				'slides-studio:get-obs-scene-tags',
@@ -224,7 +233,7 @@ export default class slidesStudioPlugin extends Plugin {
 
 		this.obs.on("CustomEvent", (eventData) => {
 			const event = eventData as unknown as OBSCustomEvent;
-			
+
 			if (event.event_name === `OSC-out` && event.address && event.osc_name) {
 				const message = new Message(event.address);
 				[event.arg1, event.arg2, event.arg3, event.arg4, event.arg5, event.arg6, event.arg7].forEach(arg => {
@@ -307,7 +316,7 @@ export default class slidesStudioPlugin extends Plugin {
 			console.error(error)
 		}
 	}
-	
+
 	/**
 	 * Disconnects from the OBS WebSocket server if currently connected.
 	 */
@@ -329,7 +338,7 @@ export default class slidesStudioPlugin extends Plugin {
 		const { workspace } = this.app;
 		let leaf: WorkspaceLeaf | null = null;
 		const leaves = workspace.getLeavesOfType(SLIDES_STUDIO_VIEW_TYPE);
-		
+
 		if (leaves.length > 0) {
 			leaf = leaves[0];
 		} else {
@@ -344,17 +353,17 @@ export default class slidesStudioPlugin extends Plugin {
 	 */
 	async openWebView(): Promise<void> {
 		const { workspace } = this.app;
-	
+
 		const leaf = workspace.getLeaf('tab');
 		const port = this.settings.serverPort;
-		const url = `http://localhost:${port}/${this.manifest.dir}/slide-studio-app/`;
+		const url = `http://127.0.0.1:${port}/${this.manifest.dir}/slide-studio-app/`;
 		await leaf.setViewState({
 			type: 'webviewer',
 			state: { url, navigate: true },
 			active: true,
 		});
 		void workspace.revealLeaf(leaf);
-		
+
 	}
 
 	/**
@@ -366,6 +375,7 @@ export default class slidesStudioPlugin extends Plugin {
 		if (this.serverManager) void this.serverManager.stop();
 		if (this.oscManager) this.oscManager.disconnectAll();
 		if (this.midiManager) this.midiManager.disconnectAll(this.settings.midiDevices);
+        if (this.audioManager) this.audioManager.disconnectAll(this.settings.audioDevices);
 		if (this.obs) void this.obs.disconnect();
 	}
 }

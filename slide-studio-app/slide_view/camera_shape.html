@@ -42,7 +42,8 @@
 
         window.addEventListener('DOMContentLoaded', async(event) => {
             console.log("[CameraShape] Initializing SSE connection...");
-            const customSse = new EventSource('/api/custom/events');
+            // Unified SSE listener for all plugin events (slides, commands, etc.)
+            const customSse = new EventSource('/api/events');
             
             customSse.onopen = () => {
                 console.log("[CameraShape] SSE connection opened.");

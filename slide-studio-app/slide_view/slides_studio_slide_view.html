@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slides Studio localhost</title>
+    <title>Slides Studio 127.0.0.1</title>
     <link rel="stylesheet" href="../css/iframe_positioins.css">
     <style>
         html, body {
@@ -71,9 +71,9 @@
         
         const broadcastChannels = {}; 
 
-        // SSE listener for slide commands from speaker view
-        console.log("[SlideView] Initializing SSE connection for slide commands...");
-        const customSse = new EventSource('/api/custom/events');
+        // Unified SSE listener for all plugin events (slides, commands, etc.)
+        console.log("[SlideView] Initializing unified SSE connection...");
+        const customSse = new EventSource('/api/events');
         
         customSse.onopen = () => {
             console.log("[SlideView] SSE connection for custom events opened successfully.");

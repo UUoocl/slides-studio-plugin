@@ -123,6 +123,7 @@ export class ObsServer {
         for (const reply of this.sseConnections) {
             this.sendEvent(reply, event, data);
         }
+        this.plugin.serverManager?.broadcastToAll(event, data);
     }
 
     private sendEvent(reply: FastifyReply, event: string, data: unknown) {

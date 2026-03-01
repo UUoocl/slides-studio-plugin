@@ -6,12 +6,22 @@ export interface OscDeviceSetting {
     ip: string;
     inPort: number;
     outPort: number;
+    wsPort: number;
 }
 
 export interface MidiDeviceSetting {
     name: string;      // User defined alias (e.g. "My Keyboard")
     inputName: string; // System Input Name (e.g. "Keystation 49")
     outputName: string;// System Output Name
+    wsPort: number;
+}
+
+export interface AudioDeviceSetting {
+    name: string;      // User defined alias (e.g. "My Mic")
+    deviceId: string;  // System Device ID
+    sampleRate: number;// Sample Rate (e.g. 44100)
+    fftSize: number;   // FFT Size (e.g. 2048)
+    smoothingTimeConstant: number; // Smoothing (0-1)
 }
 
 /**
@@ -46,10 +56,12 @@ export interface SlidesStudioPluginSettings {
     keyboardMonitorShowCombinations: boolean;
     uvcUtilEnabled: boolean;
     uvcUtilLibPath: string;
+    uvcWsPort: number;
     settingsFolder: string;
     settingsFile: string;
     oscDevices: OscDeviceSetting[];
     midiDevices: MidiDeviceSetting[];
+    audioDevices: AudioDeviceSetting[];
 }
 
 /**

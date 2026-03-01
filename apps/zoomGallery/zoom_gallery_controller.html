@@ -329,7 +329,7 @@
         const saveConfigBtn = document.getElementById('saveConfigBtn');
 
         let isObsConnected = false;
-        let eventSource = null;
+        let socket = null;
 
         // --- Logging ---
         function log(msg) {
@@ -354,7 +354,7 @@
         // --- OBS Proxy Helper ---
         async function callObs(requestType, requestData = {}) {
             const port = serverPortInput.value;
-            const response = await fetch(`http://localhost:${port}/api/v1/obs/${requestType}`, {
+            const response = await fetch(`http://127.0.0.1:${port}/api/v1/obs/${requestType}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestData)
@@ -371,7 +371,7 @@
         // --- App Logic ---
         async function startApp() {
             // Cleanup
-            if (eventSource) { eventSource.close(); eventSource = null; }
+            if (socket) { socket.close(); socket = null; }
 
             const port = serverPortInput.value;
             const oscName = oscDeviceInput.value;
@@ -381,7 +381,7 @@
             serverStatusText.textContent = 'Checking...';
             
             try {
-                const response = await fetch(`http://localhost:${port}/api/v1/obs/isconnected`);
+                const response = await fetch(`http://127.0.0.1:${port}/api/v1/obs/isconnected`);
                 if (!response.ok) throw new Error('Plugin server unreachable');
                 const status = await response.json();
                 
@@ -400,22 +400,25 @@
                     log('Warning: OBS is NOT connected to the plugin.');
                 }
 
-                // 2. Connect to SSE for OSC
-                log(`Subscribing to OSC events for device: ${oscName}`);
-                eventSource = new EventSource(`http://localhost:${port}/api/osc/events/${oscName}`);
+                // 2. Connect to WebSocket for OSC
+                log(`Fetching port for OSC device: ${oscName}`);
+                const devResp = await fetch(`http://127.0.0.1:${port}/api/devices`);
+                if (!devResp.ok) throw new Error('Failed to fetch devices');
+                const devices = await devResp.json();
+                const device = devices.osc.find(d => d.name === oscName);
+
+                if (!device || !device.wsPort) {
+                    throw new Error(`Port for OSC device ${oscName} not found`);
+                }
+
+                log(`Connecting to OSC WebSocket on port ${device.wsPort}`);
+                socket = new WebSocket(`ws://127.0.0.1:${device.wsPort}`);
                 
-                eventSource.onopen = () => {
-                    log('SSE Connection opened.');
+                socket.onopen = () => {
+                    log('WebSocket Connection opened.');
                 };
 
-                eventSource.onerror = (err) => {
-                    if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
-                         log('SSE Error. Reconnecting...');
-                    }
-                };
-
-                // Listen for the specific device name event
-                eventSource.addEventListener(oscName, (event) => {
+                socket.onmessage = (event) => {
                     try {
                         const payload = JSON.parse(event.data);
                         // payload format: { deviceName: "...", message: ["/address", args...] }
@@ -431,9 +434,18 @@
                             }
                         }
                     } catch (e) {
-                        log('Error parsing SSE event: ' + e.message);
+                        log('Error parsing message: ' + e.message);
                     }
-                });
+                };
+
+                socket.onerror = (err) => {
+                    log('WebSocket Error.');
+                };
+
+                socket.onclose = () => {
+                    log('WebSocket closed. Reconnecting in 5s...');
+                    setTimeout(startApp, 5000);
+                };
 
             } catch (err) {
                 log('Error: ' + err.message);

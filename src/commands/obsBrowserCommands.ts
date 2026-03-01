@@ -23,7 +23,7 @@ export const SetObsReceiverCommand = (plugin: slidesStudioPlugin): Command => ({
     name: 'Set the URL for slides studio receiver OBS browser source',
     callback: () => {
         const port = plugin.settings.serverPort;
-        const obsURL = `http://localhost:${port}/.obsidian/plugins/slides-studio/slide-studio-app/slide_view/slides_studio_slide_view.html`;
+        const obsURL = `http://127.0.0.1:${port}/.obsidian/plugins/slides-studio/slide-studio-app/slide_view/slides_studio_slide_view.html`;
         
         // Use void for floating promise and handle error properly
         void plugin.obs.call("SetInputSettings", {
@@ -55,7 +55,7 @@ export const UpdateBrowsersUrlCommand = (plugin: slidesStudioPlugin): Command =>
 
                     if (settings.inputSettings.css.includes("--slides-studio-refresh")) {
                         const browserURL = new URL(settings.inputSettings.url);
-                        const newURL = `http://localhost:${port}${browserURL.pathname}`;
+                        const newURL = `http://127.0.0.1:${port}${browserURL.pathname}`;
 
                         // Await the call inside the loop
                         await plugin.obs.call("SetInputSettings", {

@@ -73,75 +73,94 @@
         const hintEl = document.getElementById('hint');
 
         let isOn = false;
+        let socket = null;
 
         if (targetDevice) {
             titleEl.textContent = `OSC Listener: ${targetDevice}`;
+            initWebSocket();
         } else {
             titleEl.textContent = `OSC Listener: (All Devices)`;
             toggleBtn.disabled = true;
-            hintEl.textContent = "Specify ?deviceName=... in URL to enable sending";
+            hintEl.textContent = "Specify ?deviceName=... in URL to enable sending and listening";
+            statusEl.textContent = 'Status: Device name required';
+        }
+
+        async function initWebSocket() {
+            try {
+                // Fetch device info to get the WS port
+                const resp = await fetch('/api/devices');
+                if (!resp.ok) throw new Error('Failed to fetch devices');
+                const devices = await resp.json();
+                const device = devices.osc.find(d => d.name === targetDevice);
+                
+                if (!device || !device.wsPort) {
+                    statusEl.textContent = `Status: Error - Port for ${targetDevice} not found`;
+                    statusEl.style.color = '#f44747';
+                    return;
+                }
+
+                const wsUrl = `ws://${window.location.hostname}:${device.wsPort}`;
+                statusEl.textContent = `Status: Connecting to ${wsUrl}...`;
+                
+                socket = new WebSocket(wsUrl);
+
+                socket.onopen = () => {
+                    statusEl.textContent = `Status: Connected to ${targetDevice}`;
+                    statusEl.style.color = '#4ec9b0';
+                };
+
+                socket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        addMessage(data);
+                    } catch (e) {
+                        console.error('Error parsing message data:', e);
+                    }
+                };
+
+                socket.onerror = (err) => {
+                    console.error('WebSocket Error:', err);
+                    statusEl.textContent = 'Status: Connection Error';
+                    statusEl.style.color = '#f44747';
+                };
+
+                socket.onclose = () => {
+                    statusEl.textContent = 'Status: Disconnected. Retrying in 5s...';
+                    statusEl.style.color = '#ce9178';
+                    setTimeout(initWebSocket, 5000);
+                };
+
+            } catch (e) {
+                console.error('Init error:', e);
+                statusEl.textContent = 'Status: Init Error';
+                statusEl.style.color = '#f44747';
+            }
         }
 
         // --- Toggle Logic ---
-        toggleBtn.onclick = async () => {
-            if (!targetDevice) return;
+        toggleBtn.onclick = () => {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                alert('WebSocket not connected');
+                return;
+            }
             
             const nextState = !isOn;
             const val = nextState ? 1 : 0;
             
             try {
-                const resp = await fetch('/api/osc/send', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        deviceName: targetDevice,
-                        address: '/4/toggle1',
-                        args: [val]
-                    })
-                });
+                socket.send(JSON.stringify({
+                    address: '/4/toggle1',
+                    args: [val]
+                }));
                 
-                if (resp.ok) {
-                    isOn = nextState;
-                    toggleBtn.classList.toggle('on', isOn);
-                    toggleBtn.textContent = `Toggle OSC: ${isOn ? 'ON' : 'OFF'}`;
-                } else {
-                    const err = await resp.json();
-                    alert('Error sending OSC: ' + (err.error || resp.statusText));
-                }
+                isOn = nextState;
+                toggleBtn.classList.toggle('on', isOn);
+                toggleBtn.textContent = `Toggle OSC: ${isOn ? 'ON' : 'OFF'}`;
             } catch (e) {
-                console.error('Fetch error:', e);
-                alert('Failed to send request to server');
+                console.error('Socket send error:', e);
+                alert('Failed to send OSC message');
             }
         };
-
-        // --- SSE Connection ---
-        // Use topic-based URL if a target device is specified
-        const sseUrl = targetDevice ? `/api/osc/events/${targetDevice}` : '/api/custom/events';
-        const eventSource = new EventSource(sseUrl);
-
-        eventSource.onopen = () => {
-            statusEl.textContent = 'Status: Connected';
-            statusEl.style.color = '#4ec9b0';
-        };
-
-        eventSource.onerror = (err) => {
-            console.error('SSE Error:', err);
-            statusEl.textContent = 'Status: Connection Error / Reconnecting...';
-            statusEl.style.color = '#f44747';
-        };
-
-        if (targetDevice) {
-            // Listen for the specific topic-named event
-            eventSource.addEventListener(targetDevice, (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    // Server sends: { deviceName, message }
-                    addMessage(data);
-                } catch (e) {
-                    console.error('Error parsing event data:', e);
-                }
-            });
-        }
 
         function addMessage(data) {
             const div = document.createElement('div');

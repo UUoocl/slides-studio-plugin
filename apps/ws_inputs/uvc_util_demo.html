@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UVC SSE Controller</title>
+    <title>UVC WebSocket Controller</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -86,7 +86,7 @@
 <body>
 
     <div class="status-bar">
-        <span>SSE Stream: <strong id="sse-status" class="status disconnected">Disconnected</strong></span>
+        <span>WebSocket: <strong id="ws-status" class="status disconnected">Disconnected</strong></span>
         <button id="reconnect-btn">Reconnect</button>
     </div>
 
@@ -120,9 +120,9 @@
     </div>
 
     <script>
-        let eventSource;
+        let socket = null;
         const logBox = document.getElementById('log');
-        const sseStatus = document.getElementById('sse-status');
+        const wsStatus = document.getElementById('ws-status');
         const deviceSelect = document.getElementById('device-select');
         const controlsContainer = document.getElementById('controls-container');
 
@@ -134,49 +134,62 @@
             logBox.insertBefore(entry, logBox.firstChild);
         }
 
-        function connectSSE() {
-            if (eventSource) eventSource.close();
+        async function connectWS() {
+            if (socket) socket.close();
 
-            eventSource = new EventSource('/api/uvc/events');
-            
-            eventSource.onopen = () => {
-                sseStatus.textContent = "Connected";
-                sseStatus.className = "status connected";
-                log("SSE Connected", "tx");
-                document.getElementById('refresh-btn').click();
-            };
+            try {
+                const resp = await fetch('/api/devices');
+                if (!resp.ok) throw new Error("Failed to fetch devices");
+                const devices = await resp.json();
+                const port = devices.uvc.wsPort;
 
-            eventSource.onerror = (e) => {
-                sseStatus.textContent = "Disconnected";
-                sseStatus.className = "status disconnected";
-                log("SSE Error/Disconnected", "tx");
-            };
-
-            eventSource.addEventListener('uvc', (event) => {
-                try {
-                    const msg = JSON.parse(event.data);
-                    handleMessage(msg);
-                } catch (e) {
-                    log("RX Raw: " + event.data, "rx");
+                if (!port) {
+                    wsStatus.textContent = "Port Missing";
+                    wsStatus.className = "status disconnected";
+                    return;
                 }
-            });
+
+                socket = new WebSocket(`ws://${window.location.hostname}:${port}`);
+                
+                socket.onopen = () => {
+                    wsStatus.textContent = "Connected";
+                    wsStatus.className = "status connected";
+                    log("WebSocket Connected", "tx");
+                    document.getElementById('refresh-btn').click();
+                };
+
+                socket.onmessage = (event) => {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        handleMessage(msg);
+                    } catch (e) {
+                        log("RX Raw: " + event.data, "rx");
+                    }
+                };
+
+                socket.onerror = (e) => {
+                    wsStatus.textContent = "Error";
+                    wsStatus.className = "status disconnected";
+                    log("WebSocket Error", "tx");
+                };
+
+                socket.onclose = () => {
+                    wsStatus.textContent = "Disconnected";
+                    wsStatus.className = "status disconnected";
+                    log("WebSocket Disconnected", "tx");
+                };
+            } catch (err) {
+                log("Connect Error: " + err.message, "tx");
+            }
         }
 
-        async function sendCommand(data) {
-            log("TX: " + data.action, "tx");
-            try {
-                const res = await fetch('/api/uvc/command', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                if (!res.ok) {
-                    const err = await res.json();
-                    log("TX Error: " + (err.error || res.statusText), "tx");
-                }
-            } catch (err) {
-                log("TX Fetch Error: " + err.message, "tx");
+        function sendCommand(data) {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                log("Error: Socket not open", "tx");
+                return;
             }
+            log("TX: " + data.action, "tx");
+            socket.send(JSON.stringify(data));
         }
 
         function handleMessage(msg) {
@@ -226,7 +239,7 @@
         };
 
         // Event Listeners
-        document.getElementById('reconnect-btn').onclick = connectSSE;
+        document.getElementById('reconnect-btn').onclick = connectWS;
         
         document.getElementById('refresh-btn').onclick = () => {
             sendCommand({ action: "list_devices" });
@@ -273,7 +286,7 @@
         }
 
         // Initial setup
-        connectSSE();
+        connectWS();
 
     </script>
 </body>

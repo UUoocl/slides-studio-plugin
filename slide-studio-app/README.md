@@ -38,4 +38,4 @@ body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden;
 }
 
 http://127.0.0.1:57000/.obsidian/plugins/slides-studio/slide-studio-app/slide_view/slides_studio_slide_view.html
-http://localhost:57000/.obsidian/plugins/slides-studio/slide_view/camera_shape.html
+http://127.0.0.1:57000/.obsidian/plugins/slides-studio/slide_view/camera_shape.html

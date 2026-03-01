@@ -3,7 +3,7 @@
 // based on messages from the Studio "brain" and SSE events.
 
 // SSE listener for slide commands (Broadcasted by the Studio brain or other views)
-const customSse = new EventSource('/api/custom/events');
+const customSse = new EventSource('/api/events');
 customSse.addEventListener('slidesCommands', (e) => {
     try {
         const data = JSON.parse(e.data);
@@ -24,6 +24,8 @@ customSse.addEventListener('slidesCommands', (e) => {
             if (slidesState && typeof currentSlide !== 'undefined' && currentSlide.contentWindow) {
                 console.log("[SpeakerViewerSync] Navigating currentSlide to:", slidesState);
                 currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: slidesState }), "*");
+                // Request updated notes for the teleprompter
+                currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes' }), "*");
             }
         } else if (data.eventName === "overview-toggled") {
             const msgParam = data.msgParam;

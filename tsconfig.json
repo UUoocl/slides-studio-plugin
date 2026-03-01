@@ -22,7 +22,9 @@
     ],
         "types": [
             "node",
-            "obsidian-typings"
+            "obsidian-typings",
+            "ws",
+            "node-osc"
         ]
     },
     "exclude": [

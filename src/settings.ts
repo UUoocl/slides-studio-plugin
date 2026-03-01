@@ -267,7 +267,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
         
         new Setting(containerEl)
             .setName("Obs websocket server IP")
-            .setDesc("Enter 'localhost'")
+            .setDesc("Enter '127.0.0.1'")
             .addText((item) => {
                 item.setValue(this.plugin.settings.websocketIP_Text).onChange(
                     (value) => {
@@ -463,7 +463,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
             new Setting(deviceDiv)
                 .setName("Osc IP address")
-                .setDesc("Enter the IP address or 'localhost'")
+                .setDesc("Enter the IP address or '127.0.0.1'")
                 .addText(text => text
                     .setValue(device.ip)
                     .onChange(async (value) => {
@@ -495,6 +495,19 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     })
                 );
 
+            const oscWsPortSetting = new Setting(deviceDiv)
+                .setName("Osc websocket port")
+                .setDesc("Port for websocket communication")
+                .addText(text => text
+                    .setValue(device.wsPort ? device.wsPort.toString() : "")
+                    .onChange(async (value) => {
+                        this.plugin.settings.oscDevices[index].wsPort = parseInt(value) || 0;
+                        await this.plugin.saveSettings();
+                        void this.updatePortStatus(value, oscWsPortSetting, "Port for WebSocket communication");
+                    })
+                );
+            if (device.wsPort) void this.updatePortStatus(device.wsPort.toString(), oscWsPortSetting, "Port for WebSocket communication");
+
             new Setting(deviceDiv)
                 .addButton(btn => btn
                     .setButtonText("Remove device")
@@ -523,7 +536,8 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         name: "NewDevice",
                         ip: "127.0.0.1",
                         inPort: 8000,
-                        outPort: 9000
+                        outPort: 9000,
+                        wsPort: 8080
                     });
                     await this.plugin.saveSettings();
                     if (this.plugin.settings.serverEnabled && this.plugin.serverManager) {
@@ -604,6 +618,19 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         });
                     });
 
+                const midiWsPortSetting = new Setting(deviceDiv)
+                    .setName("Midi websocket port")
+                    .setDesc("Port for websocket communication")
+                    .addText(text => text
+                        .setValue(device.wsPort ? device.wsPort.toString() : "")
+                        .onChange(async (value) => {
+                            this.plugin.settings.midiDevices[index].wsPort = parseInt(value) || 0;
+                            await this.plugin.saveSettings();
+                            void this.updatePortStatus(value, midiWsPortSetting, "Port for WebSocket communication");
+                        })
+                    );
+                if (device.wsPort) void this.updatePortStatus(device.wsPort.toString(), midiWsPortSetting, "Port for WebSocket communication");
+
                 new Setting(deviceDiv)
                     .addButton(btn => btn
                         .setButtonText("Remove midi device")
@@ -631,7 +658,8 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         this.plugin.settings.midiDevices.push({
                             name: "MyMidiDevice",
                             inputName: "",
-                            outputName: ""
+                            outputName: "",
+                            wsPort: 59000
                         });
                         await this.plugin.saveSettings();
                         if (this.plugin.settings.serverEnabled && this.plugin.serverManager) {
@@ -841,6 +869,140 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     }
                 })
             );
+
+        const uvcWsPortSetting = new Setting(containerEl)
+            .setName("Uvc websocket port")
+            .setDesc("Port for websocket communication with browser clients")
+            .addText(text => text
+                .setValue(this.plugin.settings.uvcWsPort ? this.plugin.settings.uvcWsPort.toString() : "")
+                .onChange(async (value) => {
+                    this.plugin.settings.uvcWsPort = parseInt(value) || 0;
+                    await this.plugin.saveSettings();
+                    void this.updatePortStatus(value, uvcWsPortSetting, "Port for WebSocket communication with browser clients");
+                    if (this.plugin.settings.serverEnabled && this.plugin.serverManager) {
+                        await this.plugin.serverManager.restart(parseInt(this.plugin.settings.serverPort));
+                    }
+                })
+            );
+        if (this.plugin.settings.uvcWsPort) void this.updatePortStatus(this.plugin.settings.uvcWsPort.toString(), uvcWsPortSetting, "Port for WebSocket communication with browser clients");
+        // #endregion
+
+        // #region Audio Settings
+        if (this.plugin.audioManager) {
+            new Setting(containerEl)
+                .setName("Audio input devices")
+                .setHeading();
+            
+            containerEl.createEl("p", { text: "Add audio inputs (microphones, etc) and transform via fft." });
+
+            void (async () => {
+                const audioInputs = await this.plugin.audioManager.getDevices();
+                const inputOptions: Record<string, string> = { "": "Select device" };
+                audioInputs.forEach(d => {
+                    inputOptions[d.deviceId] = d.label || `Device ${d.deviceId.slice(0, 5)}...`;
+                });
+
+                this.plugin.settings.audioDevices.forEach((device, index) => {
+                    const deviceDiv = containerEl.createDiv();
+                    deviceDiv.setCssProps({
+                        'border': '1px solid var(--background-modifier-border)',
+                        'padding': '10px',
+                        'margin-bottom': '10px',
+                        'border-radius': '5px'
+                    });
+
+                    new Setting(deviceDiv)
+                        .setName(`Audio Device ${index + 1}`)
+                        .setHeading();
+
+                    new Setting(deviceDiv)
+                        .setName("Device name (sse event name)")
+                        .setDesc("Unique name used as the sse event name (eg 'vocals')")
+                        .addText(text => text
+                            .setValue(device.name)
+                            .onChange(async (value) => {
+                                this.plugin.settings.audioDevices[index].name = value;
+                                await this.plugin.saveSettings();
+                            })
+                        )
+                        .addButton(btn => btn
+                            .setButtonText("Connect")
+                            .onClick(() => {
+                                void this.plugin.audioManager.connectDevice(this.plugin.settings.audioDevices[index]);
+                            })
+                        );
+
+                    new Setting(deviceDiv)
+                        .setName("Input device")
+                        .addDropdown(dropdown => dropdown
+                            .addOptions(inputOptions)
+                            .setValue(device.deviceId)
+                            .onChange(async (value) => {
+                                this.plugin.settings.audioDevices[index].deviceId = value;
+                                await this.plugin.saveSettings();
+                            })
+                        );
+
+                    new Setting(deviceDiv)
+                        .setName("Fft size")
+                        .setDesc("Must be power of 2 (e.g. 2048, 4096)")
+                        .addText(text => text
+                            .setValue(device.fftSize ? device.fftSize.toString() : "2048")
+                            .onChange(async (value) => {
+                                const val = parseInt(value);
+                                if (!isNaN(val)) {
+                                    this.plugin.settings.audioDevices[index].fftSize = val;
+                                    await this.plugin.saveSettings();
+                                }
+                            })
+                        );
+
+                    new Setting(deviceDiv)
+                        .setName("Smoothing (0-1)")
+                        .setDesc("Time constant for smoothing")
+                        .addText(text => text
+                            .setValue(device.smoothingTimeConstant !== undefined ? device.smoothingTimeConstant.toString() : "0.8")
+                            .onChange(async (value) => {
+                                const val = parseFloat(value);
+                                if (!isNaN(val) && val >= 0 && val < 1) {
+                                    this.plugin.settings.audioDevices[index].smoothingTimeConstant = val;
+                                    await this.plugin.saveSettings();
+                                }
+                            })
+                        );
+
+                    new Setting(deviceDiv)
+                        .addButton(btn => btn
+                            .setButtonText("Remove device")
+                            .setWarning()
+                            .onClick(async () => {
+                                this.plugin.audioManager.disconnectDevice(device.name);
+                                this.plugin.settings.audioDevices.splice(index, 1);
+                                await this.plugin.saveSettings();
+                                this.display();
+                            })
+                        );
+                });
+
+                new Setting(containerEl)
+                    .setName("Add new audio device")
+                    .addButton(btn => btn
+                        .setButtonText("Add device")
+                        .setCta()
+                        .onClick(async () => {
+                            this.plugin.settings.audioDevices.push({
+                                name: "NewMic",
+                                deviceId: "",
+                                sampleRate: 44100,
+                                fftSize: 2048,
+                                smoothingTimeConstant: 0.8
+                            });
+                            await this.plugin.saveSettings();
+                            this.display();
+                        })
+                    );
+            })();
+        }
         // #endregion
     }
 }

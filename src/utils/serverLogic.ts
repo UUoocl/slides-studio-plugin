@@ -7,14 +7,15 @@ import fs from 'fs';
 import { Message } from 'node-osc';
 import { spawn, ChildProcess } from 'child_process';
 import * as net from 'net';
+import { WebSocketServer, WebSocket, RawData } from 'ws';
 
 import type slidesStudioPlugin from '../main'; 
-import { SaveFileBody, FileListQuery, GetFileQuery, OscSendBody, MidiSendBody, MidiPayload, CustomMessageBody, MouseEventData } from '../types';
+import { SaveFileBody, FileListQuery, GetFileQuery, OscSendBody, MidiSendBody, MidiPayload, CustomMessageBody, MouseEventData, OscDeviceSetting, MidiDeviceSetting } from '../types';
 import { ObsServer } from './obsEndpoints';
 
 /**
  * Manages the local Fastify server.
- * Handles file operations, API endpoints, and SSE broadcasting for MIDI/OSC events.
+ * Handles file operations, API endpoints, and WebSocket broadcasting for MIDI/OSC/UVC events.
  */
 export class ServerManager {
     private app: App;
@@ -23,12 +24,11 @@ export class ServerManager {
     private port: number;
     private isRunning = false;
     
-    private sseOscConnections: Map<string, Set<FastifyReply>> = new Map();
-    private sseMidiConnections: Map<string, Set<FastifyReply>> = new Map();
-    private sseMouseConnections: Map<string, Set<FastifyReply>> = new Map();
-    private sseKeyboardConnections: Map<string, Set<FastifyReply>> = new Map();
-    private sseUvcConnections: Set<FastifyReply> = new Set();
-    private sseCustomConnections: Set<FastifyReply> = new Set();
+    private oscWsServers: Map<string, WebSocketServer> = new Map();
+    private midiWsServers: Map<string, WebSocketServer> = new Map();
+    private uvcWsServer: WebSocketServer | null = null;
+
+    private sseAllConnections: Set<FastifyReply> = new Set();
     private obsServer: ObsServer | null = null;
 
     private mouseMonitorProcess: ChildProcess | null = null;
@@ -51,22 +51,14 @@ export class ServerManager {
         reply.raw.flushHeaders();
     }
 
-    private addConnection(map: Map<string, Set<FastifyReply>>, key: string, reply: FastifyReply): void {
-        let connections = map.get(key);
-        if (!connections) {
-            connections = new Set();
-            map.set(key, connections);
-        }
-        connections.add(reply);
-    }
-
-    private removeConnection(map: Map<string, Set<FastifyReply>>, key: string, reply: FastifyReply): void {
-        const connections = map.get(key);
-        if (connections) {
-            connections.delete(reply);
-            if (connections.size === 0) {
-                map.delete(key);
-            }
+    private rawDataToString(data: RawData): string {
+        if (Buffer.isBuffer(data)) {
+            return data.toString();
+        } else if (data instanceof ArrayBuffer) {
+            return new TextDecoder().decode(data);
+        } else {
+            // Buffer[]
+            return Buffer.concat(data).toString();
         }
     }
 
@@ -97,11 +89,6 @@ export class ServerManager {
         }
 
         this.server = fastify();
-
-        // Add a global logger for all requests to help debug OBS loading issues
-        // this.server.addHook('onRequest', async (request) => {
-        //     console.log(`[Server] Request: ${request.method} ${request.url}`);
-        // });
 
         // Set security headers globally at the earliest possible stage
         this.server.addHook('preHandler', async (request, reply) => {
@@ -140,13 +127,37 @@ export class ServerManager {
         this.obsServer = new ObsServer(this.plugin);
         this.obsServer.registerRoutes(this.server);
 
+        // Unified SSE Endpoint for all plugin events (reduces connection count)
+        this.server.get('/api/events', (request, reply) => {
+            this.setupSSE(reply);
+            this.sseAllConnections.add(reply);
+
+            // Send initial OBS status to new connection if OBS is already connected
+            if (this.plugin.isObsConnected) {
+                const data = JSON.stringify({});
+                reply.raw.write(`event: ConnectionOpened\ndata: ${data}\n\n`);
+                reply.raw.write(`event: Identified\ndata: ${data}\n\n`);
+            }
+
+            request.raw.on('close', () => this.sseAllConnections.delete(reply));
+        });
+
         // --- API: Get OBS Credentials ---
         this.server.get('/api/obswss', (_request, _reply) => {
             const settings = this.plugin.settings;
             return {
-                IP: settings.websocketIP_Text || "localhost",
+                IP: settings.websocketIP_Text || "127.0.0.1",
                 PORT: parseInt(settings.websocketPort_Text) || 4455,
                 PW: settings.websocketPW_Text || ""
+            };
+        });
+
+        // --- API: Get Device Settings (Ports) ---
+        this.server.get('/api/devices', (_request, _reply) => {
+            return {
+                osc: this.plugin.settings.oscDevices.map(d => ({ name: d.name, wsPort: d.wsPort })),
+                midi: this.plugin.settings.midiDevices.map(d => ({ name: d.name, wsPort: d.wsPort })),
+                uvc: { wsPort: this.plugin.settings.uvcWsPort }
             };
         });
 
@@ -211,40 +222,12 @@ export class ServerManager {
             return { success: true };
         });
 
-        // --- SSE: Custom Events ---
-        this.server.get('/api/custom/events', (request, reply) => {
-            this.setupSSE(reply);
-            this.sseCustomConnections.add(reply);
-            request.raw.on('close', () => this.sseCustomConnections.delete(reply));
-        });
-
         this.server.post<{ Body: CustomMessageBody }>('/api/custom/message', async (request, reply) => {
             this.broadcastCustomMessage(request.body.name, request.body.data);
             return { success: true };
         });
 
-        // --- SSE: Mouse/Keyboard/UVC Events ---
-        this.server.get<{ Params: { topic: string } }>('/api/mouse/events/:topic', (request, reply) => {
-            this.setupSSE(reply);
-            const { topic } = request.params;
-            this.addConnection(this.sseMouseConnections, topic, reply);
-            request.raw.on('close', () => this.removeConnection(this.sseMouseConnections, topic, reply));
-        });
-
-        this.server.get<{ Params: { topic: string } }>('/api/keyboard/events/:topic', (request, reply) => {
-            this.setupSSE(reply);
-            const { topic } = request.params;
-            this.addConnection(this.sseKeyboardConnections, topic, reply);
-            request.raw.on('close', () => this.removeConnection(this.sseKeyboardConnections, topic, reply));
-        });
-
-        this.server.get('/api/uvc/events', (request, reply) => {
-            this.setupSSE(reply);
-            this.sseUvcConnections.add(reply);
-            request.raw.on('close', () => this.sseUvcConnections.delete(reply));
-        });
-
-        // --- API: UVC Commands ---
+        // --- API: UVC Commands (Legacy - preferring WS) ---
         this.server.post<{ Body: { action: string, [key: string]: unknown } }>('/api/uvc/command', async (request, reply) => {
             if (!this.uvcSocket) {
                 return reply.code(503).send({ error: "UVC Bridge not connected" });
@@ -253,26 +236,14 @@ export class ServerManager {
             return { success: true };
         });
 
-        // --- SSE: OSC/MIDI Events ---
-        this.server.get<{ Params: { name: string } }>('/api/osc/events/:name', (request, reply) => {
-            this.setupSSE(reply);
-            const { name } = request.params;
-            this.addConnection(this.sseOscConnections, name, reply);
-            request.raw.on('close', () => this.removeConnection(this.sseOscConnections, name, reply));
-        });
-
-        this.server.get<{ Params: { name: string } }>('/api/midi/events/:name', (request, reply) => {
-            this.setupSSE(reply);
-            const { name } = request.params;
-            this.addConnection(this.sseMidiConnections, name, reply);
-            request.raw.on('close', () => this.removeConnection(this.sseMidiConnections, name, reply));
-        });
-
         try {
             await this.server.listen({ port: this.port, host: '127.0.0.1' });
             this.isRunning = true;
             console.warn(`[Server] Listening on http://127.0.0.1:${this.port}`);
             
+            // Start WebSocket servers for OSC, MIDI, and UVC
+            this.startDeviceWsServers();
+
             if (this.plugin.settings.mouseMonitorEnabled) void this.startMouseMonitor();
             if (this.plugin.settings.keyboardMonitorEnabled) void this.startKeyboardMonitor();
             if (this.plugin.settings.uvcUtilEnabled) void this.startUvcUtilBridge();
@@ -282,28 +253,142 @@ export class ServerManager {
         }
     }
 
+    private startDeviceWsServers(): void {
+        this.plugin.settings.oscDevices.forEach(device => {
+            if (device.wsPort) this.startOscWsServer(device);
+        });
+        this.plugin.settings.midiDevices.forEach(device => {
+            if (device.wsPort) this.startMidiWsServer(device);
+        });
+        if (this.plugin.settings.uvcWsPort) {
+            this.startUvcWsServer(this.plugin.settings.uvcWsPort);
+        }
+    }
+
+    private startOscWsServer(device: OscDeviceSetting): void {
+        try {
+            const wss = new WebSocketServer({ port: device.wsPort });
+            this.oscWsServers.set(device.name, wss);
+            console.warn(`[Server] OSC WebSocket server for ${device.name} started on port ${device.wsPort}`);
+            
+            wss.on('connection', (ws) => {
+                ws.on('message', (data: RawData) => {
+                    try {
+                        const payload = JSON.parse(this.rawDataToString(data)) as { address: string, args: (string | number | boolean)[] };
+                        // Expecting { address: string, args: any[] }
+                        const { address, args } = payload;
+                        const message = new Message(address);
+                        (args || []).forEach((arg) => message.append(arg));
+                        this.plugin.oscManager.sendMessage(device.name, message);
+                    } catch (e) {
+                        console.error(`[Server] OSC WS Message error (${device.name}):`, e);
+                    }
+                });
+            });
+
+            wss.on('error', (err) => console.error(`[Server] OSC WS Server Error (${device.name}):`, err));
+        } catch (err) {
+            console.error(`[Server] Failed to start OSC WS server for ${device.name} on port ${device.wsPort}`, err);
+        }
+    }
+
+    private startMidiWsServer(device: MidiDeviceSetting): void {
+        try {
+            const wss = new WebSocketServer({ port: device.wsPort });
+            this.midiWsServers.set(device.name, wss);
+            console.warn(`[Server] MIDI WebSocket server for ${device.name} started on port ${device.wsPort}`);
+
+            wss.on('connection', (ws) => {
+                ws.on('message', (data: RawData) => {
+                    try {
+                        const payload = JSON.parse(this.rawDataToString(data)) as MidiPayload;
+                        // Expecting MidiPayload
+                        this.plugin.midiManager.sendMidiMessage(device.name, this.plugin.settings.midiDevices, payload);
+                    } catch (e) {
+                        console.error(`[Server] MIDI WS Message error (${device.name}):`, e);
+                    }
+                });
+            });
+
+            wss.on('error', (err) => console.error(`[Server] MIDI WS Server Error (${device.name}):`, err));
+        } catch (err) {
+            console.error(`[Server] Failed to start MIDI WS server for ${device.name} on port ${device.wsPort}`, err);
+        }
+    }
+
+    private startUvcWsServer(port: number): void {
+        try {
+            this.uvcWsServer = new WebSocketServer({ port });
+            console.warn(`[Server] UVC WebSocket server started on port ${port}`);
+
+            this.uvcWsServer.on('connection', (ws) => {
+                ws.on('message', (data: RawData) => {
+                    if (this.uvcSocket) {
+                        try {
+                            // Forward browser command to Python bridge
+                            this.uvcSocket.write(this.rawDataToString(data) + '\n');
+                        } catch (e) {
+                            console.error(`[Server] Failed to forward UVC command to Python:`, e);
+                        }
+                    }
+                });
+            });
+
+            this.uvcWsServer.on('error', (err) => console.error(`[Server] UVC WS Server Error:`, err));
+        } catch (err) {
+            console.error(`[Server] Failed to start UVC WS server on port ${port}`, err);
+        }
+    }
+
     public broadcastCustomMessage(name: string, message: Record<string, unknown>): void {
-        const data = `event: ${name}\ndata: ${JSON.stringify(message)}\n\n`;
-        for (const reply of this.sseCustomConnections) reply.raw.write(data);
+        this.broadcastToAll(name, message);
+    }
+
+    public broadcastToAll(event: string, data: unknown): void {
+        const sseData = `event: ${event}\ndata: ${JSON.stringify(data || {})}\n\n`;
+        for (const reply of this.sseAllConnections) {
+            try {
+                reply.raw.write(sseData);
+            } catch {
+                this.sseAllConnections.delete(reply);
+            }
+        }
     }
 
     public broadcastOscMessage(name: string, message: unknown[]): void {
-        const connections = this.sseOscConnections.get(name);
-        if (!connections) return;
-        const data = `event: ${name}\ndata: ${JSON.stringify({ deviceName: name, message })}\n\n`;
-        for (const reply of connections) reply.raw.write(data);
+        const data = { deviceName: name, message };
+        const wss = this.oscWsServers.get(name);
+        if (wss) {
+            const jsonData = JSON.stringify(data);
+            wss.clients.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) client.send(jsonData);
+            });
+        }
+        this.broadcastToAll(name, data);
     }
 
     public broadcastMidiMessage(name: string, message: MidiPayload): void {
-        const connections = this.sseMidiConnections.get(name);
-        if (!connections) return;
-        const data = `event: ${name}\ndata: ${JSON.stringify({ deviceName: name, message })}\n\n`;
-        for (const reply of connections) reply.raw.write(data);
+        const data = { deviceName: name, message };
+        const wss = this.midiWsServers.get(name);
+        if (wss) {
+            const jsonData = JSON.stringify(data);
+            wss.clients.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) client.send(jsonData);
+            });
+        }
+        this.broadcastToAll(name, data);
     }
 
     public broadcastUvcMessage(data: unknown): void {
-        const sseData = `event: uvc\ndata: ${JSON.stringify(data)}\n\n`;
-        for (const reply of this.sseUvcConnections) reply.raw.write(sseData);
+        // Broadcast to WebSockets
+        if (this.uvcWsServer) {
+            const jsonData = JSON.stringify(data);
+            this.uvcWsServer.clients.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) client.send(jsonData);
+            });
+        }
+        // Broadcast to global SSE
+        this.broadcastToAll('uvc', data);
     }
 
     private ensureMonitorSocketServer(): void {
@@ -348,17 +433,15 @@ export class ServerManager {
     }
 
     public broadcastMouseMessage(topic: string, data: unknown): void {
-        const connections = this.sseMouseConnections.get(topic);
-        if (!connections) return;
-        const sseData = `event: ${topic}\ndata: ${JSON.stringify(data)}\n\n`;
-        for (const reply of connections) reply.raw.write(sseData);
+        this.broadcastToAll(topic, data);
     }
 
     public broadcastKeyboardMessage(topic: string, data: unknown): void {
-        const connections = this.sseKeyboardConnections.get(topic);
-        if (!connections) return;
-        const sseData = `event: ${topic}\ndata: ${JSON.stringify(data)}\n\n`;
-        for (const reply of connections) reply.raw.write(sseData);
+        this.broadcastToAll(topic, data);
+    }
+
+    public broadcastAudioMessage(topic: string, deviceName: string, data: unknown): void {
+        this.broadcastToAll('audioData', { device: deviceName, fft: data });
     }
 
     public async startMouseMonitor(): Promise<void> {
@@ -434,14 +517,18 @@ export class ServerManager {
         this.stopMouseMonitor();
         this.stopKeyboardMonitor();
         this.stopUvcUtilBridge();
+        
+        this.oscWsServers.forEach(wss => wss.close());
+        this.oscWsServers.clear();
+        this.midiWsServers.forEach(wss => wss.close());
+        this.midiWsServers.clear();
+        if (this.uvcWsServer) {
+            this.uvcWsServer.close();
+            this.uvcWsServer = null;
+        }
+
         if (this.server) {
-            // Cleanup all SSE connections
-            this.sseOscConnections.forEach(set => set.forEach(reply => reply.raw.end()));
-            this.sseMidiConnections.forEach(set => set.forEach(reply => reply.raw.end()));
-            this.sseMouseConnections.forEach(set => set.forEach(reply => reply.raw.end()));
-            this.sseKeyboardConnections.forEach(set => set.forEach(reply => reply.raw.end()));
-            for (const reply of this.sseUvcConnections) reply.raw.end();
-            for (const reply of this.sseCustomConnections) reply.raw.end();
+            for (const reply of this.sseAllConnections) reply.raw.end();
             
             if (this.obsServer) this.obsServer.cleanup();
             await this.server.close();

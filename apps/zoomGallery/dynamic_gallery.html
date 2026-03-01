@@ -39,7 +39,7 @@
     <script>
         // --- Configuration ---
         const CONFIG = {
-            serverUrl: 'http://localhost:57000',
+            serverUrl: 'http://127.0.0.1:57000',
             obsScene: 'Scene Custom View',
             activeSpeakerName: 'Scene zoom active speaker',
             participantPrefix: 'Participant', // e.g. "Participant 1"
@@ -240,6 +240,7 @@
         }
 
         // --- Networking ---
+        let socket = null;
         async function initNetwork() {
             try {
                 const response = await fetch(`${CONFIG.serverUrl}/api/v1/obs/isconnected`);
@@ -248,7 +249,7 @@
 
                 isObsConnected = status.connected;
                 if (isObsConnected) {
-                    statusElem.textContent = "OBS Ready (via Proxy). Waiting for SSE...";
+                    statusElem.textContent = "OBS Ready (via Proxy). Waiting for WebSocket...";
                     statusElem.style.color = "#4caf50";
                 } else {
                     statusElem.textContent = "OBS Disconnected in Plugin";
@@ -262,15 +263,41 @@
             }
 
             const oscName = "ZoomOSC";
-            eventSource = new EventSource(`${CONFIG.serverUrl}/api/osc/events/${oscName}`);
-            
-            eventSource.onopen = () => {
-                statusElem.textContent = "System Ready (OBS Proxy + SSE)";
-            };
+            try {
+                const devResp = await fetch(`${CONFIG.serverUrl}/api/devices`);
+                if (!devResp.ok) throw new Error('Failed to fetch devices');
+                const devices = await devResp.json();
+                const device = devices.osc.find(d => d.name === oscName);
 
-            eventSource.addEventListener(oscName, (e) => {
-                handleOscMessage(e.data);
-            });
+                if (!device || !device.wsPort) {
+                    statusElem.textContent = `OSC Port for ${oscName} not found`;
+                    statusElem.style.color = "red";
+                    return;
+                }
+
+                socket = new WebSocket(`ws://127.0.0.1:${device.wsPort}`);
+                
+                socket.onopen = () => {
+                    statusElem.textContent = "System Ready (OBS Proxy + WS)";
+                };
+
+                socket.onmessage = (e) => {
+                    handleOscMessage(e.data);
+                };
+
+                socket.onerror = (err) => {
+                    statusElem.textContent = "WS Error";
+                    statusElem.style.color = "red";
+                };
+
+                socket.onclose = () => {
+                    statusElem.textContent = "WS Closed. Retrying...";
+                    setTimeout(initNetwork, 5000);
+                };
+            } catch (e) {
+                console.error("Init network error", e);
+                setTimeout(initNetwork, 5000);
+            }
         }
 
         function handleOscMessage(dataStr) {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UVC PTZF Poller & Mapper (SSE)</title>
+    <title>UVC PTZF Poller & Mapper (WS)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -101,7 +101,7 @@
 <body>
 
     <div class="status-bar">
-        <span>SSE: <strong id="sse-status" class="status disconnected">Disconnected</strong></span>
+        <span>WebSocket: <strong id="ws-status" class="status disconnected">Disconnected</strong></span>
         <span>Polling: <strong id="poll-status" style="color:#888;">Idle</strong></span>
     </div>
 
@@ -172,7 +172,7 @@
     </div>
 
     <script>
-        let eventSource;
+        let socket = null;
         let pollTimer = null;
         let bc = null;
         let selectedIndex = -1;
@@ -186,7 +186,7 @@
         };
 
         const elements = {
-            sseStatus: document.getElementById('sse-status'),
+            wsStatus: document.getElementById('ws-status'),
             pollStatus: document.getElementById('poll-status'),
             deviceList: document.getElementById('device-list'),
             startBtn: document.getElementById('start-btn'),
@@ -207,47 +207,59 @@
             if (elements.log.children.length > 10) elements.log.removeChild(elements.log.lastChild);
         }
 
-        function connectSSE() {
-            if (eventSource) eventSource.close();
+        async function connectWS() {
+            if (socket) socket.close();
 
-            eventSource = new EventSource('/api/uvc/events');
-            
-            eventSource.onopen = () => {
-                elements.sseStatus.textContent = "Connected";
-                elements.sseStatus.className = "status connected";
-                sendCommand({ action: "list_devices" });
-            };
+            try {
+                const resp = await fetch('/api/devices');
+                if (!resp.ok) throw new Error("Failed to fetch devices");
+                const devices = await resp.json();
+                const port = devices.uvc.wsPort;
 
-            eventSource.onerror = (e) => {
-                elements.sseStatus.textContent = "Disconnected";
-                elements.sseStatus.className = "status disconnected";
-                stopPolling();
-            };
-
-            eventSource.addEventListener('uvc', (event) => {
-                try {
-                    const msg = JSON.parse(event.data);
-                    handleMessage(msg);
-                } catch (e) {
-                    console.error("Failed to parse SSE data", e);
+                if (!port) {
+                    elements.wsStatus.textContent = "Port Missing";
+                    elements.wsStatus.className = "status disconnected";
+                    return;
                 }
-            });
+
+                socket = new WebSocket(`ws://${window.location.hostname}:${port}`);
+                
+                socket.onopen = () => {
+                    elements.wsStatus.textContent = "Connected";
+                    elements.wsStatus.className = "status connected";
+                    addLog("WebSocket Connected");
+                    sendCommand({ action: "list_devices" });
+                };
+
+                socket.onmessage = (event) => {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        handleMessage(msg);
+                    } catch (e) {
+                        console.error("Failed to parse WS data", e);
+                    }
+                };
+
+                socket.onerror = (e) => {
+                    elements.wsStatus.textContent = "Error";
+                    elements.wsStatus.className = "status disconnected";
+                    stopPolling();
+                };
+
+                socket.onclose = () => {
+                    elements.wsStatus.textContent = "Disconnected";
+                    elements.wsStatus.className = "status disconnected";
+                    stopPolling();
+                    setTimeout(connectWS, 5000);
+                };
+            } catch (err) {
+                addLog("Connect Error: " + err.message);
+            }
         }
 
-        async function sendCommand(data) {
-            try {
-                const res = await fetch('/api/uvc/command', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                if (!res.ok) {
-                    const err = await res.json();
-                    addLog("Command Error: " + (err.error || res.statusText));
-                }
-            } catch (err) {
-                addLog("Fetch Error: " + err.message);
-            }
+        function sendCommand(data) {
+            if (!socket || socket.readyState !== WebSocket.OPEN) return;
+            socket.send(JSON.stringify(data));
         }
 
         function handleMessage(msg) {
@@ -398,7 +410,7 @@
             });
         }
 
-        connectSSE();
+        connectWS();
     </script>
 </body>
 </html>

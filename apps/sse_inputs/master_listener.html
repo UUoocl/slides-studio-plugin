@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Slides Studio Master SSE Listener</title>
+    <style>
+        body {
+            background: #111;
+            color: #555;
+            font-family: monospace;
+            font-size: 10px;
+            padding: 10px;
+            margin: 0;
+            overflow: hidden;
+        }
+        #status { color: #00ff00; margin-bottom: 5px; }
+        .log { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    </style>
+</head>
+<body>
+    <div id="status">SSE: CONNECTING...</div>
+    <div id="log-container"></div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const logEl = document.getElementById('log-container');
+        
+        // Map to keep track of open channels
+        const channels = new Map();
+
+        function getChannel(name) {
+            if (!channels.has(name)) {
+                channels.set(name, new BroadcastChannel(name));
+            }
+            return channels.get(name);
+        }
+
+        function log(msg) {
+            const div = document.createElement('div');
+            div.className = 'log';
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logEl.prepend(div);
+            if (logEl.children.length > 10) logEl.lastChild.remove();
+        }
+
+        // Connect to the Unified SSE Endpoint
+        const source = new EventSource('/api/events');
+
+        source.onopen = () => {
+            statusEl.textContent = 'SSE: CONNECTED';
+            statusEl.style.color = '#00ff00';
+            log('Connection established');
+        };
+
+        source.onerror = (err) => {
+            statusEl.textContent = 'SSE: ERROR/RECONNECTING';
+            statusEl.style.color = '#ff0000';
+            log('Connection error');
+        };
+
+        // --- MOUSE ROUTING ---
+        const mouseEvents = ['mousePosition', 'mouseClick', 'mouseScroll'];
+        mouseEvents.forEach(evt => {
+            source.addEventListener(evt, (e) => {
+                const data = JSON.parse(e.data);
+                getChannel('mouse_events').postMessage({ type: evt, data });
+                // Optional: log movement only sparingly to avoid spam
+                if (evt !== 'mousePosition') log(`Mouse: ${evt}`);
+            });
+        });
+
+        // --- KEYBOARD ROUTING ---
+        const kbEvents = ['keyboardPress', 'keyboardRelease'];
+        kbEvents.forEach(evt => {
+            source.addEventListener(evt, (e) => {
+                const data = JSON.parse(e.data);
+                getChannel('keyboard_events').postMessage({ type: evt, data });
+                log(`Key: ${evt} - ${data.key}`);
+            });
+        });
+
+        // --- AUDIO FFT ROUTING ---
+        source.addEventListener('audioData', (e) => {
+            const payload = JSON.parse(e.data); // { device: "...", fft: [...] }
+            
+            // 1. Global audio channel
+            getChannel('audio_fft').postMessage(payload);
+            
+            // 2. Device specific channel
+            getChannel(payload.device).postMessage(payload);
+        });
+
+        // --- SLIDES / CUSTOM ROUTING ---
+        // Generic listener for all other named events
+        // Note: EventSource only triggers 'message' for events without a name.
+        // For named events, you MUST use addEventListener.
+        // We add common ones, and visualizers can ask for more.
+        
+        const customEvents = ['slideChanged', 'tagUpdate']; 
+        customEvents.forEach(evt => {
+            source.addEventListener(evt, (e) => {
+                const data = JSON.parse(e.data);
+                getChannel('slides_events').postMessage({ type: evt, data });
+                log(`Slide: ${evt}`);
+            });
+        });
+
+        // Listen for generic custom messages if any
+        source.addEventListener('customMessage', (e) => {
+            const data = JSON.parse(e.data);
+            getChannel('custom_events').postMessage(data);
+            log(`Custom: ${data.name || 'unknown'}`);
+        });
+
+    </script>
+</body>
+</html>

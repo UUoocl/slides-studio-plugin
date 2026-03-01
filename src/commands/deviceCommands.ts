@@ -22,3 +22,13 @@ export const ConnectMidiCommand = (plugin: slidesStudioPlugin): Command => ({
         });
     }
 });
+
+export const ConnectAudioCommand = (plugin: slidesStudioPlugin): Command => ({
+    id: 'connect-all-audio-devices',
+    name: 'Connect to all audio devices',
+    callback: () => {
+        plugin.settings.audioDevices.forEach(device => {
+            void plugin.audioManager.connectDevice(device);
+        });
+    }
+});

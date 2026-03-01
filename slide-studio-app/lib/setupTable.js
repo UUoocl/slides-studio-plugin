@@ -1,12 +1,52 @@
 let table;
 let isKeyPressed = false;
 
+// Register keyboard listeners only once
+document.addEventListener('keydown', function(event) {
+    if (!window.table) return;
+    
+    if (event.key === ' ' && !isKeyPressed){ 
+        isKeyPressed = true;
+        
+        event.preventDefault(); // Prevents page scrolling
+        //console.debug('Spacebar pressed, default scroll prevented', selectedRowNumber);
+        window.table.deselectRow();
+        selectedRowNumber += 1;                        
+        window.table.selectRow(window.table.getRowFromPosition( selectedRowNumber ));
+        if (typeof filterRowData === 'function') {
+            filterRowData(window.table.getRowFromPosition(selectedRowNumber).getData());
+        }
+    }   
+});
+
+document.addEventListener('keyup', function(event) {
+    if (event.key === ' ') {
+        isKeyPressed = false;
+    }
+});
+
 function loadTable(options) {
+    // Ensure options and its properties exist
+    options = options || {};
+    options.scene = options.scene || [];
+    options.slidePosition = options.slidePosition || [];
+    options.cameraPosition = options.cameraPosition || [];
+    options.cameraShape = options.cameraShape || [];
+
+    // Get slideDeckId from global scope if not provided or to ensure sync
+    const currentDeckId = window.slideDeckId;
+
+    // Destroy existing table if it exists before re-initializing
+    if (window.table && typeof window.table.destroy === 'function') {
+        console.log("[SetupTable] Destroying existing table instance for re-initialization...");
+        window.table.destroy();
+    }
+
     //get local storage slide deck attributes first
-    const tableData = JSON.parse(localStorage.getItem(slideDeckId)) ?? slidesArray;
-    // console.log("load table data",tableData)
-    table = undefined;
-    table = new Tabulator("#slidesTable", {
+    const tableData = JSON.parse(localStorage.getItem(currentDeckId)) ?? window.slidesArray;
+    
+    console.log("[SetupTable] Initializing Tabulator with options:", options);
+    window.table = new Tabulator("#slidesTable", {
         layout:"fitData",
         height: "500px",
         data: tableData,
@@ -33,7 +73,9 @@ function loadTable(options) {
             { title: "Index", field: "slideState",  responsive: 0,
                 cellClick: function gotoSlide(e,cell){
                     let rowValues = cell.getRow().getData();
-                    filterRowData(rowValues);
+                    if (typeof filterRowData === 'function') {
+                        filterRowData(rowValues);
+                    }
                 },
                 sorter:"alphanum",
             }, 
@@ -65,7 +107,7 @@ function loadTable(options) {
         const selectedScene = event._cell.value
             .split("slides ")[1]
         if(options.slidePosition.includes(selectedScene)){
-            table.updateRow(table.getRowFromPosition(event._cell.row.position),{"slidePosition": selectedScene});
+            window.table.updateRow(window.table.getRowFromPosition(event._cell.row.position),{"slidePosition": selectedScene});
         }
         saveTableToLocalStorage(event,cell);
     } 
@@ -73,36 +115,23 @@ function loadTable(options) {
     //slide attribute changed
     function saveTableToLocalStorage(event,cell){
         //save table data
-        if(slideDeckId.length > 0){
-            localStorage.setItem(slideDeckId, JSON.stringify(table.getData()));
+        if(currentDeckId && currentDeckId.length > 0){
+            localStorage.setItem(currentDeckId, JSON.stringify(window.table.getData()));
         }
     }
     
     //Table row Clicked
-    table.on("rowClick", function (e, row) {
-        table.deselectRow();
-        const rowComponent = table.getRowFromPosition(row.getPosition());
-        table.selectRow(rowComponent);
+    window.table.on("rowClick", function (e, row) {
+        window.table.deselectRow();
+        const rowComponent = window.table.getRowFromPosition(row.getPosition());
+        window.table.selectRow(rowComponent);
         selectedRowNumber = row.getPosition();
-        filterRowData(row.getData());
-    });
-    
-    document.addEventListener('keydown', function(event) {
-        if (event.key === ' ' && !isKeyPressed){ 
-            isKeyPressed = true;
-            
-            event.preventDefault(); // Prevents page scrolling
-            //console.debug('Spacebar pressed, default scroll prevented', selectedRowNumber);
-            table.deselectRow();
-            selectedRowNumber += 1;                        
-            table.selectRow(table.getRowFromPosition( selectedRowNumber ));
-            filterRowData(table.getRowFromPosition(selectedRowNumber).getData())
-        }   
-    });
-    
-    document.addEventListener('keyup', function(event) {
-        if (event.key === ' ') {
-            isKeyPressed = false;
+        if (typeof filterRowData === 'function') {
+            filterRowData(row.getData());
         }
     });
 }
+
+// Make globally accessible
+window.loadTable = loadTable;
+window.table = table;

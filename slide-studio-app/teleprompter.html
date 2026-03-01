@@ -96,8 +96,8 @@
         TelePrompter.init();
       };
 
-      // SSE listener for slide commands and reveal events
-      const customSse = new EventSource('/api/custom/events');
+      // Unified SSE listener for all plugin events (slides, commands, etc.)
+      const customSse = new EventSource('/api/events');
       customSse.addEventListener('slidesCommands', (e) => {
         try {
           const data = JSON.parse(e.data);
@@ -107,7 +107,7 @@
           if (eventName === 'reveal-event') {
             if (payload.eventName === 'callback' && payload.method === 'getSlideNotes') {
               console.log("[Teleprompter] Received notes via SSE callback");
-              document.getElementById("teleprompter").innerHTML = JSON.parse(payload.result);
+              document.getElementById("teleprompter").innerHTML = payload.result;
               TelePrompter.resetPageScroll();
             }
           }

@@ -56,11 +56,12 @@
         
         <script type="text/javascript" src="lib/tabulator.min.js"></script>
         <script src="lib/obsApiProxy.js"></script>
+        <script src='lib/setupTable.js'></script>
         <script>
             // --- Global Variables ---
-            let slideDeckId;
+            window.slideDeckId = undefined;
             let slideState = ''; // To track Reveal.js state for changes
-            let slidesArray = [];
+            window.slidesArray = [];
             let dropDownOptions = {};
             let selectedRowNumber = 0;
             let slidesLoaded = false;
@@ -102,22 +103,28 @@
                     // Get Slide Position options
                     try {
                         const settings = await obsWss.call("GetInputSettings", { inputName: 'slides' });
-                        const regex = /\/\*(.*?)\*\//s;
-                        const match = settings.inputSettings.css.match(regex);
-                        if (match && match[1]) {
-                            dropDownOptions.slidePosition = JSON.parse(match[1].trim());
+                        if (settings && settings.inputSettings && settings.inputSettings.css) {
+                            const regex = /\/\*(.*?)\*\//s;
+                            const match = settings.inputSettings.css.match(regex);
+                            if (match && match[1]) {
+                                dropDownOptions.slidePosition = JSON.parse(match[1].trim());
+                            }
                         }
                     } catch (e) { console.warn("[Studio] Could not fetch Slide Positions"); }
 
                     // Get Camera Shape options
                     try {
                         const settings = await obsWss.call("GetInputSettings", { inputName: 'camera shapes' });
-                        const regex = /\/\*(.*?)\*\//s;
-                        const match = settings.inputSettings.css.match(regex);
-                        if (match && match[1]) {
-                            dropDownOptions.cameraShape = JSON.parse(match[1].trim());
+                        if (settings && settings.inputSettings && settings.inputSettings.css) {
+                            const regex = /\/\*(.*?)\*\//s;
+                            const match = settings.inputSettings.css.match(regex);
+                            if (match && match[1]) {
+                                dropDownOptions.cameraShape = JSON.parse(match[1].trim());
+                            } else {
+                                console.warn("[Studio] 'camera shapes' input found, but no valid JSON array in CSS comment. Using default camera shapes.");
+                                dropDownOptions.cameraShape = ["none", "square", "circle", "pulsating-square", "pulsating-circle"];
+                            }
                         } else {
-                            console.warn("[Studio] 'camera shapes' input found, but no valid JSON array in CSS comment. Using default camera shapes.");
                             dropDownOptions.cameraShape = ["none", "square", "circle", "pulsating-square", "pulsating-circle"];
                         }
                     } catch (e) { 
@@ -127,7 +134,10 @@
 
 
                     console.log("[Studio] OBS metadata fetched:", dropDownOptions);
-                    if (table) loadTable(); // Refresh UI
+                    // Update table if it already exists, otherwise it will use these options when created
+                    if (window.table && typeof window.loadTable === 'function') {
+                        window.loadTable(dropDownOptions);
+                    }
                 } catch (e) {
                     console.error("[Studio] Failed to fetch OBS metadata", e);
                 }
@@ -178,8 +188,8 @@
             // Global function to handle keyboard navigation
             function handleKeyboardNavigation(keyCode) {
                 // Find current slide (selected row in Tabulator)
-                if (!table) return;
-                const selectedRows = table.getSelectedRows();
+                if (!window.table) return;
+                const selectedRows = window.table.getSelectedRows();
                 if (selectedRows.length === 0) return;
 
                 let currentRow = selectedRows[0];
@@ -204,13 +214,13 @@
                     case 13: // Enter
                         break;
                     case 27: // Escape
-                        table.deselectRow();
+                        window.table.deselectRow();
                         return;
                 }
 
                 if (targetRow) {
-                    table.deselectRow();
-                    table.selectRow(targetRow);
+                    window.table.deselectRow();
+                    window.table.selectRow(targetRow);
                     filterRowData(targetRow.getData());
                 }
             }
@@ -224,18 +234,21 @@
             }
 
             function updateSlideName() {
-                slideDeckId = document.getElementById("slideDeckId").value;
+                window.slideDeckId = document.getElementById("slideDeckId").value;
             }
 
             function loadSavedTable() {
-                let localSavedTable = localStorage.getItem(slideDeckId);
+                if (!window.slideDeckId) return;
+                let localSavedTable = localStorage.getItem(window.slideDeckId);
                 if (localSavedTable) {
-                    slidesArray = JSON.parse(localSavedTable);
+                    window.slidesArray = JSON.parse(localSavedTable);
                     slidesLoaded = true;
                     tableLoaded = true;
-                    loadTable(dropDownOptions);
+                    if (typeof window.loadTable === 'function') {
+                        window.loadTable(dropDownOptions);
+                    }
                 } else {
-                    console.log("[Studio] No saved table found for", slideDeckId);
+                    console.log("[Studio] No saved table found for", window.slideDeckId);
                 }
             }
 
@@ -278,9 +291,14 @@
                 document.getElementById("slideDeckIdLoadButton").addEventListener('click', loadSavedTable);
             });
             
-            // Add SSE listener for keyboard events from plugin
-            const keyboardSse = new EventSource('/api/keyboard/events/keyboardPress');
-            keyboardSse.addEventListener('keyboardPress', (e) => {
+            // Unified SSE listener for all plugin events (keyboard, slides, obs, etc.)
+            console.log("[Studio] Initializing unified SSE connection...");
+            const unifiedSse = new EventSource('/api/events');
+            
+            // Share this connection with the OBS proxy to save browser connection slots
+            obsWss.eventSource = unifiedSse;
+
+            unifiedSse.addEventListener('keyboardPress', (e) => {
                 try {
                     const eventData = JSON.parse(e.data);
                     console.log("[Studio] Keyboard press received:", eventData.key);
@@ -292,9 +310,7 @@
                 }
             });
 
-            // SSE listener for general slide commands and reveal events
-            const customSse = new EventSource('/api/custom/events');
-            customSse.addEventListener('slidesCommands', async (e) => {
+            unifiedSse.addEventListener('slidesCommands', async (e) => {
                 try {
                     const data = JSON.parse(e.data);
                     const eventName = data.eventName;
@@ -303,9 +319,9 @@
                     // --- Handle Deck Context ---
                     if (eventName === 'set-deck-id') {
                         console.log("[Studio] Assigned deck ID via SSE:", payload.deckId);
-                        slideDeckId = payload.deckId;
-                        document.getElementById("slideDeckId").value = slideDeckId;
-                        if (!slidesLoaded && localStorage.getItem(slideDeckId)) {
+                        window.slideDeckId = payload.deckId;
+                        document.getElementById("slideDeckId").value = window.slideDeckId;
+                        if (!slidesLoaded && localStorage.getItem(window.slideDeckId)) {
                             loadSavedTable();
                         }
                     }
@@ -318,7 +334,7 @@
                         if (!slidesLoaded) {
                             if (revealData.eventName === 'ready') {
                                 console.log("[Studio] Starting deck indexing...");
-                                slidesArray = [];
+                                window.slidesArray = [];
                                 addSlideToIndexedArray(revealData);
                             }
 
@@ -328,7 +344,9 @@
                                     slidesLoaded = true;
                                     tableLoaded = true;
                                     triggerIframeMethod('slide', [0, 0]);
-                                    loadTable(dropDownOptions);
+                                    if (typeof window.loadTable === 'function') {
+                                        window.loadTable(dropDownOptions);
+                                    }
                                     broadcastSlidesCommand('indexing-complete', {});
                                 } else {
                                     triggerIframeMethod('next');
@@ -355,14 +373,14 @@
                                     stateString += `,${revealData.state.indexf}`;
                                 }
                                 
-                                if (table) {
-                                    let rows = table.searchRows("slideState", "=", stateString);
+                                if (window.table) {
+                                    let rows = window.table.searchRows("slideState", "=", stateString);
                                     if (rows.length > 0) {
                                         const targetRow = rows[0];
-                                        table.deselectRow();
-                                        table.selectRow(targetRow);
+                                        window.table.deselectRow();
+                                        window.table.selectRow(targetRow);
                                         selectedRowNumber = targetRow.getPosition();
-                                        table.scrollToRow(targetRow, "center", false);
+                                        window.table.scrollToRow(targetRow, "center", false);
                                         
                                         // Process OBS tags for this slide if we haven't already
                                         await processTags(targetRow.getData());
@@ -392,9 +410,9 @@
                 // Handle deck ID assignment from parent (direct UI interaction fallback)
                 if (data.namespace === "speakerview" && data.message === "set-deck-id") {
                     console.log("[Studio] Assigned deck ID via postMessage:", data.deckId);
-                    slideDeckId = data.deckId;
-                    document.getElementById("slideDeckId").value = slideDeckId;
-                    if (!slidesLoaded && localStorage.getItem(slideDeckId)) {
+                    window.slideDeckId = data.deckId;
+                    document.getElementById("slideDeckId").value = window.slideDeckId;
+                    if (!slidesLoaded && localStorage.getItem(window.slideDeckId)) {
                         loadSavedTable();
                     }
                 }
@@ -404,7 +422,7 @@
                 const attrs = data.attributes || {};
                 const state = `${data.state.indexh},${data.state.indexv}`;
                 
-                slidesArray.push({
+                window.slidesArray.push({
                     slideId: attrs.slideId,
                     slideState: state,
                     slideName: attrs.slideName,
@@ -419,7 +437,7 @@
 
             function addFragmentToIndexedArray(data) {
                 const state = `${data.state.indexh},${data.state.indexv}`;
-                const foundSlide = slidesArray.find(s => s.slideState === state);
+                const foundSlide = window.slidesArray.find(s => s.slideState === state);
                 if (foundSlide) {
                     if (!foundSlide._children) foundSlide._children = [];
                     
@@ -436,6 +454,5 @@
                 triggerIframeMethod('getProgress');
             }
         </script>
-        <script src='lib/setupTable.js'></script>
 </body>
 </html>
