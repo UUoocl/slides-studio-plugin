@@ -944,32 +944,46 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         );
 
                     new Setting(deviceDiv)
-                        .setName("Fft size")
-                        .setDesc("Must be power of 2 (e.g. 2048, 4096)")
-                        .addText(text => text
-                            .setValue(device.fftSize ? device.fftSize.toString() : "2048")
+                        .setName("Enable fft")
+                        .setDesc("Transform audio into frequency data")
+                        .addToggle(toggle => toggle
+                            .setValue(device.fftEnabled)
                             .onChange(async (value) => {
-                                const val = parseInt(value);
-                                if (!isNaN(val)) {
-                                    this.plugin.settings.audioDevices[index].fftSize = val;
-                                    await this.plugin.saveSettings();
-                                }
+                                this.plugin.settings.audioDevices[index].fftEnabled = value;
+                                await this.plugin.saveSettings();
+                                this.display();
                             })
                         );
 
-                    new Setting(deviceDiv)
-                        .setName("Smoothing (0-1)")
-                        .setDesc("Time constant for smoothing")
-                        .addText(text => text
-                            .setValue(device.smoothingTimeConstant !== undefined ? device.smoothingTimeConstant.toString() : "0.8")
-                            .onChange(async (value) => {
-                                const val = parseFloat(value);
-                                if (!isNaN(val) && val >= 0 && val < 1) {
-                                    this.plugin.settings.audioDevices[index].smoothingTimeConstant = val;
-                                    await this.plugin.saveSettings();
-                                }
-                            })
-                        );
+                    if (device.fftEnabled) {
+                        new Setting(deviceDiv)
+                            .setName("Fft size")
+                            .setDesc("Must be power of 2 (e.g. 2048, 4096)")
+                            .addText(text => text
+                                .setValue(device.fftSize ? device.fftSize.toString() : "2048")
+                                .onChange(async (value) => {
+                                    const val = parseInt(value);
+                                    if (!isNaN(val)) {
+                                        this.plugin.settings.audioDevices[index].fftSize = val;
+                                        await this.plugin.saveSettings();
+                                    }
+                                })
+                            );
+
+                        new Setting(deviceDiv)
+                            .setName("Smoothing (0-1)")
+                            .setDesc("Time constant for smoothing")
+                            .addText(text => text
+                                .setValue(device.smoothingTimeConstant !== undefined ? device.smoothingTimeConstant.toString() : "0.8")
+                                .onChange(async (value) => {
+                                    const val = parseFloat(value);
+                                    if (!isNaN(val) && val >= 0 && val < 1) {
+                                        this.plugin.settings.audioDevices[index].smoothingTimeConstant = val;
+                                        await this.plugin.saveSettings();
+                                    }
+                                })
+                            );
+                    }
 
                     new Setting(deviceDiv)
                         .addButton(btn => btn
@@ -995,10 +1009,32 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                                 deviceId: "",
                                 sampleRate: 44100,
                                 fftSize: 2048,
-                                smoothingTimeConstant: 0.8
+                                smoothingTimeConstant: 0.8,
+                                fftEnabled: true,
+                                sttEnabled: false
                             });
                             await this.plugin.saveSettings();
                             this.display();
+                        })
+                    );
+
+                // --- STT Transcriber Button ---
+                new Setting(containerEl)
+                    .setName("Speech to text transcriber")
+                    .setDesc("Open the speech to text transcriber in your default browser to manually start transcription for any device")
+                    .addButton(btn => btn
+                        .setButtonText("Open transcriber")
+                        .setCta()
+                        .onClick(() => {
+                            const port = this.plugin.settings.serverPort;
+                            const url = `http://127.0.0.1:${port}/apps/speech-to-text/stt_transcriber.html`;
+                            try {
+                                // eslint-disable-next-line @typescript-eslint/no-require-imports, import/no-extraneous-dependencies
+                                const { shell } = require('electron');
+                                void shell.openExternal(url);
+                            } catch {
+                                window.open(url);
+                            }
                         })
                     );
             })();

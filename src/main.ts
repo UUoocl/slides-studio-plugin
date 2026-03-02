@@ -48,6 +48,7 @@ const DEFAULT_SETTINGS: Partial<SlidesStudioPluginSettings> = {
     serverEnabled: false,
     pythonPath: "python3",
     pythonSocketPort: "57001",
+    sttSignalingPort: "57002",
     mouseMonitorEnabled: false,
     mouseMonitorPosition: true,
     mouseMonitorClicks: true,
@@ -174,9 +175,12 @@ export default class slidesStudioPlugin extends Plugin {
 		});
 		await this.midiManager.enable();
 
-        this.audioManager = new AudioManager((name, data) => {
-            // Broadcast to 'audioFFT' topic with 'name' as event
-            this.serverManager?.broadcastAudioMessage('audioFFT', name, data);
+        this.audioManager = new AudioManager((type, name, data) => {
+            if (type === 'fft') {
+                this.serverManager?.broadcastAudioMessage('audioFFT', name, data);
+            } else if (type === 'stt') {
+                this.serverManager?.broadcastAudioMessage('audioSTT', name, data);
+            }
         });
 
 		this.setupObsEventListeners();

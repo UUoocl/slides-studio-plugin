@@ -2,18 +2,18 @@ import { Notice } from "obsidian";
 import { AudioDeviceSetting } from "../types";
 
 interface ActiveAudioConnection {
-    context: AudioContext;
-    source: MediaStreamAudioSourceNode;
-    analyser: AnalyserNode;
+    context?: AudioContext;
+    source?: MediaStreamAudioSourceNode;
+    analyser?: AnalyserNode;
     stream: MediaStream;
-    animationFrameId: number;
+    animationFrameId?: number;
 }
 
 export class AudioManager {
     private activeDevices: Map<string, ActiveAudioConnection> = new Map();
-    private onAudioData: (eventName: string, data: number[]) => void;
+    private onAudioData: (type: 'fft' | 'stt', deviceName: string, data: number[] | string) => void;
 
-    constructor(onAudioData: (eventName: string, data: number[]) => void) {
+    constructor(onAudioData: (type: 'fft' | 'stt', deviceName: string, data: number[] | string) => void) {
         this.onAudioData = onAudioData;
     }
 
@@ -37,48 +37,44 @@ export class AudioManager {
                 }
             });
 
-            const context = new AudioContext({
-                sampleRate: setting.sampleRate || 44100
-            });
+            const connection: ActiveAudioConnection = { stream };
 
-            const source = context.createMediaStreamSource(stream);
-            const analyser = context.createAnalyser();
-            
-            analyser.fftSize = setting.fftSize || 2048;
-            analyser.smoothingTimeConstant = setting.smoothingTimeConstant ?? 0.8;
+            if (setting.fftEnabled) {
+                const context = new AudioContext({
+                    sampleRate: setting.sampleRate || 44100
+                });
 
-            source.connect(analyser);
-
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-
-            const loop = () => {
-                if (!this.activeDevices.has(setting.name)) return;
-
-                analyser.getByteFrequencyData(dataArray);
-                // Convert to regular array for JSON serialization
-                // Use Array.from or loop for performance? Array.from is fine for reasonable FFT sizes.
-                // Optimizing: maybe we don't want to send 1024 integers 60 times a second if not needed.
-                // But the requirement is just "transform... send".
+                const source = context.createMediaStreamSource(stream);
+                const analyser = context.createAnalyser();
                 
-                this.onAudioData(setting.name, Array.from(dataArray));
-                
+                analyser.fftSize = setting.fftSize || 2048;
+                analyser.smoothingTimeConstant = setting.smoothingTimeConstant ?? 0.8;
+
+                source.connect(analyser);
+
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+
+                const loop = () => {
+                    if (!this.activeDevices.has(setting.name)) return;
+
+                    analyser.getByteFrequencyData(dataArray);
+                    this.onAudioData('fft', setting.name, Array.from(dataArray));
+                    
+                    const frameId = requestAnimationFrame(loop);
+                    const conn = this.activeDevices.get(setting.name);
+                    if (conn) conn.animationFrameId = frameId;
+                };
+
                 const frameId = requestAnimationFrame(loop);
-                // Update the stored ID so we can cancel it
-                const conn = this.activeDevices.get(setting.name);
-                if (conn) conn.animationFrameId = frameId;
-            };
+                
+                connection.context = context;
+                connection.source = source;
+                connection.analyser = analyser;
+                connection.animationFrameId = frameId;
+            }
 
-            const frameId = requestAnimationFrame(loop);
-
-            this.activeDevices.set(setting.name, {
-                context,
-                source,
-                analyser,
-                stream,
-                animationFrameId: frameId
-            });
-
+            this.activeDevices.set(setting.name, connection);
             new Notice(`Connected audio: ${setting.name}`);
 
         } catch (err) {
@@ -90,11 +86,11 @@ export class AudioManager {
     public disconnectDevice(name: string): void {
         const conn = this.activeDevices.get(name);
         if (conn) {
-            cancelAnimationFrame(conn.animationFrameId);
+            if (conn.animationFrameId) cancelAnimationFrame(conn.animationFrameId);
             conn.stream.getTracks().forEach(track => track.stop());
-            conn.source.disconnect();
-            conn.analyser.disconnect();
-            void conn.context.close();
+            if (conn.source) conn.source.disconnect();
+            if (conn.analyser) conn.analyser.disconnect();
+            if (conn.context) void conn.context.close();
             this.activeDevices.delete(name);
         }
     }

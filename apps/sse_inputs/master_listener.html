@@ -78,14 +78,22 @@
             });
         });
 
-        // --- AUDIO FFT ROUTING ---
+        // --- AUDIO ROUTING (FFT & STT) ---
         source.addEventListener('audioData', (e) => {
-            const payload = JSON.parse(e.data); // { device: "...", fft: [...] }
+            const payload = JSON.parse(e.data); // { device: "...", fft: [...] } OR { device: "...", stt: "..." }
             
-            // 1. Global audio channel
-            getChannel('audio_fft').postMessage(payload);
+            // 1. Route FFT data
+            if (payload.fft) {
+                getChannel('audio_fft').postMessage(payload);
+            }
             
-            // 2. Device specific channel
+            // 2. Route STT results
+            if (payload.stt) {
+                getChannel('audio_stt').postMessage(payload);
+                log(`STT [${payload.device}]: ${payload.stt.substring(0, 30)}...`);
+            }
+            
+            // 3. Device specific channel (contains both)
             getChannel(payload.device).postMessage(payload);
         });
 

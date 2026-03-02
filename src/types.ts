@@ -22,6 +22,8 @@ export interface AudioDeviceSetting {
     sampleRate: number;// Sample Rate (e.g. 44100)
     fftSize: number;   // FFT Size (e.g. 2048)
     smoothingTimeConstant: number; // Smoothing (0-1)
+    fftEnabled: boolean;
+    sttEnabled: boolean;
 }
 
 /**
@@ -48,6 +50,7 @@ export interface SlidesStudioPluginSettings {
     serverEnabled: boolean;
     pythonPath: string;
     pythonSocketPort: string;
+    sttSignalingPort: string;
     mouseMonitorEnabled: boolean;
     mouseMonitorPosition: boolean;
     mouseMonitorClicks: boolean;

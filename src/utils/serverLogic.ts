@@ -142,6 +142,24 @@ export class ServerManager {
             request.raw.on('close', () => this.sseAllConnections.delete(reply));
         });
 
+        // --- STT Result Endpoint ---
+        this.server.post<{ Body: { results: Array<{ device: string, transcript: string }> } }>('/api/stt/result', async (request, reply) => {
+            const { results } = request.body;
+            if (!results || !Array.isArray(results)) return reply.code(400).send({ error: "Invalid data format" });
+
+            for (const res of results) {
+                if (res.device && res.transcript !== undefined) {
+                    this.broadcastAudioMessage('audioSTT', res.device, res.transcript);
+                }
+            }
+            return { success: true };
+        });
+
+        // --- Audio STT Devices Endpoint ---
+        this.server.get('/api/audio/stt-devices', async () => {
+            return this.plugin.settings.audioDevices.filter(d => d.sttEnabled);
+        });
+
         // --- API: Get OBS Credentials ---
         this.server.get('/api/obswss', (_request, _reply) => {
             const settings = this.plugin.settings;
@@ -441,7 +459,15 @@ export class ServerManager {
     }
 
     public broadcastAudioMessage(topic: string, deviceName: string, data: unknown): void {
-        this.broadcastToAll('audioData', { device: deviceName, fft: data });
+        const payload: Record<string, unknown> = { device: deviceName };
+        if (topic === 'audioFFT') {
+            payload.fft = data;
+        } else if (topic === 'audioSTT') {
+            payload.stt = data;
+        } else {
+            payload.data = data;
+        }
+        this.broadcastToAll('audioData', payload);
     }
 
     public async startMouseMonitor(): Promise<void> {
