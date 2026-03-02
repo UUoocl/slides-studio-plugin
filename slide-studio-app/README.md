@@ -15,18 +15,19 @@ Slide Studio innovates on the Reveal.js "[speaker view](https://revealjs.com/spe
  - [Slides Studio with the Obsidian Plugin Slides Extended](https://uuoocl.github.io/03-tutorials/slidesstudio-obsidian/)
  - [Slides Studio with an OBS Python Script HTTP server](https://uuoocl.github.io/03-tutorials/slidesstudio-py/)
 
-this project is inspired by
-[reveal.js](revealjs.com)
-[obs](obsproject.com)
-[telepronpter js](https://github.com/manifestinteractive/teleprompter)
-[P5js](https://p5js.org/)
-[the coding train](https://thecodingtrain.com/)
-[slides Extended for obsidian](https://github.com/ebullient/obsidian-slides-extended)
+this project is inspired by  
+[reveal.js](revealjs.com).  
+[obs](obsproject.com).  
+[teleprompter js](https://github.com/manifestinteractive/teleprompter).  
+[P5js](https://p5js.org/).  
+[the coding train](https://thecodingtrain.com/).   
+[slides Extended for obsidian](https://github.com/ebullient/obsidian-slides-extended).  
+[cables.gl](https://cables.gl).  
 many other projects and creators
 
 
 # Slide View 
-The Slide View is the page that plays the slide deck. 
+The Slide View is the page that plays the slide deck in OBS as a browser source. 
 
 ## URL 
 body { background-color: rgba(0, 0, 0, 255); margin: 0px auto; overflow: hidden; 

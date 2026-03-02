@@ -118,50 +118,49 @@
         const statusArea = document.getElementById('status-area');
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = SpeechRecognition ? new SpeechRecognition() : null;
-        
-        let currentEventName = '';
-        let isTranscribing = false;
-
-        if (recognition) {
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            recognition.lang = navigator.language || 'en-US';
-            recognition.processLocally = true;
-
-            recognition.onresult = (event) => {
-                let result = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    result += event.results[i][0].transcript;
-                }
-                
-                if (result) {
-                    transcriptEl.textContent = result;
-                    sendResult(currentEventName, result);
-                }
-            };
-
-            recognition.onerror = (event) => {
-                console.error("Recognition error:", event.error);
-                if (event.error === 'no-speech' || event.error === 'aborted') return;
-                statusMsg.textContent = "Error: " + event.error;
-                
-                if (event.error === 'network') {
-                    statusMsg.innerHTML += "<br><small>Chrome on-device processing failed. Check chrome://settings/accessibility</small>";
-                }
-            };
-
-            recognition.onend = () => {
-                if (isTranscribing) {
-                    setTimeout(() => {
-                        try { recognition.start(); } catch (e) {}
-                    }, 300);
-                }
-            };
-        } else {
+        if (!SpeechRecognition) {
             statusMsg.textContent = "Error: Web Speech API not supported.";
             startBtn.disabled = true;
         }
+
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = navigator.language || 'en-US';
+        recognition.processLocally = true;
+
+        let currentEventName = '';
+        let isTranscribing = false;
+
+        recognition.onresult = (event) => {
+            let result = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                result += event.results[i][0].transcript;
+            }
+            
+            if (result) {
+                transcriptEl.textContent = result;
+                sendResult(currentEventName, result);
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.error("Recognition error:", event.error);
+            if (event.error === 'no-speech' || event.error === 'aborted') return;
+            statusMsg.textContent = "Error: " + event.error;
+            
+            if (event.error === 'network') {
+                statusMsg.innerHTML += "<br><small>Chrome on-device processing failed. Check chrome://settings/accessibility</small>";
+            }
+        };
+
+        recognition.onend = () => {
+            if (isTranscribing) {
+                setTimeout(() => {
+                    try { recognition.start(); } catch (e) {}
+                }, 300);
+            }
+        };
 
         startBtn.onclick = async () => {
             currentEventName = eventInput.value.trim();
@@ -185,7 +184,6 @@
                     showDownloadButton(lang);
                 }
             } else {
-                // Fallback for browsers without .available API
                 start();
             }
         };
@@ -198,11 +196,15 @@
             btn.onclick = async () => {
                 btn.remove();
                 statusMsg.textContent = "Downloading...";
-                const success = await SpeechRecognition.install({ langs: [lang], processLocally: true });
-                if (success) {
-                    start();
-                } else {
-                    statusMsg.textContent = "Download failed.";
+                try {
+                    const success = await SpeechRecognition.install({ langs: [lang], processLocally: true });
+                    if (success) {
+                        start();
+                    } else {
+                        statusMsg.textContent = "Download failed.";
+                    }
+                } catch (e) {
+                    statusMsg.textContent = "Install error: " + e.message;
                 }
             };
             actionContainer.appendChild(btn);
@@ -220,6 +222,9 @@
             } catch (e) {
                 console.error("Start failed:", e);
                 statusMsg.textContent = "Start failed: " + e.message;
+                isTranscribing = false;
+                startBtn.disabled = false;
+                eventInput.disabled = false;
             }
         }
 
