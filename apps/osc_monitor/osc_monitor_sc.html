@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>OSC Listener (SocketCluster)</title>
+    <title>OSC Monitor (SocketCluster)</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1e1e1e; color: #d4d4d4; padding: 20px; margin: 0; }
         #container { max-width: 800px; margin: 0 auto; }
         h1 { color: #569cd6; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        #status { margin-bottom: 20px; font-weight: bold; }
+        #status-bar { margin-bottom: 20px; display: flex; align-items: center; gap: 15px; font-size: 0.9em; }
         #controls { margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
         
         button {
@@ -48,12 +48,25 @@
             to { opacity: 1; transform: translateY(0); }
         }
         .error-hint { color: #f44747; font-size: 0.9em; margin-left: 10px; }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            background: #555;
+        }
+        .status-dot.connected { background: #4ec9b0; box-shadow: 0 0 5px #4ec9b0; }
+        #sc-status { color: #888; }
     </style>
 </head>
 <body>
     <div id="container">
-        <h1 id="title">OSC Listener (SocketCluster)</h1>
-        <div id="status">Connecting...</div>
+        <h1 id="title">OSC Monitor (SocketCluster)</h1>
+        
+        <div id="status-bar">
+            <span><span id="sc-dot" class="status-dot"></span> SC: <span id="sc-status">Connecting...</span></span>
+        </div>
         
         <div id="controls">
             <button id="toggleBtn">Toggle OSC (/4/toggle1)</button>
@@ -63,12 +76,14 @@
         <div id="messages"></div>
     </div>
 
-    <!-- Load SocketCluster Client from our local lib folder -->
+    <!-- Load SocketCluster Client -->
     <script src="../lib/socketcluster-client.min.js"></script>
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const targetDevice = urlParams.get('deviceName');
-        const statusEl = document.getElementById('status');
+        
+        const scStatusEl = document.getElementById('sc-status');
+        const scDot = document.getElementById('sc-dot');
         const messagesEl = document.getElementById('messages');
         const titleEl = document.getElementById('title');
         const toggleBtn = document.getElementById('toggleBtn');
@@ -78,71 +93,68 @@
         let socket = null;
 
         if (targetDevice) {
-            titleEl.textContent = `OSC Listener: ${targetDevice}`;
-            initSocketCluster();
+            titleEl.textContent = `OSC Monitor: ${targetDevice}`;
         } else {
-            titleEl.textContent = `OSC Listener: (All Devices)`;
+            titleEl.textContent = `OSC Monitor: (All Devices)`;
             toggleBtn.disabled = true;
             hintEl.textContent = "Specify ?deviceName=... in URL to enable sending and listening";
-            statusEl.textContent = 'Status: Device name required';
         }
 
-        async function initSocketCluster() {
-            try {
-                // SocketCluster client options
-                socket = socketClusterClient.create({
-                    hostname: window.location.hostname,
-                    port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-                    path: '/socketcluster/'
-                });
+        // SocketCluster Setup
+        socket = socketClusterClient.create({
+            hostname: window.location.hostname,
+            port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
+            path: '/socketcluster/'
+        });
 
-                statusEl.textContent = `Status: Connecting...`;
-                
-                (async () => {
-                    for await (let {error} of socket.listener('error')) {
-                        console.error('Socket Error:', error);
-                    }
-                })();
-
-                (async () => {
-                    for await (let event of socket.listener('connect')) {
-                        statusEl.textContent = `Status: Connected to SocketCluster`;
-                        statusEl.style.color = '#4ec9b0';
-                        console.warn('Connected to server');
-                        subscribeToChannel();
-                    }
-                })();
-
-                (async () => {
-                    for await (let event of socket.listener('disconnect')) {
-                        statusEl.textContent = 'Status: Disconnected';
-                        statusEl.style.color = '#ce9178';
-                    }
-                })();
-
-            } catch (e) {
-                console.error('Init error:', e);
-                statusEl.textContent = 'Status: Init Error';
-                statusEl.style.color = '#f44747';
+        (async () => {
+            for await (let {error} of socket.listener('error')) {
+                console.error('Socket Error:', error);
             }
-        }
+        })();
 
-        async function subscribeToChannel() {
-            if (!targetDevice) return;
+        (async () => {
+            for await (let event of socket.listener('connect')) {
+                console.warn('Connected to SocketCluster');
+                scStatusEl.textContent = 'Connected';
+                scStatusEl.style.color = '#4ec9b0';
+                scDot.classList.add('connected');
+                
+                if (targetDevice) {
+                    subscribeToOsc();
+                }
+            }
+        })();
+
+        (async () => {
+            for await (let event of socket.listener('disconnect')) {
+                console.warn('Disconnected from SocketCluster');
+                scStatusEl.textContent = 'Disconnected';
+                scStatusEl.style.color = '#ce9178';
+                scDot.classList.remove('connected');
+            }
+        })();
+
+        async function subscribeToOsc() {
             const channelName = `osc_out_${targetDevice}`;
-            let channel = socket.subscribe(channelName);
+            console.log(`Subscribing to ${channelName}`);
+            const channel = socket.subscribe(channelName);
             
-            console.warn(`Subscribed to channel: ${channelName}`);
-
             for await (let data of channel) {
+                // data: { deviceName, message: [address, ...args] }
                 addMessage(data);
             }
         }
 
         // --- Toggle Logic ---
-        toggleBtn.onclick = async () => {
+        toggleBtn.onclick = () => {
             if (!socket || socket.state !== 'open') {
                 alert('Socket not connected');
+                return;
+            }
+            
+            if (!targetDevice) {
+                alert('No deviceName specified');
                 return;
             }
             
@@ -150,9 +162,8 @@
             const val = nextState ? 1 : 0;
             
             try {
-                // Publish to the 'in' channel for the device
-                const channelName = `osc_in_${targetDevice}`;
-                socket.transmitPublish(channelName, {
+                // Publish to osc_in_{deviceName}
+                socket.transmitPublish(`osc_in_${targetDevice}`, {
                     address: '/4/toggle1',
                     args: [val]
                 });
@@ -172,15 +183,17 @@
             
             const meta = document.createElement('div');
             meta.className = 'meta';
-            meta.textContent = `${new Date().toLocaleTimeString()} - Device: ${data.deviceName}`;
+            const timestamp = new Date().toLocaleTimeString();
+            meta.textContent = `${timestamp} - Device: ${data.deviceName}`;
             
             const content = document.createElement('div');
+            
             // Assuming data.message is [address, ...args]
-            const [address, ...args] = data.message;
+            const [address, ...args] = data.message || [];
             
             const addrSpan = document.createElement('span');
             addrSpan.className = 'address';
-            addrSpan.textContent = address;
+            addrSpan.textContent = address || 'unknown';
             
             const argsSpan = document.createElement('span');
             argsSpan.className = 'args';
@@ -194,7 +207,7 @@
             
             messagesEl.appendChild(div);
             
-            if (messagesEl.children.length > 100) {
+            while (messagesEl.children.length > 100) {
                 messagesEl.removeChild(messagesEl.firstChild);
             }
         }

@@ -53,7 +53,8 @@ export const UpdateBrowsersUrlCommand = (plugin: slidesStudioPlugin): Command =>
                         inputUuid: input.inputUuid,
                     }) as unknown as OBSInputSettings;
 
-                    if (settings.inputSettings.css.includes("--slides-studio-refresh")) {
+                    if (settings.inputSettings.css.includes("--slides-studio-refresh") || 
+                        settings.inputSettings.css.includes("--update-port: 1;")) {
                         const browserURL = new URL(settings.inputSettings.url);
                         const newURL = `http://127.0.0.1:${port}${browserURL.pathname}`;
 

@@ -47,46 +47,13 @@
         <div class="bottom"></div>
       </div>
       <div class="teleprompter" id="teleprompter" role="textbox" aria-multiline="true" aria-label="TelePrompter Text" contenteditable>
-        Oh, hello there. I did not see you come in. I was too busy reading off this TelePrompter. It does some pretty cool
-        things, for example:
-        <br><br>
-        You can edit the text right on the page. It'll even save it for you if you happen to leave the page. That's some
-        smart thinking.
-        <br><br>
-        If you're using an iPad, you can add a shortcut to your home screen for full screen awesomeness.
-        <br><br>
-        You can also use some handy keyboard shortcuts to speed things up. You can adjust the speed and font size at the
-        top right as well. We're also experimenting with ways to flip the text around for you fancy folks using mirrors.
-        <br><br>
-        The keyboard shortcuts are as follows:
-        <br><br>
-        Up: Increases Font Size
-        <br><br>
-        Down: Decreases Font Size
-        <br><br>
-        Left: Slows Down Teleprompter
-        <br><br>
-        Right: Speeds Up Teleprompter
-        <br><br>
-        Space: Starts / Stops Teleprompter
-        <br><br>
-        Escape: Resets Everything
-        <br><br>
-        Finally, we also made an effort to make sure your text will be easy to read. So if you are pasting text from a
-        Microsoft Word document, we'll do some cleaning up to make the breaks flow more easily.
-        <br><br>
-        Thanks for stopping by.
-        <br><br>
-        Love this TelePrompter?
-        <br><br>
-        <a href="https://github.com/manifestinteractive/teleprompter#project-support" contenteditable="false" class="sponsor-project" target="_blank" title="Support TelePrompter" aria-label="Support TelePrompter" data-ga data-category="Nav" data-action="Help" data-label="Support TelePrompter">
-          Support Our Work :)
-        </a><br><br>
-        Thanks !!!
+        Loading notes...
       </div>
       <i class="icon-play marker" style="display: none"></i>
     </article>
 
+    <script src="lib/socketcluster-client.min.js"></script>
+    <script src="lib/sc-connection.js"></script>
     <script src="lib/teleprompter.plugins.v122.js"></script>
     <script src="lib/teleprompter.js"></script>
 
@@ -96,46 +63,47 @@
         TelePrompter.init();
       };
 
-      // Unified SSE listener for all plugin events (slides, commands, etc.)
-      const customSse = new EventSource('/api/events');
-      customSse.addEventListener('slidesCommands', (e) => {
-        try {
-          const data = JSON.parse(e.data);
-          const eventName = data.eventName;
-          const payload = data.msgParam;
-
-          if (eventName === 'reveal-event') {
-            if (payload.eventName === 'callback' && payload.method === 'getSlideNotes') {
-              console.log("[Teleprompter] Received notes via SSE callback");
-              document.getElementById("teleprompter").innerHTML = payload.result;
-              TelePrompter.resetPageScroll();
-            }
-          }
-
-          // Handle remote control requests (shared with Speaker View)
-          if (eventName === 'teleprompterChangeRequest') {
-            console.log("[Teleprompter] Change request via SSE:", payload.functionName);
-            if (typeof TelePrompter[payload.functionName] === 'function') {
-              TelePrompter[payload.functionName](payload.value);
-            }
-          }
-
-          if (eventName === 'togglePlay') {
-            console.log("[Teleprompter] Toggle play via SSE");
-            if (typeof TelePrompter[payload.functionName] === 'function') {
-              TelePrompter[payload.functionName]();
-            }
-          }
-        } catch (err) {
-          console.error("[Teleprompter] Error processing SSE message:", err);
+      // Unified SocketCluster listener for all plugin events
+      (async () => {
+        while (!window.scSocket) {
+            await new Promise(r => setTimeout(r, 100));
         }
-      });
 
-      customSse.onerror = (e) => {
-        console.error("[Teleprompter] SSE connection error", e);
-      };
+        console.log("[Teleprompter] Subscribing to custom_slidesCommands via SocketCluster...");
+        const channel = window.scSocket.subscribe('custom_slidesCommands');
+        
+        for await (let data of channel) {
+            try {
+                const eventName = data.eventName;
+                const payload = data.msgParam;
 
-      // Legacy window message listener removed.
+                if (eventName === 'reveal-event') {
+                    if (payload.eventName === 'callback' && payload.method === 'getSlideNotes') {
+                        console.log("[Teleprompter] Received notes via SC callback");
+                        document.getElementById("teleprompter").innerHTML = payload.result;
+                        TelePrompter.resetPageScroll();
+                    }
+                }
+
+                // Handle remote control requests
+                if (eventName === 'teleprompterChangeRequest') {
+                    console.log("[Teleprompter] Change request via SC:", payload.functionName);
+                    if (typeof TelePrompter[payload.functionName] === 'function') {
+                        TelePrompter[payload.functionName](payload.value);
+                    }
+                }
+
+                if (eventName === 'togglePlay') {
+                    console.log("[Teleprompter] Toggle play via SC");
+                    if (typeof TelePrompter[payload.functionName] === 'function') {
+                        TelePrompter[payload.functionName]();
+                    }
+                }
+            } catch (err) {
+                console.error("[Teleprompter] Error processing SC message:", err);
+            }
+        }
+      })();
     </script>
   </body>
 </html>

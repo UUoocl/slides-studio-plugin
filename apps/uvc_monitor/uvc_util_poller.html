@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UVC PTZF Poller & Mapper (WS)</title>
+    <title>UVC PTZF Poller & Mapper (SocketCluster)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -101,7 +101,7 @@
 <body>
 
     <div class="status-bar">
-        <span>WebSocket: <strong id="ws-status" class="status disconnected">Disconnected</strong></span>
+        <span>SocketCluster: <strong id="sc-status" class="status disconnected">Disconnected</strong></span>
         <span>Polling: <strong id="poll-status" style="color:#888;">Idle</strong></span>
     </div>
 
@@ -171,7 +171,9 @@
         <div id="log" class="log-box"></div>
     </div>
 
-    <script>
+    <script type="module">
+        import { create } from '../lib/socketcluster-client.min.js';
+
         let socket = null;
         let pollTimer = null;
         let bc = null;
@@ -186,7 +188,7 @@
         };
 
         const elements = {
-            wsStatus: document.getElementById('ws-status'),
+            scStatus: document.getElementById('sc-status'),
             pollStatus: document.getElementById('poll-status'),
             deviceList: document.getElementById('device-list'),
             startBtn: document.getElementById('start-btn'),
@@ -207,59 +209,55 @@
             if (elements.log.children.length > 10) elements.log.removeChild(elements.log.lastChild);
         }
 
-        async function connectWS() {
-            if (socket) socket.close();
+        async function initSocketCluster() {
+            if (socket) socket.disconnect();
 
-            try {
-                const resp = await fetch('/api/devices');
-                if (!resp.ok) throw new Error("Failed to fetch devices");
-                const devices = await resp.json();
-                const port = devices.uvc.wsPort;
-
-                if (!port) {
-                    elements.wsStatus.textContent = "Port Missing";
-                    elements.wsStatus.className = "status disconnected";
-                    return;
-                }
-
-                socket = new WebSocket(`ws://${window.location.hostname}:${port}`);
-                
-                socket.onopen = () => {
-                    elements.wsStatus.textContent = "Connected";
-                    elements.wsStatus.className = "status connected";
-                    addLog("WebSocket Connected");
+            socket = create({
+                hostname: window.location.hostname,
+                port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
+                path: '/socketcluster/'
+            });
+            
+            (async () => {
+                for await (let event of socket.listener('connect')) {
+                    elements.scStatus.textContent = "Connected";
+                    elements.scStatus.className = "status connected";
+                    addLog("SocketCluster Connected");
+                    subscribeToResponses();
                     sendCommand({ action: "list_devices" });
-                };
+                }
+            })();
 
-                socket.onmessage = (event) => {
-                    try {
-                        const msg = JSON.parse(event.data);
-                        handleMessage(msg);
-                    } catch (e) {
-                        console.error("Failed to parse WS data", e);
-                    }
-                };
-
-                socket.onerror = (e) => {
-                    elements.wsStatus.textContent = "Error";
-                    elements.wsStatus.className = "status disconnected";
+            (async () => {
+                for await (let event of socket.listener('disconnect')) {
+                    elements.scStatus.textContent = "Disconnected";
+                    elements.scStatus.className = "status disconnected";
+                    addLog("SocketCluster Disconnected");
                     stopPolling();
-                };
+                }
+            })();
 
-                socket.onclose = () => {
-                    elements.wsStatus.textContent = "Disconnected";
-                    elements.wsStatus.className = "status disconnected";
-                    stopPolling();
-                    setTimeout(connectWS, 5000);
-                };
-            } catch (err) {
-                addLog("Connect Error: " + err.message);
+            (async () => {
+                for await (let {error} of socket.listener('error')) {
+                    console.error('Socket Error:', error);
+                }
+            })();
+        }
+
+        async function subscribeToResponses() {
+            const channel = socket.subscribe('uvcResponse');
+            for await (let msg of channel) {
+                handleMessage(msg);
             }
         }
 
-        function sendCommand(data) {
-            if (!socket || socket.readyState !== WebSocket.OPEN) return;
-            socket.send(JSON.stringify(data));
+        async function sendCommand(data) {
+            if (!socket || socket.state !== 'open') return;
+            try {
+                await socket.invoke('uvcCommand', data);
+            } catch (err) {
+                console.error("Command Error:", err);
+            }
         }
 
         function handleMessage(msg) {
@@ -281,6 +279,10 @@
 
         function renderDeviceList(devices) {
             elements.deviceList.innerHTML = '';
+            if (!devices || devices.length === 0) {
+                elements.deviceList.innerHTML = '<div style="padding:10px; color:#888;">No devices found.</div>';
+                return;
+            }
             devices.forEach(dev => {
                 const item = document.createElement('div');
                 item.className = 'device-item' + (selectedIndex == dev.index ? ' selected' : '');
@@ -410,7 +412,7 @@
             });
         }
 
-        connectWS();
+        initSocketCluster();
     </script>
 </body>
 </html>

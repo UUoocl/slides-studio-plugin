@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SocketCluster Monitor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 {
+            color: #007acc;
+            font-size: 1.5em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        .status-bar {
+            background: #252526;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .status.connected { color: #4ec9b0; }
+        .status.disconnected { color: #f44747; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #252526;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+        th {
+            background-color: #333;
+            color: #808080;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        tr:hover {
+            background-color: #2d2d2d;
+        }
+        .client-id {
+            font-family: 'Consolas', monospace;
+            color: #ce9178;
+            font-size: 0.9em;
+        }
+        .channel-tag {
+            display: inline-block;
+            background: #0e639c;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75em;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+        .no-clients {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>SocketCluster Monitor</h1>
+
+    <div class="status-bar">
+        <span>Server: <strong id="sc-status" class="status disconnected">Disconnected</strong></span>
+        <span>Active Clients: <strong id="client-count">0</strong></span>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 50px;">#</th>
+                <th style="width: 250px;">Client ID</th>
+                <th style="width: 200px;">Name</th>
+                <th>Subscribed Channels</th>
+            </tr>
+        </thead>
+        <tbody id="client-table-body">
+            <tr>
+                <td colspan="4" class="no-clients">Waiting for server data...</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <script type="module">
+        import { create } from '../lib/socketcluster-client.min.js';
+
+        const statusEl = document.getElementById('sc-status');
+        const countEl = document.getElementById('client-count');
+        const tableBody = document.getElementById('client-table-body');
+
+        const socket = create({
+            hostname: window.location.hostname,
+            port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
+            path: '/socketcluster/'
+        });
+
+        (async () => {
+            for await (let event of socket.listener('connect')) {
+                statusEl.textContent = "Connected";
+                statusEl.className = "status connected";
+                
+                // Identify this client as the Monitor
+                try {
+                    await socket.invoke('setInfo', { name: 'SC Monitor' });
+                } catch (e) {}
+
+                // Subscribe to server state updates
+                const channel = socket.subscribe('serverState');
+                for await (let data of channel) {
+                    updateTable(data.clients);
+                }
+            }
+        })();
+
+        (async () => {
+            for await (let event of socket.listener('disconnect')) {
+                statusEl.textContent = "Disconnected";
+                statusEl.className = "status disconnected";
+                countEl.textContent = "0";
+                tableBody.innerHTML = '<tr><td colspan="4" class="no-clients">Disconnected from server</td></tr>';
+            }
+        })();
+
+        function updateTable(clients) {
+            if (!clients || clients.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="4" class="no-clients">No active clients</td></tr>';
+                countEl.textContent = "0";
+                return;
+            }
+
+            countEl.textContent = clients.length;
+            tableBody.innerHTML = '';
+
+            clients.forEach(client => {
+                const tr = document.createElement('tr');
+                
+                const channelsHtml = client.channels && client.channels.length > 0
+                    ? client.channels.map(c => `<span class="channel-tag">${c}</span>`).join('')
+                    : '<span style="color: #555; font-size: 0.8em;">None</span>';
+
+                tr.innerHTML = `
+                    <td>${client.index}</td>
+                    <td class="client-id">${client.id}</td>
+                    <td>${client.name}</td>
+                    <td>${channelsHtml}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+    </script>
+</body>
+</html>

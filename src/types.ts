@@ -6,14 +6,12 @@ export interface OscDeviceSetting {
     ip: string;
     inPort: number;
     outPort: number;
-    wsPort: number;
 }
 
 export interface MidiDeviceSetting {
     name: string;      // User defined alias (e.g. "My Keyboard")
     inputName: string; // System Input Name (e.g. "Keystation 49")
     outputName: string;// System Output Name
-    wsPort: number;
 }
 
 export interface AudioDeviceSetting {
@@ -49,8 +47,6 @@ export interface SlidesStudioPluginSettings {
     serverPort: string;
     serverEnabled: boolean;
     pythonPath: string;
-    pythonSocketPort: string;
-    sttSignalingPort: string;
     mouseMonitorEnabled: boolean;
     mouseMonitorPosition: boolean;
     mouseMonitorClicks: boolean;
@@ -59,7 +55,6 @@ export interface SlidesStudioPluginSettings {
     keyboardMonitorShowCombinations: boolean;
     uvcUtilEnabled: boolean;
     uvcUtilLibPath: string;
-    uvcWsPort: number;
     settingsFolder: string;
     settingsFile: string;
     oscDevices: OscDeviceSetting[];

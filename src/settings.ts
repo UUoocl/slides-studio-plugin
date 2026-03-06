@@ -495,19 +495,6 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     })
                 );
 
-            const oscWsPortSetting = new Setting(deviceDiv)
-                .setName("Osc websocket port")
-                .setDesc("Port for websocket communication")
-                .addText(text => text
-                    .setValue(device.wsPort ? device.wsPort.toString() : "")
-                    .onChange(async (value) => {
-                        this.plugin.settings.oscDevices[index].wsPort = parseInt(value) || 0;
-                        await this.plugin.saveSettings();
-                        void this.updatePortStatus(value, oscWsPortSetting, "Port for WebSocket communication");
-                    })
-                );
-            if (device.wsPort) void this.updatePortStatus(device.wsPort.toString(), oscWsPortSetting, "Port for WebSocket communication");
-
             new Setting(deviceDiv)
                 .addButton(btn => btn
                     .setButtonText("Remove device")
@@ -536,8 +523,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         name: "NewDevice",
                         ip: "127.0.0.1",
                         inPort: 8000,
-                        outPort: 9000,
-                        wsPort: 8080
+                        outPort: 9000
                     });
                     await this.plugin.saveSettings();
                     if (this.plugin.settings.serverEnabled && this.plugin.serverManager) {
@@ -618,19 +604,6 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         });
                     });
 
-                const midiWsPortSetting = new Setting(deviceDiv)
-                    .setName("Midi websocket port")
-                    .setDesc("Port for websocket communication")
-                    .addText(text => text
-                        .setValue(device.wsPort ? device.wsPort.toString() : "")
-                        .onChange(async (value) => {
-                            this.plugin.settings.midiDevices[index].wsPort = parseInt(value) || 0;
-                            await this.plugin.saveSettings();
-                            void this.updatePortStatus(value, midiWsPortSetting, "Port for WebSocket communication");
-                        })
-                    );
-                if (device.wsPort) void this.updatePortStatus(device.wsPort.toString(), midiWsPortSetting, "Port for WebSocket communication");
-
                 new Setting(deviceDiv)
                     .addButton(btn => btn
                         .setButtonText("Remove midi device")
@@ -658,8 +631,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         this.plugin.settings.midiDevices.push({
                             name: "MyMidiDevice",
                             inputName: "",
-                            outputName: "",
-                            wsPort: 59000
+                            outputName: ""
                         });
                         await this.plugin.saveSettings();
                         if (this.plugin.settings.serverEnabled && this.plugin.serverManager) {
@@ -702,24 +674,6 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
             'margin-bottom': '20px'
         });
         this.validatePythonPath(this.plugin.settings.pythonPath);
-
-        const pythonSocketPortSetting = new Setting(containerEl)
-            .setName("Python socket port")
-            .setDesc("Port for communication between python and node")
-            .addText(text => text
-                .setValue(this.plugin.settings.pythonSocketPort)
-                .onChange(async (value) => {
-                    this.plugin.settings.pythonSocketPort = value;
-                    await this.plugin.saveSettings();
-                    void this.updatePortStatus(value, pythonSocketPortSetting, "Port for communication between python and node");
-                    if (this.plugin.serverManager) {
-                        // Restart monitors if port changed
-                        if (this.plugin.settings.mouseMonitorEnabled) void this.plugin.serverManager.restartMouseMonitor();
-                        if (this.plugin.settings.keyboardMonitorEnabled) void this.plugin.serverManager.restartKeyboardMonitor();
-                    }
-                })
-            );
-        void this.updatePortStatus(this.plugin.settings.pythonSocketPort, pythonSocketPortSetting, "Port for communication between python and node");
 
         new Setting(containerEl)
             .setName("Mouse monitor")
@@ -869,22 +823,6 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     }
                 })
             );
-
-        const uvcWsPortSetting = new Setting(containerEl)
-            .setName("Uvc websocket port")
-            .setDesc("Port for websocket communication with browser clients")
-            .addText(text => text
-                .setValue(this.plugin.settings.uvcWsPort ? this.plugin.settings.uvcWsPort.toString() : "")
-                .onChange(async (value) => {
-                    this.plugin.settings.uvcWsPort = parseInt(value) || 0;
-                    await this.plugin.saveSettings();
-                    void this.updatePortStatus(value, uvcWsPortSetting, "Port for WebSocket communication with browser clients");
-                    if (this.plugin.settings.serverEnabled && this.plugin.serverManager) {
-                        await this.plugin.serverManager.restart(parseInt(this.plugin.settings.serverPort));
-                    }
-                })
-            );
-        if (this.plugin.settings.uvcWsPort) void this.updatePortStatus(this.plugin.settings.uvcWsPort.toString(), uvcWsPortSetting, "Port for WebSocket communication with browser clients");
         // #endregion
 
         // #region Audio Settings

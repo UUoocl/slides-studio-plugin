@@ -47,8 +47,6 @@ const DEFAULT_SETTINGS: Partial<SlidesStudioPluginSettings> = {
     serverPort: "57000",
     serverEnabled: false,
     pythonPath: "python3",
-    pythonSocketPort: "57001",
-    sttSignalingPort: "57002",
     mouseMonitorEnabled: false,
     mouseMonitorPosition: true,
     mouseMonitorClicks: true,
@@ -235,8 +233,25 @@ export default class slidesStudioPlugin extends Plugin {
 			});
 		});
 
+		// Forward common OBS events to SocketCluster
+		const commonEvents = [
+			'SceneTransitionStarted', 'SceneTransitionEnded',
+			'CurrentProgramSceneChanged', 'CurrentPreviewSceneChanged',
+			'SceneItemCreated', 'SceneItemRemoved', 'SceneItemEnableStateChanged',
+			'InputVolumeChanged', 'InputMuteStateChanged',
+			'StreamStateChanged', 'RecordStateChanged'
+		];
+		commonEvents.forEach(eventName => {
+			this.obs.on(eventName as any, (data) => {
+				this.serverManager?.broadcastObsEvent(eventName, data);
+			});
+		});
+
 		this.obs.on("CustomEvent", (eventData) => {
 			const event = eventData as unknown as OBSCustomEvent;
+			
+			// Forward to SocketCluster
+			this.serverManager?.broadcastObsEvent('CustomEvent', eventData);
 
 			if (event.event_name === `OSC-out` && event.address && event.osc_name) {
 				const message = new Message(event.address);

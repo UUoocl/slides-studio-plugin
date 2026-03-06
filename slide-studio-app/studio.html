@@ -55,6 +55,7 @@
  
         
         <script type="text/javascript" src="lib/tabulator.min.js"></script>
+        <script src="lib/socketcluster-client.min.js"></script>
         <script src="lib/obsApiProxy.js"></script>
         <script src='lib/setupTable.js'></script>
         <script>
@@ -291,28 +292,16 @@
                 document.getElementById("slideDeckIdLoadButton").addEventListener('click', loadSavedTable);
             });
             
-            // Unified SSE listener for all plugin events (keyboard, slides, obs, etc.)
-            console.log("[Studio] Initializing unified SSE connection...");
-            const unifiedSse = new EventSource('/api/events');
-            
-            // Share this connection with the OBS proxy to save browser connection slots
-            obsWss.eventSource = unifiedSse;
-
-            unifiedSse.addEventListener('keyboardPress', (e) => {
-                try {
-                    const eventData = JSON.parse(e.data);
-                    console.log("[Studio] Keyboard press received:", eventData.key);
-                    if (eventData.key) {
-                        handleKeyboardNavigation(eventData.keyCode || eventData.key);
-                    }
-                } catch (err) {
-                    console.error("[Studio] Error processing keyboard SSE event:", err, e.data);
+            // Unified SocketCluster listener via obsWss
+            obsWss.on('keyboardPress', (eventData) => {
+                console.log("[Studio] Keyboard press received:", eventData.key);
+                if (eventData.key) {
+                    handleKeyboardNavigation(eventData.keyCode || eventData.key);
                 }
             });
 
-            unifiedSse.addEventListener('slidesCommands', async (e) => {
+            obsWss.on('slidesCommands', async (data) => {
                 try {
-                    const data = JSON.parse(e.data);
                     const eventName = data.eventName;
                     const payload = data.msgParam;
 

@@ -16,6 +16,7 @@
 	"devDependencies": {
 		"@types/node": "^16.11.6",
 		"@types/node-osc": "^9.1.0",
+		"@types/socketcluster-server": "^20.0.0",
 		"@types/ws": "^8.5.10",
 		"@typescript-eslint/eslint-plugin": "8.50.0",
 		"@typescript-eslint/parser": "8.50.0",
@@ -34,8 +35,9 @@
 		"node-osc": "^9.1.4",
 		"obs-websocket-js": "^5.0.6",
 		"obsidian": "latest",
+		"socketcluster-client": "^20.0.1",
+		"socketcluster-server": "^20.0.0",
 		"tabulator-tables": "^6.3.1",
-		"webmidi": "^3.1.14",
-		"ws": "^8.18.0"
+		"webmidi": "^3.1.14"
 	}
 }

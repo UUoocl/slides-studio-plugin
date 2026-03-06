@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UVC WebSocket Controller</title>
+    <title>UVC Controller (SocketCluster)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -86,7 +86,7 @@
 <body>
 
     <div class="status-bar">
-        <span>WebSocket: <strong id="ws-status" class="status disconnected">Disconnected</strong></span>
+        <span>SocketCluster: <strong id="sc-status" class="status disconnected">Disconnected</strong></span>
         <button id="reconnect-btn">Reconnect</button>
     </div>
 
@@ -105,7 +105,7 @@
         <div class="row">
             <button id="get-controls-btn" disabled>Fetch Controls</button>
             <button id="test-read-btn" disabled>Read Value</button>
-            <input type="text" id="manual-control-name" placeholder="Control Name (e.g. brightness)">
+            <input type="text" id="manual-control-name" placeholder="Control Name">
             <input type="text" id="manual-control-val" placeholder="Value">
             <button id="manual-set-btn" disabled>Set</button>
         </div>
@@ -119,10 +119,12 @@
         <div id="log" class="log-box"></div>
     </div>
 
-    <script>
+    <script type="module">
+        import { create } from '../lib/socketcluster-client.min.js';
+
         let socket = null;
         const logBox = document.getElementById('log');
-        const wsStatus = document.getElementById('ws-status');
+        const scStatus = document.getElementById('sc-status');
         const deviceSelect = document.getElementById('device-select');
         const controlsContainer = document.getElementById('controls-container');
 
@@ -134,62 +136,61 @@
             logBox.insertBefore(entry, logBox.firstChild);
         }
 
-        async function connectWS() {
-            if (socket) socket.close();
+        async function initSocketCluster() {
+            if (socket) {
+                socket.disconnect();
+            }
 
-            try {
-                const resp = await fetch('/api/devices');
-                if (!resp.ok) throw new Error("Failed to fetch devices");
-                const devices = await resp.json();
-                const port = devices.uvc.wsPort;
-
-                if (!port) {
-                    wsStatus.textContent = "Port Missing";
-                    wsStatus.className = "status disconnected";
-                    return;
-                }
-
-                socket = new WebSocket(`ws://${window.location.hostname}:${port}`);
-                
-                socket.onopen = () => {
-                    wsStatus.textContent = "Connected";
-                    wsStatus.className = "status connected";
-                    log("WebSocket Connected", "tx");
+            socket = create({
+                hostname: window.location.hostname,
+                port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
+                path: '/socketcluster/'
+            });
+            
+            (async () => {
+                for await (let event of socket.listener('connect')) {
+                    scStatus.textContent = "Connected";
+                    scStatus.className = "status connected";
+                    log("SocketCluster Connected", "tx");
+                    subscribeToResponses();
                     document.getElementById('refresh-btn').click();
-                };
+                }
+            })();
 
-                socket.onmessage = (event) => {
-                    try {
-                        const msg = JSON.parse(event.data);
-                        handleMessage(msg);
-                    } catch (e) {
-                        log("RX Raw: " + event.data, "rx");
-                    }
-                };
+            (async () => {
+                for await (let event of socket.listener('disconnect')) {
+                    scStatus.textContent = "Disconnected";
+                    scStatus.className = "status disconnected";
+                    log("SocketCluster Disconnected", "tx");
+                }
+            })();
 
-                socket.onerror = (e) => {
-                    wsStatus.textContent = "Error";
-                    wsStatus.className = "status disconnected";
-                    log("WebSocket Error", "tx");
-                };
+            (async () => {
+                for await (let {error} of socket.listener('error')) {
+                    console.error('Socket Error:', error);
+                }
+            })();
+        }
 
-                socket.onclose = () => {
-                    wsStatus.textContent = "Disconnected";
-                    wsStatus.className = "status disconnected";
-                    log("WebSocket Disconnected", "tx");
-                };
-            } catch (err) {
-                log("Connect Error: " + err.message, "tx");
+        async function subscribeToResponses() {
+            const channel = socket.subscribe('uvcResponse');
+            for await (let msg of channel) {
+                handleMessage(msg);
             }
         }
 
-        function sendCommand(data) {
-            if (!socket || socket.readyState !== WebSocket.OPEN) {
+        async function sendCommand(data) {
+            if (!socket || socket.state !== 'open') {
                 log("Error: Socket not open", "tx");
                 return;
             }
-            log("TX: " + data.action, "tx");
-            socket.send(JSON.stringify(data));
+            log("TX (Proc): " + data.action, "tx");
+            try {
+                // Use the procedure 'uvcCommand' defined in serverLogic.ts
+                await socket.invoke('uvcCommand', data);
+            } catch (err) {
+                log("TX Error: " + err.message, "tx");
+            }
         }
 
         function handleMessage(msg) {
@@ -197,7 +198,7 @@
 
             if (msg.action === "list_devices") {
                 deviceSelect.innerHTML = '<option value="-1">Select a device...</option>';
-                msg.data.forEach(dev => {
+                (msg.data || []).forEach(dev => {
                     const opt = document.createElement('option');
                     opt.value = dev.index;
                     opt.textContent = `${dev.name} (ID:${dev.productId})`;
@@ -217,7 +218,7 @@
 
         function renderControls(controls) {
             controlsContainer.innerHTML = '';
-            if (controls.length === 0) {
+            if (!controls || controls.length === 0) {
                 controlsContainer.innerHTML = '<div style="padding:10px;">No controls found.</div>';
                 return;
             }
@@ -225,21 +226,33 @@
             controls.forEach(c => {
                 const div = document.createElement('div');
                 div.className = 'control-item';
-                div.innerHTML = `
-                    <span class="control-name">${c.name}</span>
-                    <button onclick="readValue('${c.name}')">Read</button>
-                    <span style="font-size:0.8em; color:#666;">${JSON.stringify(c["current-value"] || {})}</span>
-                `;
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'control-name';
+                nameSpan.textContent = c.name;
+                
+                const readBtn = document.createElement('button');
+                readBtn.textContent = 'Read';
+                readBtn.onclick = () => readValue(c.name);
+                
+                const valSpan = document.createElement('span');
+                valSpan.style.fontSize = '0.8em';
+                valSpan.style.color = '#666';
+                valSpan.textContent = JSON.stringify(c["current-value"] || {});
+                
+                div.appendChild(nameSpan);
+                div.appendChild(readBtn);
+                div.appendChild(valSpan);
                 controlsContainer.appendChild(div);
             });
         }
         
-        window.readValue = (name) => {
+        function readValue(name) {
             sendCommand({ action: "get_value", control: name });
-        };
+        }
 
         // Event Listeners
-        document.getElementById('reconnect-btn').onclick = connectWS;
+        document.getElementById('reconnect-btn').onclick = initSocketCluster;
         
         document.getElementById('refresh-btn').onclick = () => {
             sendCommand({ action: "list_devices" });
@@ -269,24 +282,8 @@
              if(name) readValue(name);
         };
 
-        // Handle window state saving
-        if (window.electronAPI) {
-            window.electronAPI.onGetState(() => {
-                return {
-                    manualControlName: document.getElementById('manual-control-name').value,
-                    manualControlVal: document.getElementById('manual-control-val').value
-                };
-            });
-            window.electronAPI.onRestoreState((state) => {
-                if (state) {
-                    if (state.manualControlName) document.getElementById('manual-control-name').value = state.manualControlName;
-                    if (state.manualControlVal) document.getElementById('manual-control-val').value = state.manualControlVal;
-                }
-            });
-        }
-
         // Initial setup
-        connectWS();
+        initSocketCluster();
 
     </script>
 </body>
