@@ -51,18 +51,18 @@
         .row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
         
         #controls-container {
-            max-height: 300px;
+            max-height: 400px;
             overflow-y: auto;
             border: 1px solid #333;
             padding: 5px;
         }
         .control-item {
             background: #2d2d2d;
-            padding: 5px;
+            padding: 8px;
             margin-bottom: 5px;
             font-size: 0.9em;
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr;
+            grid-template-columns: 1.5fr 80px 1fr;
             gap: 10px;
             align-items: center;
         }
@@ -72,7 +72,7 @@
             background-color: #000;
             font-family: 'Consolas', monospace;
             padding: 10px;
-            height: 200px;
+            height: 150px;
             overflow-y: auto;
             border: 1px solid #333;
             font-size: 0.85em;
@@ -81,51 +81,53 @@
         .log-time { color: #569cd6; margin-right: 5px; }
         .log-tx { color: #4ec9b0; }
         .log-rx { color: #ce9178; }
+        .log-info { color: #888; font-style: italic; }
     </style>
 </head>
 <body>
 
     <div class="status-bar">
+        <span>Channel: <strong id="chan-display" style="color: #569cd6;">...</strong></span>
         <span>SocketCluster: <strong id="sc-status" class="status disconnected">Disconnected</strong></span>
         <button id="reconnect-btn">Reconnect</button>
     </div>
 
     <div class="card">
-        <h2>Device Selection</h2>
+        <h2>UVC Controls</h2>
         <div class="row">
-            <button id="refresh-btn">List Devices</button>
-            <select id="device-select" style="flex-grow: 1;">
-                <option value="-1">Select a device...</option>
-            </select>
-        </div>
-    </div>
-
-    <div class="card">
-        <h2>Controls</h2>
-        <div class="row">
-            <button id="get-controls-btn" disabled>Fetch Controls</button>
-            <button id="test-read-btn" disabled>Read Value</button>
-            <input type="text" id="manual-control-name" placeholder="Control Name">
-            <input type="text" id="manual-control-val" placeholder="Value">
-            <button id="manual-set-btn" disabled>Set</button>
+            <button id="get-controls-btn">Refresh Controls</button>
+            <input type="text" id="manual-control-name" placeholder="Control Name" style="flex-grow: 1;">
+            <input type="text" id="manual-control-val" placeholder="Value" style="width: 100px;">
+            <button id="manual-set-btn">Set</button>
         </div>
         <div id="controls-container">
-            <div style="padding:10px; color:#888;">No controls loaded.</div>
+            <div style="padding:10px; color:#888;">Connecting to camera channel...</div>
         </div>
     </div>
 
     <div class="card">
-        <h2>Log</h2>
+        <h2>Message Log</h2>
         <div id="log" class="log-box"></div>
     </div>
 
     <script type="module">
         import { create } from '../lib/socketcluster-client.min.js';
 
+        const urlParams = new URLSearchParams(window.location.search);
+        const deviceName = urlParams.get('name');
+        
+        if (!deviceName) {
+            document.body.innerHTML = '<div style="color: #ff4444; padding: 20px; font-weight: bold;">Error: No "name" parameter provided.<br>Usage: ?name=camera_alias</div>';
+            throw new Error("Missing name param");
+        }
+
+        const IN_CHAN = `uvc_in_${deviceName}`;
+        const OUT_CHAN = `uvc_out_${deviceName}`;
+        document.getElementById('chan-display').textContent = deviceName;
+
         let socket = null;
         const logBox = document.getElementById('log');
         const scStatus = document.getElementById('sc-status');
-        const deviceSelect = document.getElementById('device-select');
         const controlsContainer = document.getElementById('controls-container');
 
         function log(msg, type = 'rx') {
@@ -134,6 +136,7 @@
             const time = new Date().toLocaleTimeString().split(' ')[0];
             entry.innerHTML = `<span class="log-time">${time}</span><span class="log-${type}">${msg}</span>`;
             logBox.insertBefore(entry, logBox.firstChild);
+            if (logBox.children.length > 50) logBox.removeChild(logBox.lastChild);
         }
 
         async function initSocketCluster() {
@@ -151,9 +154,10 @@
                 for await (let event of socket.listener('connect')) {
                     scStatus.textContent = "Connected";
                     scStatus.className = "status connected";
-                    log("SocketCluster Connected", "tx");
-                    subscribeToResponses();
-                    document.getElementById('refresh-btn').click();
+                    log(`Connected to channel: ${deviceName}`, "info");
+                    subscribeToInChannel();
+                    // Initial load of controls
+                    setTimeout(() => sendCommand({ action: "get_controls" }), 500);
                 }
             })();
 
@@ -161,7 +165,7 @@
                 for await (let event of socket.listener('disconnect')) {
                     scStatus.textContent = "Disconnected";
                     scStatus.className = "status disconnected";
-                    log("SocketCluster Disconnected", "tx");
+                    log("SocketCluster Disconnected", "info");
                 }
             })();
 
@@ -172,8 +176,8 @@
             })();
         }
 
-        async function subscribeToResponses() {
-            const channel = socket.subscribe('uvcResponse');
+        async function subscribeToInChannel() {
+            const channel = socket.subscribe(IN_CHAN);
             for await (let msg of channel) {
                 handleMessage(msg);
             }
@@ -184,90 +188,69 @@
                 log("Error: Socket not open", "tx");
                 return;
             }
-            log("TX (Proc): " + data.action, "tx");
-            try {
-                // Use the procedure 'uvcCommand' defined in serverLogic.ts
-                await socket.invoke('uvcCommand', data);
-            } catch (err) {
-                log("TX Error: " + err.message, "tx");
-            }
+            log(`TX (${OUT_CHAN}): ${data.action}`, "tx");
+            socket.transmitPublish(OUT_CHAN, data);
         }
 
         function handleMessage(msg) {
-            log("RX: " + JSON.stringify(msg), "rx");
+            // Only log if not a repeating poll message to keep log readable
+            if (msg.action !== "poll") {
+                log("RX: " + JSON.stringify(msg), "rx");
+            }
 
-            if (msg.action === "list_devices") {
-                deviceSelect.innerHTML = '<option value="-1">Select a device...</option>';
-                (msg.data || []).forEach(dev => {
-                    const opt = document.createElement('option');
-                    opt.value = dev.index;
-                    opt.textContent = `${dev.name} (ID:${dev.productId})`;
-                    deviceSelect.appendChild(opt);
-                });
-            } else if (msg.action === "select_device") {
-                if (msg.success) {
-                    document.getElementById('get-controls-btn').disabled = false;
-                    document.getElementById('test-read-btn').disabled = false;
-                    document.getElementById('manual-set-btn').disabled = false;
-                    log("Device selected successfully", "rx");
-                }
-            } else if (msg.action === "get_controls") {
+            if (msg.action === "get_controls" || msg.action === "poll") {
                 renderControls(msg.data);
+            } else if (msg.action === "get_value") {
+                log(`Value for ${msg.control}: ${JSON.stringify(msg.data)}`, "rx");
             }
         }
 
         function renderControls(controls) {
-            controlsContainer.innerHTML = '';
-            if (!controls || controls.length === 0) {
-                controlsContainer.innerHTML = '<div style="padding:10px;">No controls found.</div>';
-                return;
-            }
+            if (!controls || !Array.isArray(controls)) return;
             
-            controls.forEach(c => {
-                const div = document.createElement('div');
-                div.className = 'control-item';
-                
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'control-name';
-                nameSpan.textContent = c.name;
-                
-                const readBtn = document.createElement('button');
-                readBtn.textContent = 'Read';
-                readBtn.onclick = () => readValue(c.name);
-                
-                const valSpan = document.createElement('span');
-                valSpan.style.fontSize = '0.8em';
-                valSpan.style.color = '#666';
-                valSpan.textContent = JSON.stringify(c["current-value"] || {});
-                
-                div.appendChild(nameSpan);
-                div.appendChild(readBtn);
-                div.appendChild(valSpan);
-                controlsContainer.appendChild(div);
-            });
-        }
-        
-        function readValue(name) {
-            sendCommand({ action: "get_value", control: name });
+            // Optimization: Only redraw if count changes, otherwise just update values
+            const existingRows = controlsContainer.querySelectorAll('.control-item');
+            if (existingRows.length !== controls.length) {
+                controlsContainer.innerHTML = '';
+                controls.forEach(c => {
+                    const div = document.createElement('div');
+                    div.className = 'control-item';
+                    div.id = `ctrl-${c.name}`;
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'control-name';
+                    nameSpan.textContent = c.name;
+                    
+                    const readBtn = document.createElement('button');
+                    readBtn.textContent = 'Read';
+                    readBtn.onclick = () => sendCommand({ action: "get_value", control: c.name });
+                    
+                    const valSpan = document.createElement('span');
+                    valSpan.className = 'control-val';
+                    valSpan.style.fontSize = '0.8em';
+                    valSpan.style.color = '#aaa';
+                    valSpan.textContent = JSON.stringify(c["current-value"] || {});
+                    
+                    div.appendChild(nameSpan);
+                    div.appendChild(readBtn);
+                    div.appendChild(valSpan);
+                    controlsContainer.appendChild(div);
+                });
+            } else {
+                // Update values in-place
+                controls.forEach(c => {
+                    const row = document.getElementById(`ctrl-${c.name}`);
+                    if (row) {
+                        const valSpan = row.querySelector('.control-val');
+                        if (valSpan) valSpan.textContent = JSON.stringify(c["current-value"] || {});
+                    }
+                });
+            }
         }
 
         // Event Listeners
         document.getElementById('reconnect-btn').onclick = initSocketCluster;
-        
-        document.getElementById('refresh-btn').onclick = () => {
-            sendCommand({ action: "list_devices" });
-        };
-
-        deviceSelect.onchange = () => {
-            const idx = deviceSelect.value;
-            if (idx !== "-1") {
-                sendCommand({ action: "select_device", index: idx });
-            }
-        };
-
-        document.getElementById('get-controls-btn').onclick = () => {
-            sendCommand({ action: "get_controls" });
-        };
+        document.getElementById('get-controls-btn').onclick = () => sendCommand({ action: "get_controls" });
 
         document.getElementById('manual-set-btn').onclick = () => {
             const name = document.getElementById('manual-control-name').value;
@@ -275,11 +258,6 @@
             if (name && val) {
                 sendCommand({ action: "set_value", control: name, value: val });
             }
-        };
-        
-        document.getElementById('test-read-btn').onclick = () => {
-             const name = document.getElementById('manual-control-name').value;
-             if(name) readValue(name);
         };
 
         // Initial setup

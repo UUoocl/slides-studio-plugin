@@ -431,7 +431,9 @@ export class ServerManager {
             // Handle 'uvcResponse' emits (from Python bridge)
             void (async () => {
                 for await (const data of socket.receiver('uvcResponse')) {
+                    console.warn("[Server] Received uvcResponse emit from bridge:", data);
                     void this.scServer?.exchange.transmitPublish('uvcResponse', data);
+                    this.plugin.handleUvcResponse(data as { action: string, data: unknown[] });
                 }
             })();
 
@@ -470,7 +472,8 @@ export class ServerManager {
         const outChannels = [
             ...this.plugin.settings.oscDevices.map(d => `osc_out_${d.name}`),
             ...this.plugin.settings.midiDevices.map(d => `midi_out_${d.name}`),
-            ...this.plugin.settings.gamepadDevices.map(d => `gamepad_in_${d.name}`)
+            ...this.plugin.settings.gamepadDevices.map(d => `gamepad_in_${d.name}`),
+            ...this.plugin.settings.uvcDevices.filter(d => d.enabled).map(d => `uvc_out_${d.name}`)
         ];
 
         console.warn(`[Server] Plugin subscribing to:`, outChannels);
@@ -538,6 +541,9 @@ export class ServerManager {
                    channel === 'keyboardPress' || channel === 'keyboardRelease' || channel === 'uvcResponse' || 
                    channel === 'uvcCommands') {
             void this.scServer?.exchange.transmitPublish(channel, data);
+            if (channel === 'uvcResponse') {
+                this.plugin.handleUvcResponse(data);
+            }
         }
     }
 
@@ -588,6 +594,10 @@ export class ServerManager {
         void this.scServer?.exchange.transmitPublish(`custom_${name}`, data);
     }
 
+    public broadcastUvcCommand(data: unknown): void {
+        void this.scServer?.exchange.transmitPublish('uvcCommands', data);
+    }
+
     public broadcastUvcMessage(data: unknown): void {
         void this.scServer?.exchange.transmitPublish('uvcResponse', data);
     }
@@ -632,6 +642,16 @@ export class ServerManager {
         const url = `ws://127.0.0.1:${this.port}/socketcluster/`;
         this.uvcUtilBridgeProcess = spawn(this.plugin.settings.pythonPath || 'python3', [scriptPath, "--url", url, "--lib", libPath]);
         this.setupProcessLogging(this.uvcUtilBridgeProcess, 'UvcUtilBridge');
+
+        // Send initial configuration after a short delay to allow for connection
+        this.uvcUtilBridgeProcess.on('spawn', () => {
+            setTimeout(() => {
+                this.broadcastUvcCommand({
+                    action: "configure",
+                    devices: this.plugin.settings.uvcDevices.filter(d => d.enabled)
+                });
+            }, 3000);
+        });
     }
 
     private setupProcessLogging(process: ChildProcess, name: string): void {

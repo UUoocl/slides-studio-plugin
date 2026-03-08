@@ -49,26 +49,6 @@
             font-family: inherit;
         }
 
-        /* Custom Device List */
-        .device-list {
-            background-color: #3c3c3c;
-            border: 1px solid #555;
-            border-radius: 2px;
-            max-height: 100px;
-            overflow-y: auto;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        .device-item {
-            padding: 8px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid #444;
-            font-size: 0.9em;
-        }
-        .device-item:last-child { border-bottom: none; }
-        .device-item.selected { background-color: #0e639c; color: white; }
-
         button { background-color: #0e639c; cursor: pointer; border: none; font-weight: bold; }
         button:hover { background-color: #1177bb; }
         button#stop-btn { background-color: #a31515; }
@@ -101,18 +81,9 @@
 <body>
 
     <div class="status-bar">
+        <span>Device: <strong id="chan-display" style="color: #569cd6;">...</strong></span>
         <span>SocketCluster: <strong id="sc-status" class="status disconnected">Disconnected</strong></span>
         <span>Polling: <strong id="poll-status" style="color:#888;">Idle</strong></span>
-    </div>
-
-    <div class="card">
-        <h2>Target Device</h2>
-        <div class="row">
-            <button id="refresh-btn">Refresh</button>
-            <div id="device-list" class="device-list">
-                <div style="padding:10px; color:#888;">Connecting...</div>
-            </div>
-        </div>
     </div>
 
     <div class="card">
@@ -139,19 +110,20 @@
     </div>
 
     <div class="card">
-        <h2>Configuration</h2>
+        <h2>Broadcast Settings</h2>
         <div class="grid">
             <div>
-                <label class="label">Interval (ms)</label>
+                <label class="label">Manual Interval (ms)</label>
                 <input type="number" id="poll-interval" value="250" min="50" style="width: 100%;">
+                <small style="color: #666;">Note: Plugin-level polling is preferred.</small>
             </div>
             <div>
-                <label class="label">Broadcast Channel</label>
+                <label class="label">Local Broadcast Channel</label>
                 <input type="text" id="bc-name" value="uvc-ptzf-mapped" style="width: 100%;">
             </div>
         </div>
         <div class="row" style="margin-top: 15px; margin-bottom: 0;">
-            <button id="start-btn" disabled style="flex: 1;">START BROADCAST</button>
+            <button id="start-btn" style="flex: 1;">START BROADCAST</button>
             <button id="stop-btn" disabled style="flex: 1;">STOP</button>
         </div>
     </div>
@@ -174,12 +146,23 @@
     <script type="module">
         import { create } from '../lib/socketcluster-client.min.js';
 
+        const urlParams = new URLSearchParams(window.location.search);
+        const deviceName = urlParams.get('name');
+        
+        if (!deviceName) {
+            document.body.innerHTML = '<div style="color: #ff4444; padding: 20px; font-weight: bold;">Error: No "name" parameter provided.<br>Usage: ?name=camera_alias</div>';
+            throw new Error("Missing name param");
+        }
+
+        const IN_CHAN = `uvc_in_${deviceName}`;
+        const OUT_CHAN = `uvc_out_${deviceName}`;
+        document.getElementById('chan-display').textContent = deviceName;
+
         let socket = null;
         let pollTimer = null;
         let bc = null;
-        let selectedIndex = -1;
 
-        // Hardware Limits (fetched on device select)
+        // Hardware Limits (fetched on connection)
         const hwLimits = {
             pan: { min: 0, max: 1 },
             tilt: { min: 0, max: 1 },
@@ -190,7 +173,6 @@
         const elements = {
             scStatus: document.getElementById('sc-status'),
             pollStatus: document.getElementById('poll-status'),
-            deviceList: document.getElementById('device-list'),
             startBtn: document.getElementById('start-btn'),
             stopBtn: document.getElementById('stop-btn'),
             log: document.getElementById('log'),
@@ -223,8 +205,9 @@
                     elements.scStatus.textContent = "Connected";
                     elements.scStatus.className = "status connected";
                     addLog("SocketCluster Connected");
-                    subscribeToResponses();
-                    sendCommand({ action: "list_devices" });
+                    subscribeToInChannel();
+                    // Fetch hardware ranges to ensure mapping is correct
+                    sendCommand({ action: "get_controls" });
                 }
             })();
 
@@ -244,8 +227,8 @@
             })();
         }
 
-        async function subscribeToResponses() {
-            const channel = socket.subscribe('uvcResponse');
+        async function subscribeToInChannel() {
+            const channel = socket.subscribe(IN_CHAN);
             for await (let msg of channel) {
                 handleMessage(msg);
             }
@@ -253,51 +236,23 @@
 
         async function sendCommand(data) {
             if (!socket || socket.state !== 'open') return;
-            try {
-                await socket.invoke('uvcCommand', data);
-            } catch (err) {
-                console.error("Command Error:", err);
-            }
+            socket.transmitPublish(OUT_CHAN, data);
         }
 
         function handleMessage(msg) {
-            if (msg.action === "list_devices") {
-                renderDeviceList(msg.data);
-            } else if (msg.action === "select_device") {
-                if (msg.success) {
-                    addLog("Device selected. Fetching hardware ranges...");
-                    sendCommand({ action: "get_controls" });
-                }
-            } else if (msg.action === "get_controls") {
+            if (msg.action === "get_controls" || msg.action === "poll") {
                 updateHwLimits(msg.data);
-                elements.startBtn.disabled = false;
-                addLog("Hardware ranges synchronized.");
+                // If it's a poll message, process values
+                if (msg.action === "poll") {
+                    processPollData(msg.data);
+                }
             } else if (msg.action === "get_value") {
-                processIncomingValue(msg.data);
+                processIncomingValue(msg);
             }
-        }
-
-        function renderDeviceList(devices) {
-            elements.deviceList.innerHTML = '';
-            if (!devices || devices.length === 0) {
-                elements.deviceList.innerHTML = '<div style="padding:10px; color:#888;">No devices found.</div>';
-                return;
-            }
-            devices.forEach(dev => {
-                const item = document.createElement('div');
-                item.className = 'device-item' + (selectedIndex == dev.index ? ' selected' : '');
-                item.textContent = dev.name;
-                item.onclick = () => {
-                    document.querySelectorAll('.device-item').forEach(el => el.classList.remove('selected'));
-                    item.classList.add('selected');
-                    selectedIndex = dev.index;
-                    sendCommand({ action: "select_device", index: dev.index });
-                };
-                elements.deviceList.appendChild(item);
-            });
         }
 
         function updateHwLimits(controls) {
+            if (!Array.isArray(controls)) return;
             controls.forEach(c => {
                 if (c.name === "pan-tilt-abs") {
                     hwLimits.pan.min = c.minimum.pan; hwLimits.pan.max = c.maximum.pan;
@@ -310,34 +265,48 @@
             });
         }
 
+        function processPollData(controls) {
+            if (!Array.isArray(controls)) return;
+            controls.forEach(c => {
+                if (c.name === "pan-tilt-abs" || c.name === "zoom-abs" || c.name === "focus-abs") {
+                    processIncomingValue({
+                        action: "get_value",
+                        control: c.name,
+                        data: c["current-value"]
+                    });
+                }
+            });
+        }
+
         function lerp(val, inMin, inMax, outMin, outMax) {
             if (inMax === inMin) return outMin;
             const res = (val - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
             return parseFloat(res.toFixed(3));
         }
 
-        function processIncomingValue(data) {
-            if (!data || data.error) return;
+        function processIncomingValue(msg) {
+            const data = msg.data;
+            if (!data || msg.error) return;
             
             const payload = { timestamp: Date.now() };
             const uMin = (id) => parseFloat(document.getElementById(`user-${id}-min`).value);
             const uMax = (id) => parseFloat(document.getElementById(`user-${id}-max`).value);
 
-            if (data.control === "pan-tilt-abs") {
-                payload.pan_raw = data.value.pan;
-                payload.tilt_raw = data.value.tilt;
-                payload.pan = lerp(data.value.pan, hwLimits.pan.min, hwLimits.pan.max, uMin('pan'), uMax('pan'));
-                payload.tilt = lerp(data.value.tilt, hwLimits.tilt.min, hwLimits.tilt.max, uMin('tilt'), uMax('tilt'));
+            if (msg.control === "pan-tilt-abs") {
+                payload.pan_raw = data.pan;
+                payload.tilt_raw = data.tilt;
+                payload.pan = lerp(data.pan, hwLimits.pan.min, hwLimits.pan.max, uMin('pan'), uMax('pan'));
+                payload.tilt = lerp(data.tilt, hwLimits.tilt.min, hwLimits.tilt.max, uMin('tilt'), uMax('tilt'));
                 
                 elements.mon.pan.textContent = payload.pan; elements.mon.rawPan.textContent = `raw: ${payload.pan_raw}`;
                 elements.mon.tilt.textContent = payload.tilt; elements.mon.rawTilt.textContent = `raw: ${payload.tilt_raw}`;
-            } else if (data.control === "zoom-abs") {
-                payload.zoom_raw = data.value;
-                payload.zoom = lerp(data.value, hwLimits.zoom.min, hwLimits.zoom.max, uMin('zoom'), uMax('zoom'));
+            } else if (msg.control === "zoom-abs") {
+                payload.zoom_raw = data;
+                payload.zoom = lerp(data, hwLimits.zoom.min, hwLimits.zoom.max, uMin('zoom'), uMax('zoom'));
                 elements.mon.zoom.textContent = payload.zoom; elements.mon.rawZoom.textContent = `raw: ${payload.zoom_raw}`;
-            } else if (data.control === "focus-abs") {
-                payload.focus_raw = data.value;
-                payload.focus = lerp(data.value, hwLimits.focus.min, hwLimits.focus.max, uMin('focus'), uMax('focus'));
+            } else if (msg.control === "focus-abs") {
+                payload.focus_raw = data;
+                payload.focus = lerp(data, hwLimits.focus.min, hwLimits.focus.max, uMin('focus'), uMax('focus'));
                 elements.mon.focus.textContent = payload.focus; elements.mon.rawFocus.textContent = `raw: ${payload.focus_raw}`;
             }
 
@@ -357,6 +326,7 @@
             
             addLog(`Broadcasting to channel '${bc.name}'...`);
 
+            // Optional: Manual polling if bridge polling is disabled
             pollTimer = setInterval(() => {
                 sendCommand({ action: "get_value", control: "pan-tilt-abs" });
                 sendCommand({ action: "get_value", control: "zoom-abs" });
@@ -372,45 +342,11 @@
             elements.stopBtn.disabled = true;
             elements.pollStatus.textContent = "Idle";
             elements.pollStatus.style.color = "#888";
-            addLog("Polling stopped.");
+            addLog("Broadcasting stopped.");
         }
 
-        document.getElementById('refresh-btn').onclick = () => sendCommand({ action: "list_devices" });
         document.getElementById('start-btn').onclick = startPolling;
         document.getElementById('stop-btn').onclick = stopPolling;
-
-        // Handle window state saving
-        if (window.electronAPI) {
-            window.electronAPI.onGetState(() => {
-                return {
-                    pollInterval: document.getElementById('poll-interval').value,
-                    bcName: document.getElementById('bc-name').value,
-                    selectedIndex: selectedIndex,
-                    mapping: {
-                        pan: [document.getElementById('user-pan-min').value, document.getElementById('user-pan-max').value],
-                        tilt: [document.getElementById('user-tilt-min').value, document.getElementById('user-tilt-max').value],
-                        zoom: [document.getElementById('user-zoom-min').value, document.getElementById('user-zoom-max').value],
-                        focus: [document.getElementById('user-focus-min').value, document.getElementById('user-focus-max').value]
-                    }
-                };
-            });
-            window.electronAPI.onRestoreState((state) => {
-                if (state) {
-                    if (state.pollInterval) document.getElementById('poll-interval').value = state.pollInterval;
-                    if (state.bcName) document.getElementById('bc-name').value = state.bcName;
-                    if (state.mapping) {
-                        document.getElementById('user-pan-min').value = state.mapping.pan[0];
-                        document.getElementById('user-pan-max').value = state.mapping.pan[1];
-                        document.getElementById('user-tilt-min').value = state.mapping.tilt[0];
-                        document.getElementById('user-tilt-max').value = state.mapping.tilt[1];
-                        document.getElementById('user-zoom-min').value = state.mapping.zoom[0];
-                        document.getElementById('user-zoom-max').value = state.mapping.zoom[1];
-                        document.getElementById('user-focus-min').value = state.mapping.focus[0];
-                        document.getElementById('user-focus-max').value = state.mapping.focus[1];
-                    }
-                }
-            });
-        }
 
         initSocketCluster();
     </script>

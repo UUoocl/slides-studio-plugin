@@ -65,6 +65,7 @@ const DEFAULT_SETTINGS: Partial<SlidesStudioPluginSettings> = {
     audioDevices: [],
     gamepadDevices: [],
     mediapipeDevices: [],
+    uvcDevices: [],
     all_sources: []
 };
 
@@ -272,6 +273,12 @@ export default class slidesStudioPlugin extends Plugin {
                 this.previousGamepadState[gp.index] = stateString;
                 this.serverManager?.broadcastGamepadMessage(device.name, state);
             }
+        }
+    }
+
+    public handleUvcResponse(data: { action: string, data: unknown[] }) {
+        if (data.action === "list_devices") {
+            this.app.workspace.trigger("slides-studio:uvc-devices", data.data);
         }
     }
 

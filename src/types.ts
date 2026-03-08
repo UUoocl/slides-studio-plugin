@@ -43,6 +43,14 @@ export interface MediaPipeDeviceSetting {
     autoStart?: boolean;
 }
 
+export interface UvcDeviceSetting {
+    name: string;      // User defined alias / channel name
+    index: number;     // Hardware index
+    enabled: boolean;
+    pollingEnabled: boolean;
+    pollsPerSecond: number;
+}
+
 /**
  * Main Plugin Settings
  */
@@ -82,6 +90,7 @@ export interface SlidesStudioPluginSettings {
     audioDevices: AudioDeviceSetting[];
     gamepadDevices: GamepadDeviceSetting[];
     mediapipeDevices: MediaPipeDeviceSetting[];
+    uvcDevices: UvcDeviceSetting[];
     all_sources: string[];
 }
 

@@ -8,6 +8,7 @@ import * as net from "net";
 export class slidesStudioSettingsTab extends PluginSettingTab {
     plugin: slidesStudioPlugin;
     private pythonStatusEl: HTMLElement;
+    private discoveredUvcDevices: { index: number, name: string }[] = [];
 
     constructor(app: App, plugin: slidesStudioPlugin) {
         super(app, plugin);
@@ -16,6 +17,23 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
         // Listen for gamepad events to refresh the settings UI
         window.addEventListener("gamepadconnected", () => this.display());
         window.addEventListener("gamepaddisconnected", () => this.display());
+
+        // Listen for UVC device discovery
+        this.plugin.app.workspace.on("slides-studio:uvc-devices", (devices: { index: number, name: string }[]) => {
+            console.warn("[Settings] Received discovered UVC devices:", devices);
+            this.discoveredUvcDevices = devices;
+            this.display();
+        });
+    }
+
+    private updateBridgeConfig() {
+        if (this.plugin.serverManager && this.plugin.settings.uvcUtilEnabled) {
+            const enabledDevices = this.plugin.settings.uvcDevices.filter(d => d.enabled);
+            this.plugin.serverManager.broadcastUvcCommand({
+                action: "configure",
+                devices: enabledDevices
+            });
+        }
     }
 
     private validatePythonPath(path: string) {
@@ -838,22 +856,132 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     } else if (value) {
                         new Notice("Server must be enabled to use uvc-util bridge.");
                     }
+                    this.display();
                 })
             );
 
-        new Setting(containerEl)
-            .setName("Uvc library path")
-            .setDesc("Path to libuvcutil.dylib (relative to plugin directory or absolute)")
-            .addText(text => text
-                .setValue(this.plugin.settings.uvcUtilLibPath)
-                .onChange(async (value) => {
-                    this.plugin.settings.uvcUtilLibPath = value;
-                    await this.plugin.saveSettings();
-                    if (this.plugin.settings.uvcUtilEnabled && this.plugin.serverManager) {
-                        void this.plugin.serverManager.restartUvcUtilBridge();
+        if (this.plugin.settings.uvcUtilEnabled) {
+            new Setting(containerEl)
+                .setName("Uvc library path")
+                .setDesc("Path to libuvcutil.dylib (relative to plugin directory or absolute)")
+                .addText(text => text
+                    .setValue(this.plugin.settings.uvcUtilLibPath)
+                    .onChange(async (value) => {
+                        this.plugin.settings.uvcUtilLibPath = value;
+                        await this.plugin.saveSettings();
+                        if (this.plugin.settings.uvcUtilEnabled && this.plugin.serverManager) {
+                            void this.plugin.serverManager.restartUvcUtilBridge();
+                        }
+                    })
+                );
+
+            new Setting(containerEl)
+                .setName("Uvc camera metadata")
+                .setDesc("Scan for available uvc devices via the bridge.")
+                .addButton(btn => btn
+                    .setButtonText("Refresh device list")
+                    .onClick(() => {
+                        console.warn("[Settings] Refresh device list clicked");
+                        if (this.plugin.serverManager) {
+                            console.warn("[Settings] Broadcasting uvcCommand: list_devices");
+                            this.plugin.serverManager.broadcastUvcCommand({ action: "list_devices" });
+                            new Notice("Scanning for uvc devices...");
+                        } else {
+                            console.error("[Settings] Server manager is null");
+                            new Notice("Server is not running.");
+                        }
+                    })
+                );
+
+            if (this.discoveredUvcDevices.length > 0) {
+                new Setting(containerEl)
+                    .setName("Discovered uvc devices")
+                    .setHeading();
+                
+                this.discoveredUvcDevices.forEach(dev => {
+                    const devDiv = containerEl.createDiv();
+                    devDiv.setCssProps({
+                        'border': '1px solid var(--background-modifier-border)',
+                        'padding': '10px',
+                        'margin-bottom': '10px',
+                        'border-radius': '5px'
+                    });
+
+                    let deviceSetting = this.plugin.settings.uvcDevices.find(d => d.index === dev.index);
+                    
+                    new Setting(devDiv)
+                        .setName(`${dev.name} (Index: ${dev.index})`)
+                        .addToggle(toggle => toggle
+                            .setTooltip("Enable this device for socketcluster messaging")
+                            .setValue(!!deviceSetting?.enabled)
+                            .onChange(async (value) => {
+                                if (value) {
+                                    if (!deviceSetting) {
+                                        deviceSetting = {
+                                            index: dev.index,
+                                            name: dev.name.replace(/\s+/g, '_').toLowerCase(),
+                                            enabled: true,
+                                            pollingEnabled: false,
+                                            pollsPerSecond: 1
+                                        };
+                                        this.plugin.settings.uvcDevices.push(deviceSetting);
+                                    } else {
+                                        deviceSetting.enabled = true;
+                                    }
+                                } else if (deviceSetting) {
+                                    deviceSetting.enabled = false;
+                                }
+                                await this.plugin.saveSettings();
+                                this.updateBridgeConfig();
+                                this.display();
+                            })
+                        );
+
+                    if (deviceSetting && deviceSetting.enabled) {
+                        new Setting(devDiv)
+                            .setName("Channel name")
+                            .setDesc(`uvc_in_{name} and uvc_out_{name}`)
+                            .addText(text => text
+                                .setValue(deviceSetting.name)
+                                .onChange(async (value) => {
+                                    deviceSetting.name = value;
+                                    await this.plugin.saveSettings();
+                                    this.updateBridgeConfig();
+                                })
+                            );
+
+                        new Setting(devDiv)
+                            .setName("Enable polling")
+                            .setDesc("Automatically fetch camera controls periodically.")
+                            .addToggle(toggle => toggle
+                                .setValue(deviceSetting.pollingEnabled)
+                                .onChange(async (value) => {
+                                    deviceSetting.pollingEnabled = value;
+                                    await this.plugin.saveSettings();
+                                    this.updateBridgeConfig();
+                                    this.display();
+                                })
+                            );
+
+                        if (deviceSetting.pollingEnabled) {
+                            new Setting(devDiv)
+                                .setName("Polls per second")
+                                .addText(text => text
+                                    .setValue(deviceSetting.pollsPerSecond.toString())
+                                    .onChange(async (value) => {
+                                        const val = parseFloat(value);
+                                        if (!isNaN(val)) {
+                                            deviceSetting.pollsPerSecond = val;
+                                            await this.plugin.saveSettings();
+                                            this.updateBridgeConfig();
+                                        }
+                                    })
+                                );
+                        }
                     }
-                })
-            );
+                });
+            }
+        }
         // #endregion
 
         // #region Audio Settings
@@ -1023,7 +1151,15 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
             .setName("Gamepad devices")
             .setHeading();
 
-        containerEl.createEl("p", { text: "Manage connected gamepads and map them to socketcluster channels. Use the gamepad input app to broadcast data." });
+        new Setting(containerEl)
+            .setDesc("Manage connected gamepads and map them to socketcluster channels. Use the gamepad input app to broadcast data.")
+            .addButton(btn => btn
+                .setButtonText("Refresh gamepads")
+                .onClick(() => {
+                    console.warn("[Settings] Manual gamepad refresh requested");
+                    this.display();
+                })
+            );
 
         const connectedGamepads = navigator.getGamepads();
         let hasConnectedGamepad = false;

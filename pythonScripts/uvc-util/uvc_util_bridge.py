@@ -8,11 +8,12 @@ import time
 from socketclusterclient import Socketcluster
 
 # Global variables
-# Note: Users might need to provide the absolute path to the dylib
 lib_path = os.path.join(os.path.dirname(__file__), "libuvcutil.dylib")
 uvc_lib = None
 sc = None
 connected = False
+configs = {} # name -> {index, polling, pps, last_poll}
+lock = threading.Lock()
 
 # --- UVC Library Interface ---
 class UVCLib:
@@ -90,52 +91,119 @@ class UVCLib:
             return json.loads(res_ptr.decode('utf-8'))
         return None
 
-def send_to_sc(data):
+def send_to_sc(channel, data):
     if connected and sc:
-        sc.emit("uvcResponse", data)
+        sc.publish(channel, data)
 
-def process_command(payload):
-    global uvc_lib
+def process_command(payload, device_index=None):
+    global uvc_lib, lock
     if not uvc_lib or not uvc_lib.is_loaded():
         return {"error": "UVC library not loaded"}
         
     action = payload.get("action")
     
-    if action == "list_devices":
-        return {"action": "list_devices", "data": uvc_lib.get_devices()}
-        
-    elif action == "select_device":
-        idx = payload.get("index")
-        if idx is not None:
-            success = uvc_lib.select_device(int(idx))
-            return {"action": "select_device", "success": success}
-        return {"error": "Missing index"}
-        
-    elif action == "get_controls":
-        return {"action": "get_controls", "data": uvc_lib.get_controls()}
-        
-    elif action == "get_value":
-        control = payload.get("control")
-        if control:
-            return {"action": "get_value", "data": uvc_lib.get_value(control)}
-        return {"error": "Missing control name"}
-        
-    elif action == "set_value":
-        control = payload.get("control")
-        value = payload.get("value")
-        if control and value is not None:
-            return {"action": "set_value", "data": uvc_lib.set_value(control, value)}
-        return {"error": "Missing control name or value"}
-        
+    with lock:
+        # If device_index is provided, select it before processing
+        if device_index is not None:
+            uvc_lib.select_device(device_index)
+            
+        if action == "list_devices":
+            uvc_lib.lib.uvclib_refresh_devices()
+            return {"action": "list_devices", "data": uvc_lib.get_devices()}
+            
+        elif action == "get_controls":
+            return {"action": "get_controls", "data": uvc_lib.get_controls()}
+            
+        elif action == "get_value":
+            control = payload.get("control")
+            if control:
+                return {"action": "get_value", "control": control, "data": uvc_lib.get_value(control)}
+            return {"error": "Missing control name"}
+            
+        elif action == "set_value":
+            control = payload.get("control")
+            value = payload.get("value")
+            if control and value is not None:
+                return {"action": "set_value", "control": control, "data": uvc_lib.set_value(control, value)}
+            return {"error": "Missing control name or value"}
+            
     return {"error": "Unknown action"}
+
+def on_uvc_out(channel, data):
+    # channel is uvc_out_{name}
+    name = channel.replace("uvc_out_", "")
+    config = configs.get(name)
+    if not config:
+        return
+        
+    try:
+        response = process_command(data, device_index=config['index'])
+        if response:
+            send_to_sc(f"uvc_in_{name}", response)
+    except Exception as e:
+        send_to_sc(f"uvc_in_{name}", {"error": str(e)})
+
+def on_uvc_command(channel, data):
+    action = data.get("action")
+    if action == "configure":
+        update_configs(data.get("devices", []))
+    else:
+        try:
+            response = process_command(data)
+            if response:
+                sc.emit("uvcResponse", response)
+        except Exception as e:
+            sc.emit("uvcResponse", {"error": str(e)})
+
+def update_configs(device_list):
+    global configs, sc
+    new_configs = {}
+    for d in device_list:
+        name = d['name']
+        new_configs[name] = {
+            'index': d['index'],
+            'polling': d.get('pollingEnabled', False),
+            'pps': d.get('pollsPerSecond', 1),
+            'last_poll': 0
+        }
+        # Subscribe to out channel if new
+        if name not in configs:
+            chan = f"uvc_out_{name}"
+            sc.subscribe(chan)
+            sc.onchannel(chan, on_uvc_out)
+            print(f"Subscribed to {chan}")
+            
+    configs = new_configs
+
+def polling_loop():
+    while True:
+        if not connected:
+            time.sleep(1)
+            continue
+            
+        now = time.time()
+        # Create a snapshot of configs to avoid dict size change during iteration
+        items = list(configs.items())
+        for name, config in items:
+            if config['polling']:
+                interval = 1.0 / max(0.1, config['pps'])
+                if now - config['last_poll'] >= interval:
+                    config['last_poll'] = now
+                    try:
+                        res = process_command({"action": "get_controls"}, device_index=config['index'])
+                        if res and "data" in res:
+                            send_to_sc(f"uvc_in_{name}", {"action": "poll", "data": res['data']})
+                    except:
+                        pass
+        time.sleep(0.01)
 
 def on_connect(socket):
     global connected
     connected = True
     print("Connected to SocketCluster")
-    send_to_sc({"status": "connected", "lib_loaded": uvc_lib.is_loaded()})
+    sc.emit("uvcResponse", {"status": "connected", "lib_loaded": uvc_lib.is_loaded()})
     
-    # Subscribe to commands
+    # Subscribe to general commands
     socket.subscribe('uvcCommands')
     socket.onchannel('uvcCommands', on_uvc_command)
 
@@ -146,16 +214,6 @@ def on_disconnect(socket):
 
 def on_connect_error(socket, error):
     print(f"Connection Error: {error}")
-
-def on_uvc_command(key, data):
-    print(f"Received command: {data}")
-    try:
-        response = process_command(data)
-        if response:
-            send_to_sc(response)
-    except Exception as e:
-        print(f"Error processing command: {e}")
-        send_to_sc({"error": str(e)})
 
 def main():
     global uvc_lib, lib_path, sc
@@ -170,6 +228,10 @@ def main():
     
     print(f"Initializing UVC Bridge, connecting to {target_url}...")
     uvc_lib = UVCLib(lib_path)
+    
+    # Start polling thread
+    pt = threading.Thread(target=polling_loop, daemon=True)
+    pt.start()
     
     # Initialize SocketCluster
     sc = Socketcluster.socket(target_url)
