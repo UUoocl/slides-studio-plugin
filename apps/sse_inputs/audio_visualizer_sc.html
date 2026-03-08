@@ -85,8 +85,9 @@
         <div class="no-data" id="no-data-msg">Waiting for audio data...</div>
     </div>
 
-    <script src="../lib/socketcluster-client.min.js"></script>
-    <script>
+    <script type="module">
+        import { create } from '../lib/socketcluster-client.min.js';
+
         const container = document.getElementById('visualizers-container');
         const noDataMsg = document.getElementById('no-data-msg');
         const statusDot = document.getElementById('status-dot');
@@ -94,7 +95,7 @@
         const devices = new Map(); // name -> { card, ctx, lastUpdate }
 
         // SocketCluster Setup
-        const socket = socketClusterClient.create({
+        const socket = create({
             hostname: window.location.hostname,
             port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
             path: '/socketcluster/'

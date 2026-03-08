@@ -6,9 +6,10 @@ import { ServerManager } from 'src/utils/serverLogic';
 import { OscManager} from 'src/utils/oscLogic';
 import { MidiManager} from 'src/utils/midiLogic';
 import { AudioManager } from 'src/utils/audioLogic';
+import { MediaPipeManager } from 'src/utils/mediapipeLogic';
 
 // Re-export for Typedoc
-export { ServerManager, OscManager, MidiManager, AudioManager };
+export { ServerManager, OscManager, MidiManager, AudioManager, MediaPipeManager };
 export * from './types';
 
 import { Message } from 'node-osc';
@@ -19,7 +20,8 @@ import {
     WssDetails, 
     OBSSceneList, 
     OBSSceneItemList, 
-    OBSCustomEvent 
+    OBSCustomEvent,
+    OBSInputListResponse
 } from './types';
 
 import { ConnectObsCommand } from './commands/connectObs';
@@ -44,6 +46,7 @@ const DEFAULT_SETTINGS: Partial<SlidesStudioPluginSettings> = {
 	obsCollection_Text: "Untitled",
 	obsDebugPort_Text: "9222",
 	obsAppPath_Text: "",
+    obsRequestLimit: 10,
     serverPort: "57000",
     serverEnabled: false,
     pythonPath: "python3",
@@ -59,7 +62,10 @@ const DEFAULT_SETTINGS: Partial<SlidesStudioPluginSettings> = {
     settingsFile: "slides-studio-settings.md",
 	oscDevices: [],
 	midiDevices: [],
-    audioDevices: []
+    audioDevices: [],
+    gamepadDevices: [],
+    mediapipeDevices: [],
+    all_sources: []
 };
 
 /**
@@ -71,9 +77,13 @@ export default class slidesStudioPlugin extends Plugin {
 	public oscManager: OscManager;
 	public midiManager: MidiManager; 
     public audioManager: AudioManager;
+    public mediapipeManager: MediaPipeManager;
 	public serverManager: ServerManager | null = null; 
 	public obs: OBSWebSocket;
 	public isObsConnected = false;
+
+    private gamepadLoopActive = false;
+    private previousGamepadState: string[] = [];
 
 	/**
 	 * Loads the plugin settings from the data store.
@@ -181,8 +191,89 @@ export default class slidesStudioPlugin extends Plugin {
             }
         });
 
+        this.mediapipeManager = new MediaPipeManager(this);
+
 		this.setupObsEventListeners();
+
+        // Auto-connect devices
+        this.app.workspace.onLayoutReady(async () => {
+            this.settings.oscDevices.forEach(device => {
+                if (device.autoStart) {
+                    console.log(`[Plugin] Auto-connecting OSC device: ${device.name}`);
+                    this.oscManager.connectDevice(device);
+                }
+            });
+
+            this.settings.midiDevices.forEach(device => {
+                if (device.autoStart) {
+                    console.log(`[Plugin] Auto-connecting MIDI device: ${device.name}`);
+                    this.midiManager.connectDevice(device);
+                }
+            });
+
+            this.settings.audioDevices.forEach(device => {
+                if (device.autoStart) {
+                    console.log(`[Plugin] Auto-connecting Audio device: ${device.name}`);
+                    void this.audioManager.connectDevice(device);
+                }
+            });
+
+            // MediaPipe initialization
+            if (this.isObsConnected) {
+                const wssDetails = {
+                    IP: this.settings.websocketIP_Text,
+                    PORT: this.settings.websocketPort_Text,
+                    PW: this.settings.websocketPW_Text
+                };
+                await this.mediapipeManager.connect(wssDetails);
+                
+                this.settings.mediapipeDevices.forEach(device => {
+                    if (device.autoStart) {
+                        console.log(`[Plugin] Auto-starting MediaPipe task: ${device.name}`);
+                        void this.mediapipeManager.startTask(device);
+                    }
+                });
+            }
+
+            this.startGamepadLoop();
+        });
 	}
+
+    private startGamepadLoop() {
+        if (this.gamepadLoopActive) return;
+        this.gamepadLoopActive = true;
+        
+        const poll = () => {
+            if (!this.gamepadLoopActive) return;
+            this.broadcastGamepadStatus();
+            requestAnimationFrame(poll);
+        };
+        poll();
+    }
+
+    private broadcastGamepadStatus() {
+        const gamepads = navigator.getGamepads();
+        for (let i = 0; i < gamepads.length; i++) {
+            const gp = gamepads[i];
+            if (!gp) continue;
+
+            const device = this.settings.gamepadDevices.find(d => d.index === gp.index);
+            if (!device || !device.enabled) continue;
+
+            const state = {
+                index: gp.index,
+                id: gp.id,
+                buttons: gp.buttons.map(b => ({ pressed: b.pressed, value: b.value })),
+                axes: gp.axes
+            };
+
+            const stateString = JSON.stringify(state);
+            if (this.previousGamepadState[gp.index] !== stateString) {
+                this.previousGamepadState[gp.index] = stateString;
+                this.serverManager?.broadcastGamepadMessage(device.name, state);
+            }
+        }
+    }
 
 	/**
 	 * Sets up listeners for OBS WebSocket events.
@@ -191,11 +282,13 @@ export default class slidesStudioPlugin extends Plugin {
 	private setupObsEventListeners(): void {
 		this.obs.on('ConnectionOpened', () => {
 			console.warn('[Plugin] Connection to OBS WebSocket successfully opened');
+            this.serverManager?.broadcastObsEvent('ConnectionOpened', {});
 		});
 
 		this.obs.on('ConnectionClosed', () => {
 			console.warn('[Plugin] Connection to OBS WebSocket closed');
 			this.isObsConnected = false;
+            this.serverManager?.broadcastObsEvent('ConnectionClosed', {});
 		});
 
 		this.obs.on('ConnectionError', (err) => {
@@ -205,6 +298,7 @@ export default class slidesStudioPlugin extends Plugin {
 		this.obs.on("Identified", () => {
 			console.warn('[Plugin] OBS WebSocket identified successfully');
 			this.isObsConnected = true;
+            this.serverManager?.broadcastObsEvent('Identified', {});
 
 			const wssDetails = {
 				IP: this.settings.websocketIP_Text,
@@ -235,11 +329,37 @@ export default class slidesStudioPlugin extends Plugin {
 
 		// Forward common OBS events to SocketCluster
 		const commonEvents = [
-			'SceneTransitionStarted', 'SceneTransitionEnded',
-			'CurrentProgramSceneChanged', 'CurrentPreviewSceneChanged',
-			'SceneItemCreated', 'SceneItemRemoved', 'SceneItemEnableStateChanged',
-			'InputVolumeChanged', 'InputMuteStateChanged',
-			'StreamStateChanged', 'RecordStateChanged'
+            // General Events
+            'ExitStarted', 'VendorEvent',
+            // Config Events
+            'CurrentSceneCollectionChanging', 'CurrentSceneCollectionChanged', 'SceneCollectionListChanged',
+            'CurrentProfileChanging', 'CurrentProfileChanged', 'ProfileListChanged',
+            // Canvases Events
+            'CanvasCreated', 'CanvasRemoved', 'CanvasNameChanged',
+            // Scenes Events
+            'SceneCreated', 'SceneRemoved', 'SceneNameChanged',
+            'CurrentProgramSceneChanged', 'CurrentPreviewSceneChanged', 'SceneListChanged',
+            // Inputs Events
+            'InputCreated', 'InputRemoved', 'InputNameChanged', 'InputSettingsChanged',
+            'InputActiveStateChanged', 'InputShowStateChanged', 'InputMuteStateChanged',
+            'InputVolumeChanged', 'InputAudioBalanceChanged', 'InputAudioSyncOffsetChanged',
+            'InputAudioTracksChanged', 'InputAudioMonitorTypeChanged', 'InputVolumeMeters',
+            // Transitions Events
+            'CurrentSceneTransitionChanged', 'CurrentSceneTransitionDurationChanged',
+            'SceneTransitionStarted', 'SceneTransitionEnded', 'SceneTransitionVideoEnded',
+            // Filters Events
+            'SourceFilterListReindexed', 'SourceFilterCreated', 'SourceFilterRemoved',
+            'SourceFilterNameChanged', 'SourceFilterSettingsChanged', 'SourceFilterEnableStateChanged',
+            // Scene Items Events
+            'SceneItemCreated', 'SceneItemRemoved', 'SceneItemListReindexed',
+            'SceneItemEnableStateChanged', 'SceneItemLockStateChanged', 'SceneItemSelected', 'SceneItemTransformChanged',
+            // Outputs Events
+            'StreamStateChanged', 'RecordStateChanged', 'RecordFileChanged',
+            'ReplayBufferStateChanged', 'VirtualcamStateChanged', 'ReplayBufferSaved',
+            // Media Inputs Events
+            'MediaInputPlaybackStarted', 'MediaInputPlaybackEnded', 'MediaInputActionTriggered',
+            // Ui Events
+            'StudioModeStateChanged', 'ScreenshotSaved'
 		];
 		commonEvents.forEach(eventName => {
 			this.obs.on(eventName as any, (data) => {
@@ -286,16 +406,27 @@ export default class slidesStudioPlugin extends Plugin {
 		this.settings.camera_tags = [];
 		this.settings.camera_shape_tags = [];
 		this.settings.slide_tags = [];
+        this.settings.all_sources = [];
 
 		try {
 			const sceneList = await this.obs.call("GetSceneList") as unknown as OBSSceneList;
 			sceneList.scenes.forEach((scene) => {
+                if (!this.settings.all_sources.includes(scene.sceneName)) {
+                    this.settings.all_sources.push(scene.sceneName);
+                }
 				if(scene.sceneName.startsWith("Scene")){
 					if (!this.settings.scene_tags.includes(scene.sceneName)) {
 						this.settings.scene_tags.push(scene.sceneName);
 					}
 				}
 			});
+
+            const inputList = await this.obs.call("GetInputList") as unknown as OBSInputListResponse;
+            inputList.inputs.forEach((input) => {
+                if (!this.settings.all_sources.includes(input.inputName)) {
+                    this.settings.all_sources.push(input.inputName);
+                }
+            });
 
 			const tagMapping = [
 				{ scene: 'Camera Position', target: this.settings.camera_tags },
@@ -330,6 +461,11 @@ export default class slidesStudioPlugin extends Plugin {
 			await this.disconnect();
 			await this.obs.connect(`ws://${wssDetails.IP}:${wssDetails.PORT}`, wssDetails.PW, { rpcVersion: 1 });
 			new Notice("Connected to obs websocket server");
+            
+            // Also connect MediaPipe
+            if (this.mediapipeManager) {
+                await this.mediapipeManager.connect(wssDetails);
+            }
 		} catch (error) {
 			new Notice("Failed to connect to obs websocket server");
 			console.error(error)
@@ -345,6 +481,9 @@ export default class slidesStudioPlugin extends Plugin {
 				await this.obs.disconnect();
 				this.isObsConnected = false; 
 			}
+            if (this.mediapipeManager) {
+                await this.mediapipeManager.disconnect();
+            }
 		} catch(error) {
 			console.error("Disconnect error", error);
 		} 
@@ -391,10 +530,12 @@ export default class slidesStudioPlugin extends Plugin {
 	 */
 	onunload(): void {
 		new Notice("Disabled slides studio plugin");
+        this.gamepadLoopActive = false;
 		if (this.serverManager) void this.serverManager.stop();
 		if (this.oscManager) this.oscManager.disconnectAll();
 		if (this.midiManager) this.midiManager.disconnectAll(this.settings.midiDevices);
         if (this.audioManager) this.audioManager.disconnectAll(this.settings.audioDevices);
+        if (this.mediapipeManager) void this.mediapipeManager.disconnect();
 		if (this.obs) void this.obs.disconnect();
 	}
 }

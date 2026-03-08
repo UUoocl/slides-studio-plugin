@@ -1,185 +1,134 @@
-/*
- * Gamepad API Test
- * Written in 2013 by Ted Mielczarek <ted@mielczarek.org>
- *
- * To the extent possible under law, the author(s) have dedicated all copyright and related and neighboring rights to this software to the public domain worldwide. This software is distributed without any warranty.
- *
- * You should have received a copy of the CC0 Public Domain Dedication along with this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
+import { create } from './socketcluster-client.min.js';
+
+/**
+ * Initializes a Gamepad Monitor that subscribes to multiple SocketCluster channels.
+ * @param {string} containerId - The ID of the element to hold gamepad cards.
+ * @param {string} statusId - The ID of the element to show connection status.
  */
-let haveEvents = "GamepadEvent" in window;
-let controllers = {};
-let rAF = window.requestAnimationFrame;
-let previous = [];
-function connecthandler(e) {
-    addgamepad(e.gamepad);
-}
+export function initGamepadMonitor(containerId, statusId) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const namesParam = urlParams.get('name');
+    
+    if (!namesParam) {
+        const container = document.getElementById(containerId);
+        if (container) {
+            container.innerHTML = '<div style="color: #ff4444; font-weight: bold; padding: 1rem; border: 1px solid #ff4444; border-radius: 8px;">Error: No gamepad "name" provided in query string.<br>Example: ?name=player1,player2</div>';
+        }
+        return;
+    }
 
-function addgamepad(gamepad) {
-  controllers[gamepad.index] = gamepad;
-  let d = document.createElement("div");
-  d.setAttribute("id", "controller" + gamepad.index);
-  let t = document.createElement("h4");
-  t.appendChild(document.createTextNode(`gamepad-${gamepad.index}:  `+ gamepad.id));
-  d.appendChild(t);
-  let b = document.createElement("div");
-  b.className = "buttons";
-  let arrayIndex = -1;
-  for (let i = 0; i < gamepad.buttons.length; i++) {
-    let e = document.createElement("span");
-    e.className = "button";
-    //e.id = "b" + i;
-    arrayIndex = arrayIndex + 1;
-    e.innerHTML = i;
-    b.appendChild(e);
-  }
-  d.appendChild(b);
-  let a = document.createElement("div");
-  a.className = "buttons";
-  for (i = 0; i < gamepad.axes.length; i++) {
-    arrayIndex = arrayIndex + 1;
-    e = document.createElement("div");
-    e.className = "axis";
-    //e.id = "a" + i;
-    e.setAttribute("min", "-1");
-    e.setAttribute("max", "1");
-    e.setAttribute("value", "0");
-    e.innerHTML = arrayIndex;
-    e.setAttribute("arrayIndex", arrayIndex)
-    a.appendChild(e);
+    const deviceNames = namesParam.split(',').map(n => n.trim());
+    const initializedDevices = new Set();
 
-  }
-  d.appendChild(a);
-  document.getElementById("startGP").style.display = "none";
-  document.getElementById("gpData").appendChild(d);
-  rAF(updateStatus);
-}
+    const socket = create({
+        hostname: window.location.hostname,
+        port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
+        path: '/socketcluster/'
+    });
 
-function disconnecthandler(e) {
-  removegamepad(e.gamepad);
-}
+    (async () => {
+        for await (let {error} of socket.listener('error')) {
+            console.error('SocketCluster error:', error);
+        }
+    })();
 
-function removegamepad(gamepad) {
-  let d = document.getElementById("controller" + gamepad.index);
-  document.body.removeChild(d);
-  delete controllers[gamepad.index];
-}
+    (async () => {
+        for await (let event of socket.listener('connect')) {
+            console.log('Connected to SocketCluster');
+            const statusEl = document.getElementById(statusId);
+            if (statusEl) statusEl.textContent = 'Status: Connected';
+            socket.invoke('setInfo', { name: `Gamepad Monitor: ${namesParam}` });
+            
+            deviceNames.forEach(name => {
+                if (name) subscribeToChannel(name);
+            });
+        }
+    })();
 
-function updateStatus() {
-  scangamepads();
-  for (j in controllers) {
-    let controller = controllers[j];
-    let d = document.getElementById("controller" + j);
-    let buttons = d.getElementsByClassName("button");
-    let sum = 0;
-    let current = ``;
-    for (let i = 0; i < controller.buttons.length; i++) {
-      let b = buttons[i];
-      let val = controller.buttons[i];
-      let pressed = val == 1.0;
-      let touched = false;
-      if (typeof val == "object") {
-        pressed = val.pressed;
-        if ("touched" in val) {
-          touched = val.touched;
+    (async () => {
+        for await (let event of socket.listener('disconnect')) {
+            console.log('Disconnected from SocketCluster');
+            const statusEl = document.getElementById(statusId);
+            if (statusEl) statusEl.textContent = 'Status: Disconnected';
+        }
+    })();
+
+    async function subscribeToChannel(deviceName) {
+        const channelName = `gamepad_in_${deviceName}`;
+        const channel = socket.subscribe(channelName);
+        console.log('Subscribed to:', channelName);
+        
+        for await (let data of channel) {
+            if (!initializedDevices.has(deviceName)) {
+                setupUI(deviceName, data);
+                initializedDevices.add(deviceName);
+            }
+            updateUI(deviceName, data);
+        }
+    }
+
+    function setupUI(deviceName, data) {
+        const gpData = document.getElementById(containerId);
+        const waitingMsg = document.getElementById('waitingMsg');
+        if (waitingMsg) waitingMsg.style.display = 'none';
+
+        const d = document.createElement("div");
+        d.className = "card";
+        d.id = `controller-${deviceName}`;
+        
+        const chanInfo = document.createElement("div");
+        chanInfo.className = "channel-info";
+        chanInfo.textContent = `Channel: gamepad_in_${deviceName}`;
+        d.appendChild(chanInfo);
+
+        const t = document.createElement("h3");
+        t.textContent = `Gamepad: ${data.id || 'Unknown'} (${deviceName})`;
+        d.appendChild(t);
+
+        const b = document.createElement("div");
+        b.className = "buttons";
+        for (let i = 0; i < data.buttons.length; i++) {
+            const s = document.createElement("span");
+            s.className = "button";
+            s.textContent = i;
+            b.appendChild(s);
+        }
+        d.appendChild(b);
+
+        const a = document.createElement("div");
+        a.className = "axes";
+        for (let i = 0; i < data.axes.length; i++) {
+            const ax = document.createElement("div");
+            ax.className = "axis";
+            ax.id = `axis-${deviceName}-${i}`;
+            ax.textContent = `Axis ${i}: 0.0000`;
+            a.appendChild(ax);
+        }
+        d.appendChild(a);
+
+        gpData.appendChild(d);
+    }
+
+    function updateUI(deviceName, data) {
+        const card = document.getElementById(`controller-${deviceName}`);
+        if (!card) return;
+
+        const buttons = card.getElementsByClassName("button");
+        for (let i = 0; i < data.buttons.length; i++) {
+            const b = buttons[i];
+            if (!b) continue;
+            
+            const val = data.buttons[i];
+            const pressed = typeof val === "object" ? val.pressed : val === 1.0;
+            
+            if (pressed) b.classList.add("pressed");
+            else b.classList.remove("pressed");
         }
 
-        //sum += val.value;
-        val = val.value;
-      }
-      current += `${val}, `
-      let pct = Math.round(val * 100) + "%";
-      b.style.backgroundSize = pct + " " + pct;
-      b.className = "button";
-      if (pressed) {
-        b.className += " pressed";
-      }
-      if (touched) {
-        b.className += " touched";
-      }
+        for (let i = 0; i < data.axes.length; i++) {
+            const axisVal = data.axes[i];
+            const axisEl = document.getElementById(`axis-${deviceName}-${i}`);
+            if (axisEl) axisEl.textContent = `Axis ${i}: ${axisVal.toFixed(4)}`;
+        }
     }
-    
-    let axes = d.getElementsByClassName("axis");
-    for (let i = 0; i < controller.axes.length; i++) {
-      let a = axes[i];
-      //a.getAttribute('arrayIndex')
-      a.innerHTML = i + ": " + controller.axes[i].toFixed(4);
-      a.setAttribute("value", controller.axes[i]);
-      //sum += Math.abs(controller.axes[i]);
-      //ignore control drift. 
-      if(Math.abs(controller.axes[i]) > 0.5){
-      current += `${controller.axes[i]}, `
-      }else{current += '0, '
-      }
-    }
-    //if sum is > 0 a button is pressed or stick moved
-    //if the a button is pressed
-    if (previous[j] !== current) {
-      //console.log(controller.id, current)
-      //console.log(sum)
-      previous[j]
-       = current;
-       controller.message = "adv scene switcher route"
-       messageData = JSON.stringify(controller)l
-       console.log({"id": controller.id, "index": controller.index, "data":current, "timestamp":controller.timestamp})
-      //  console.log(controller)
-      //https://github.com/svidgen/www.thepointless.com/blob/main/src/routes/experimental/raw-gamepad-api/index.js
-      //stringify the gamepad event 
-    //   const gamepadEvent = JSON.stringify(
-    //     navigator.getGamepads()
-    //     .filter(p => p)
-    //     .filter(p => p.index == j)
-    //     .map(pad => ({
-    //         index: pad.index,
-    //         id: pad.id,
-    //         mapping: pad.mapping,
-    //         axes: pad.axes,
-    //         buttons: [...pad.buttons].map(b => ({
-    //             pressed: b.pressed,
-    //             touched: b.touched,
-    //             value: b.value
-    //         })),
-    //         vibrationActuator: pad.vibrationActuator
-    //     }))[0],
-    //     null,
-    //     2
-    // )
-
-    //send results to OBS Browser Source
-    //console.log(sum, gamepadEvent)
-      obsWss.call("CallVendorRequest", {
-        vendorName: "obs-browser",
-        requestType: "emit_event",
-        requestData: {
-          event_name: `gamepad-message`,
-          event_data: { messageData },
-        },
-      });
-      
-      // send results to Advanced Scene Switcher
-      obsWss.call("CallVendorRequest", {
-        vendorName: "AdvancedSceneSwitcher",
-        requestType: "AdvancedSceneSwitcherMessage",
-        requestData: {
-          message: messageData,
-        },
-      });
-    }
-  }
-  rAF(updateStatus);
-}
-
-function scangamepads() {
-  let gamepads = navigator.getGamepads();
-  for (var i = 0; i < gamepads.length; i++) {
-    if (gamepads[i] && gamepads[i].index in controllers) {
-      controllers[gamepads[i].index] = gamepads[i];
-    }
-  }
-}
-
-if (haveEvents) {
-  window.addEventListener("gamepadconnected", connecthandler);
-  window.addEventListener("gamepaddisconnected", disconnecthandler);
-} else {
-  setInterval(scangamepads, 500);
 }

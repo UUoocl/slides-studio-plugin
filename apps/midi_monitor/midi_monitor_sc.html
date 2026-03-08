@@ -26,7 +26,7 @@
         #messages { 
             background: #252526; 
             border: 1px solid #444; 
-            border-radius: 4px;
+            border-radius: 4px; 
             padding: 10px; 
             height: 60vh; 
             overflow-y: auto; 
@@ -62,7 +62,7 @@
 <body>
     <div id="container">
         <h1 id="title">MIDI Monitor (SocketCluster)</h1>
-        
+
         <div id="status-bar">
             <span><span id="sc-dot" class="status-dot"></span> SC: <span id="sc-status">Connecting...</span></span>
         </div>
@@ -78,11 +78,12 @@
     </div>
 
     <!-- Load SocketCluster Client -->
-    <script src="../lib/socketcluster-client.min.js"></script>
-    <script>
+    <script type="module">
+        import { create } from '../lib/socketcluster-client.min.js';
+
         const urlParams = new URLSearchParams(window.location.search);
         const targetDevice = urlParams.get('deviceName');
-        
+
         const scStatusEl = document.getElementById('sc-status');
         const scDot = document.getElementById('sc-dot');
         const messagesEl = document.getElementById('messages');
@@ -106,7 +107,7 @@
         }
 
         // SocketCluster Setup
-        socket = socketClusterClient.create({
+        socket = create({
             hostname: window.location.hostname,
             port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
             path: '/socketcluster/'
@@ -138,17 +139,17 @@
         })();
 
         async function subscribeToMidi() {
-            const channelName = `midi_out_${targetDevice}`;
-            console.log(`Subscribing to ${channelName}`);
+            const channelName = `midi_in_${targetDevice}`;
+            console.log(`Subscribing to ${channelName} (Hardware -> Plugin)`);
             const scChannel = socket.subscribe(channelName);
-            
+
             for await (let data of scChannel) {
                 // data is { deviceName, message: MidiPayload }
                 addMessage(data);
             }
         }
 
-        function sendMidi(payload) {
+        async function sendMidi(payload) {
             if (!socket || socket.state !== 'open') {
                 alert('Socket not connected');
                 return;
@@ -158,11 +159,14 @@
                 return;
             }
             try {
-                // Publish to midi_in_{deviceName}
-                socket.transmitPublish(`midi_in_${targetDevice}`, payload);
+                // Use invokePublish to wait for server acknowledgement/errors
+                // Use _out_ channel to send from Plugin to Hardware
+                const channelName = `midi_out_${targetDevice}`;
+                console.log(`Publishing to ${channelName} (Plugin -> Hardware)`, payload);
+                await socket.invokePublish(channelName, payload);
             } catch (e) {
                 console.error('Socket publish error:', e);
-                alert('Failed to send MIDI message');
+                alert(`Socket publish error: ${e.message || e}`);
             }
         }
 
@@ -209,3 +213,5 @@
     </script>
 </body>
 </html>
+
+

@@ -91,15 +91,38 @@ export class OscManager {
      */
     // Outgoing messages use the Message class
     public sendMessage(deviceName: string, message: Message): void {
-        const activeDevice = this.activeOscDevices.get(deviceName);
+        let activeDevice = this.activeOscDevices.get(deviceName);
+        
+        // Case-insensitive fallback
+        if (!activeDevice) {
+            const lowerName = deviceName.toLowerCase();
+            for (const [name, conn] of this.activeOscDevices.entries()) {
+                if (name.toLowerCase() === lowerName) {
+                    activeDevice = conn;
+                    deviceName = name; // Use the correct case for logging
+                    break;
+                }
+            }
+        }
+
         if (activeDevice) {
-            activeDevice.client.send(message, (err) => {
+            const client = activeDevice.client;
+            // @ts-ignore - Accessing private fields for debug logging
+            const host = client.host || 'unknown';
+            // @ts-ignore
+            const port = client.port || 'unknown';
+
+            console.warn(`[OscManager] Sending OSC to ${deviceName} at ${host}:${port}`, message);
+
+            client.send(message, (err) => {
                 if (err) {
-                    console.error(`Error sending to ${deviceName}:`, err);
+                    console.error(`[OscManager] Error sending to ${deviceName}:`, err);
+                } else {
+                    console.warn(`[OscManager] Successfully sent OSC message to ${deviceName}`);
                 }
             });
         } else {
-            console.warn(`OSC Device '${deviceName}' not connected or found.`);
+            console.warn(`[OscManager] OSC Device '${deviceName}' not connected or found. Available:`, Array.from(this.activeOscDevices.keys()));
         }
     }
 }

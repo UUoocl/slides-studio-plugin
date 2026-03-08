@@ -63,6 +63,7 @@
 <body>
     <div id="container">
         <h1 id="title">OSC Monitor (SocketCluster)</h1>
+        <div style="font-size: 0.7em; color: #555; margin-top: -10px; margin-bottom: 10px;">v1.0.2</div>
         
         <div id="status-bar">
             <span><span id="sc-dot" class="status-dot"></span> SC: <span id="sc-status">Connecting...</span></span>
@@ -77,8 +78,9 @@
     </div>
 
     <!-- Load SocketCluster Client -->
-    <script src="../lib/socketcluster-client.min.js"></script>
-    <script>
+    <script type="module">
+        import { create } from '../lib/socketcluster-client.min.js';
+
         const urlParams = new URLSearchParams(window.location.search);
         const targetDevice = urlParams.get('deviceName');
         
@@ -101,7 +103,7 @@
         }
 
         // SocketCluster Setup
-        socket = socketClusterClient.create({
+        socket = create({
             hostname: window.location.hostname,
             port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
             path: '/socketcluster/'
@@ -136,8 +138,8 @@
         })();
 
         async function subscribeToOsc() {
-            const channelName = `osc_out_${targetDevice}`;
-            console.log(`Subscribing to ${channelName}`);
+            const channelName = `osc_in_${targetDevice}`;
+            console.log(`Subscribing to ${channelName} (Hardware -> Plugin)`);
             const channel = socket.subscribe(channelName);
             
             for await (let data of channel) {
@@ -147,7 +149,7 @@
         }
 
         // --- Toggle Logic ---
-        toggleBtn.onclick = () => {
+        toggleBtn.onclick = async () => {
             if (!socket || socket.state !== 'open') {
                 alert('Socket not connected');
                 return;
@@ -162,8 +164,12 @@
             const val = nextState ? 1 : 0;
             
             try {
-                // Publish to osc_in_{deviceName}
-                socket.transmitPublish(`osc_in_${targetDevice}`, {
+                // Use invokePublish to wait for server acknowledgement/errors
+                // Use _out_ channel to send from Plugin to Hardware
+                const channelName = `osc_out_${targetDevice}`;
+                console.log(`[v1.0.2] Publishing to ${channelName} (Plugin -> Hardware) with value ${val}`);
+                
+                await socket.invokePublish(channelName, {
                     address: '/4/toggle1',
                     args: [val]
                 });
@@ -173,7 +179,7 @@
                 toggleBtn.textContent = `Toggle OSC: ${isOn ? 'ON' : 'OFF'}`;
             } catch (e) {
                 console.error('Socket publish error:', e);
-                alert('Failed to send OSC message');
+                alert(`Socket publish error: ${e.message || e}`);
             }
         };
 
@@ -195,11 +201,14 @@
             addrSpan.className = 'address';
             addrSpan.textContent = address || 'unknown';
             
+            const addrSpace = document.createTextNode(' ');
+            
             const argsSpan = document.createElement('span');
             argsSpan.className = 'args';
-            argsSpan.textContent = args.length > 0 ? ' ' + JSON.stringify(args) : '';
+            argsSpan.textContent = args.length > 0 ? JSON.stringify(args) : '';
             
             content.appendChild(addrSpan);
+            content.appendChild(addrSpace);
             content.appendChild(argsSpan);
             
             div.appendChild(meta);

@@ -5,7 +5,7 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1e1e1e; color: #d4d4d4; padding: 20px; margin: 0; }
         #container { max-width: 800px; margin: 0 auto; }
-        h1 { color: #569cd6; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        h1 { color: #569cd6; border-bottom: solid 1px #333; padding-bottom: 10px; }
         #status { margin-bottom: 20px; font-weight: bold; }
         #controls { margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
         
@@ -64,8 +64,9 @@
     </div>
 
     <!-- Load SocketCluster Client from our local lib folder -->
-    <script src="../lib/socketcluster-client.min.js"></script>
-    <script>
+    <script type="module">
+        import { create } from '../lib/socketcluster-client.min.js';
+
         const urlParams = new URLSearchParams(window.location.search);
         const targetDevice = urlParams.get('deviceName');
         const statusEl = document.getElementById('status');
@@ -90,7 +91,7 @@
         async function initSocketCluster() {
             try {
                 // SocketCluster client options
-                socket = socketClusterClient.create({
+                socket = create({
                     hostname: window.location.hostname,
                     port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
                     path: '/socketcluster/'

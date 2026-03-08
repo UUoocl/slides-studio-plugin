@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gamepad Monitor (SocketCluster)</title>
+    <style>
+        :root {
+            font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+            line-height: 1.5;
+            font-weight: 400;
+            color-scheme: light dark;
+            color: rgba(255, 255, 255, 0.87);
+            background-color: #242424;
+        }
+
+        body {
+            margin: 0;
+            padding: 1rem;
+        }
+
+        #info {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 100;
+        }
+
+        .axes {
+            padding: 1em;
+        }
+
+        .buttons {
+            margin-left: 1em;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .axis {
+            min-width: 200px;
+            margin: 0.5em;
+            font-family: monospace;
+        }
+
+        .button {
+            display: inline-block;
+            width: 2em;
+            height: 2em;
+            line-height: 2em;
+            text-align: center;
+            border-radius: 50%;
+            border: 1px solid #555;
+            background-color: #333;
+            font-size: 0.8rem;
+            transition: background-color 0.1s;
+        }
+
+        .button.pressed {
+            background-color: #00ffcc;
+            border-color: #fff;
+            color: black;
+            box-shadow: 0 0 10px #00ffcc;
+        }
+
+        .card {
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background-color: #2a2a2a;
+        }
+
+        h3 { margin-top: 0; }
+        .channel-info { font-size: 0.9rem; color: #00ffcc; font-weight: bold; margin-bottom: 0.5rem; }
+        .error-msg { color: #ff4444; font-weight: bold; padding: 1rem; border: 1px solid #ff4444; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        Status: Disconnected
+    </div>
+
+    <main>
+        <h1>Gamepad Monitor</h1>
+        <div id="status-area">
+            <h4 id="waitingMsg">Waiting for data from SocketCluster...</h4>
+        </div>
+        <div id="gpData"></div>
+    </main>
+
+    <script type="module">
+        import { create } from '../lib/socketcluster-client.min.js';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const namesParam = urlParams.get('name');
+        
+        if (!namesParam) {
+            document.body.innerHTML = '<div class="error-msg">Error: No gamepad "name" provided in query string.<br>Example: ?name=player1,player2</div>';
+            throw new Error("No device names provided");
+        }
+
+        // Split by comma and trim each name
+        const deviceNames = namesParam.split(',').map(n => n.trim()).filter(n => n !== "");
+        console.log("Parsed device names:", deviceNames);
+
+        const initializedDevices = new Set();
+
+        const socket = create({
+            hostname: window.location.hostname,
+            port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
+            path: '/socketcluster/'
+        });
+
+        (async () => {
+            for await (let {error} of socket.listener('error')) {
+                console.error('SocketCluster error:', error);
+            }
+        })();
+
+        (async () => {
+            for await (let event of socket.listener('connect')) {
+                console.log('Connected to SocketCluster');
+                updateStatus('Connected');
+                socket.invoke('setInfo', { name: `Gamepad Monitor: ${namesParam}` });
+                
+                // Subscribe to each device individually
+                deviceNames.forEach(name => {
+                    subscribeToChannel(name);
+                });
+            }
+        })();
+
+        (async () => {
+            for await (let event of socket.listener('disconnect')) {
+                console.log('Disconnected from SocketCluster');
+                updateStatus('Disconnected');
+            }
+        })();
+
+        async function subscribeToChannel(deviceName) {
+            const channelName = `gamepad_in_${deviceName}`;
+            const channel = socket.subscribe(channelName);
+            console.log('Successfully subscribed to:', channelName);
+            
+            for await (let data of channel) {
+                if (!initializedDevices.has(deviceName)) {
+                    setupUI(deviceName, data);
+                    initializedDevices.add(deviceName);
+                }
+                updateUI(deviceName, data);
+            }
+        }
+
+        function setupUI(deviceName, data) {
+            const waitingMsg = document.getElementById('waitingMsg');
+            if (waitingMsg) waitingMsg.style.display = 'none';
+
+            const d = document.createElement("div");
+            d.className = "card";
+            d.id = `controller-${deviceName}`;
+            
+            const chanInfo = document.createElement("div");
+            chanInfo.className = "channel-info";
+            chanInfo.textContent = `Channel: gamepad_in_${deviceName}`;
+            d.appendChild(chanInfo);
+
+            const t = document.createElement("h3");
+            t.textContent = `Gamepad: ${data.id || 'Unknown'} (${deviceName})`;
+            d.appendChild(t);
+
+            const b = document.createElement("div");
+            b.className = "buttons";
+            for (let i = 0; i < data.buttons.length; i++) {
+                const s = document.createElement("span");
+                s.className = "button";
+                s.textContent = i;
+                b.appendChild(s);
+            }
+            d.appendChild(b);
+
+            const a = document.createElement("div");
+            a.className = "axes";
+            for (let i = 0; i < data.axes.length; i++) {
+                const ax = document.createElement("div");
+                ax.className = "axis";
+                ax.id = `axis-${deviceName}-${i}`;
+                ax.textContent = `Axis ${i}: 0.0000`;
+                a.appendChild(ax);
+            }
+            d.appendChild(a);
+
+            document.getElementById("gpData").appendChild(d);
+        }
+
+        function updateUI(deviceName, data) {
+            const card = document.getElementById(`controller-${deviceName}`);
+            if (!card) return;
+
+            const buttons = card.getElementsByClassName("button");
+            for (let i = 0; i < data.buttons.length; i++) {
+                const b = buttons[i];
+                if (!b) continue;
+                
+                const val = data.buttons[i];
+                const pressed = typeof val === "object" ? val.pressed : val === 1.0;
+                
+                if (pressed) b.classList.add("pressed");
+                else b.classList.remove("pressed");
+            }
+
+            for (let i = 0; i < data.axes.length; i++) {
+                const axisVal = data.axes[i];
+                const axisEl = document.getElementById(`axis-${deviceName}-${i}`);
+                if (axisEl) axisEl.textContent = `Axis ${i}: ${axisVal.toFixed(4)}`;
+            }
+        }
+
+        function updateStatus(status) {
+            const info = document.getElementById('info');
+            if (info) info.textContent = `Status: ${status}`;
+        }
+    </script>
+</body>
+</html>

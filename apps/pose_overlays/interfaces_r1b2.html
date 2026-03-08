@@ -12,29 +12,63 @@
     <script src="./js/obsidian_save_load.js"></script>
     <script src="./js/manage_view.js"></script>
 
-    <script>
+    <script type="module">
+      import { create } from '../lib/socketcluster-client.min.js';
+
       const urlParams = new URLSearchParams(window.location.search);
-      const channelName = urlParams.get('channel') || 'default_pose_channel';
-      const channel = new BroadcastChannel(channelName);
+      let channelName = urlParams.get('channel') || 'default_pose_channel';
+      
+      // If the channel name doesn't have a prefix, assume it's a MediaPipe vision task name
+      if (!channelName.includes('_')) {
+        channelName = `mediapipe_in_${channelName}`;
+      }
+
+      const socket = create({
+        hostname: window.location.hostname,
+        port: window.location.port,
+        path: '/socketcluster/'
+      });
+
+      (async () => {
+        for await (let {error} of socket.listener('error')) {
+          console.error('SocketCluster Error:', error);
+        }
+      })();
+
+      (async () => {
+        for await (let {status} of socket.listener('connect')) {
+          console.log('SocketCluster Connected:', status);
+        }
+      })();
+
+      const scChannel = socket.subscribe(channelName);
       loadPreset();
 
-      channel.onmessage = (event) => {
-        const data = event.data;
-        // Support multiple data formats from Broadcast Channel
-        if (data.type === 'pose' && data.payload?.landmarks) {
-          cur_data = data.payload.landmarks[0];
-        } else if (data.type === 'face' && data.payload?.faceLandmarks) {
-          cur_data = data.payload.faceLandmarks[0];
-        } else if (data.type === 'hands' && data.payload?.landmarks) {
-          cur_data = data.payload.landmarks[0];
-        } else if (data.poseLandmarkerResult) {
-          // Format previously sent via OBS CustomEvent
-          cur_data = Array.isArray(data.poseLandmarkerResult[0]) ? data.poseLandmarkerResult[0] : data.poseLandmarkerResult;
-        } else if (Array.isArray(data)) {
-          // Raw landmarks array or nested landmarks
-          cur_data = Array.isArray(data[0]) ? data[0] : data;
+      (async () => {
+        for await (let data of scChannel) {
+          // Support new MediaPipeManager format (data.result) and legacy formats
+          if (data.result) {
+            const res = data.result;
+            if (data.type === 'pose' && res.landmarks) {
+              window.cur_data = res.landmarks[0];
+            } else if (data.type === 'face' && res.faceLandmarks) {
+              window.cur_data = res.faceLandmarks[0];
+            } else if (data.type === 'hand' && res.landmarks) {
+              window.cur_data = res.landmarks[0];
+            }
+          } else if (data.type === 'pose' && data.payload?.landmarks) {
+            window.cur_data = data.payload.landmarks[0];
+          } else if (data.type === 'face' && data.payload?.faceLandmarks) {
+            window.cur_data = data.payload.faceLandmarks[0];
+          } else if (data.type === 'hands' && data.payload?.landmarks) {
+            window.cur_data = data.payload.landmarks[0];
+          } else if (data.poseLandmarkerResult) {
+            window.cur_data = Array.isArray(data.poseLandmarkerResult[0]) ? data.poseLandmarkerResult[0] : data.poseLandmarkerResult;
+          } else if (Array.isArray(data)) {
+            window.cur_data = Array.isArray(data[0]) ? data[0] : data;
+          }
         }
-      };
+      })();
     </script>
 
 

@@ -6,12 +6,14 @@ export interface OscDeviceSetting {
     ip: string;
     inPort: number;
     outPort: number;
+    autoStart?: boolean;
 }
 
 export interface MidiDeviceSetting {
     name: string;      // User defined alias (e.g. "My Keyboard")
     inputName: string; // System Input Name (e.g. "Keystation 49")
     outputName: string;// System Output Name
+    autoStart?: boolean;
 }
 
 export interface AudioDeviceSetting {
@@ -22,6 +24,23 @@ export interface AudioDeviceSetting {
     smoothingTimeConstant: number; // Smoothing (0-1)
     fftEnabled: boolean;
     sttEnabled: boolean;
+    autoStart?: boolean;
+}
+
+export interface GamepadDeviceSetting {
+    name: string;      // User defined alias (e.g. "Player 1")
+    index: number;     // The gamepad index (0, 1, 2, 3)
+    enabled: boolean;  // Whether this gamepad is broadcasting
+}
+
+export interface MediaPipeDeviceSetting {
+    name: string;      // User defined alias / channel name
+    type: 'face' | 'hand' | 'pose';
+    sourceName: string; // OBS Source or Scene name
+    fps: number;
+    width: number;
+    enabled: boolean;
+    autoStart?: boolean;
 }
 
 /**
@@ -44,6 +63,7 @@ export interface SlidesStudioPluginSettings {
     obsCollection_Text: string;
     obsDebugPort_Text: string;
     obsAppPath_Text: string;
+    obsRequestLimit: number;
     serverPort: string;
     serverEnabled: boolean;
     pythonPath: string;
@@ -60,6 +80,9 @@ export interface SlidesStudioPluginSettings {
     oscDevices: OscDeviceSetting[];
     midiDevices: MidiDeviceSetting[];
     audioDevices: AudioDeviceSetting[];
+    gamepadDevices: GamepadDeviceSetting[];
+    mediapipeDevices: MediaPipeDeviceSetting[];
+    all_sources: string[];
 }
 
 /**

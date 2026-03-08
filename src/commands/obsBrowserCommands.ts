@@ -56,7 +56,7 @@ export const UpdateBrowsersUrlCommand = (plugin: slidesStudioPlugin): Command =>
                     if (settings.inputSettings.css.includes("--slides-studio-refresh") || 
                         settings.inputSettings.css.includes("--update-port: 1;")) {
                         const browserURL = new URL(settings.inputSettings.url);
-                        const newURL = `http://127.0.0.1:${port}${browserURL.pathname}`;
+                        const newURL = `http://127.0.0.1:${port}${browserURL.pathname}${browserURL.search}`;
 
                         // Await the call inside the loop
                         await plugin.obs.call("SetInputSettings", {

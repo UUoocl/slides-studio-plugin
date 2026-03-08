@@ -13,6 +13,17 @@ import type slidesStudioPlugin from '../main';
 import { SaveFileBody, FileListQuery, GetFileQuery, OscSendBody, MidiSendBody, MidiPayload, CustomMessageBody } from '../types';
 import { ObsServer } from './obsEndpoints';
 
+interface QueuedObsRequest {
+    requestType?: string;
+    requestData?: any;
+    requests?: any[];
+    options?: any;
+    scRequest: {
+        end: (data?: any) => void;
+        error: (err: any) => void;
+    };
+}
+
 /**
  * Manages the local Fastify and SocketCluster server.
  * Handles file operations, API endpoints, and real-time bidirectional messaging.
@@ -31,6 +42,9 @@ export class ServerManager {
     private mouseMonitorProcess: ChildProcess | null = null;
     private keyboardMonitorProcess: ChildProcess | null = null;
     private uvcUtilBridgeProcess: ChildProcess | null = null;
+
+    private obsRequestQueue: QueuedObsRequest[] = [];
+    private obsQueueTimer: NodeJS.Timeout | null = null;
 
     constructor(app: App, plugin: slidesStudioPlugin, port: number) {
         this.app = app;
@@ -102,15 +116,36 @@ export class ServerManager {
             });
             
             void this.handleSocketClusterConnections();
+            
+            // Critical: Intercept all client-side publishes via middleware
+            // This is the most reliable way to catch publishes to the exchange.
+            // @ts-ignore
+            this.scServer.setMiddleware(this.scServer.MIDDLEWARE_INBOUND, async (middlewareStream) => {
+                for await (const action of middlewareStream) {
+                    // console.warn(`[Server] Middleware action: ${action.type} on ${action.channel}`);
+                    if (action.type === action.PUBLISH_IN || action.type === 'publish' || action.type === 1) {
+                        this.handleIncomingPublish(action.channel, action.data);
+                    }
+                    action.allow();
+                }
+            });
+
+            // setup device channels for visibility and internal consumption
+            void this.setupDeviceChannels();
 
             await this.server.listen({ port: this.port, host: '127.0.0.1' });
             
             this.isRunning = true;
             console.warn(`[Server] Listening on http://127.0.0.1:${this.port} (Fastify + SocketCluster)`);
             
+            // Broadcast initial state so plugin shows up in monitor
+            this.broadcastServerState();
+
             if (this.plugin.settings.mouseMonitorEnabled) void this.startMouseMonitor();
             if (this.plugin.settings.keyboardMonitorEnabled) void this.startKeyboardMonitor();
             if (this.plugin.settings.uvcUtilEnabled) void this.startUvcUtilBridge();
+
+            this.startObsQueueProcessor();
         } catch (err) {
             console.error("Failed to start server", err);
             this.isRunning = false;
@@ -149,8 +184,13 @@ export class ServerManager {
             return {
                 osc: this.plugin.settings.oscDevices.map(d => ({ name: d.name })),
                 midi: this.plugin.settings.midiDevices.map(d => ({ name: d.name })),
+                gamepad: this.plugin.settings.gamepadDevices.map(d => ({ name: d.name, index: d.index })),
                 uvc: { enabled: this.plugin.settings.uvcUtilEnabled }
             };
+        });
+
+        this.server.get('/api/gamepads', (_request, _reply) => {
+            return this.plugin.settings.gamepadDevices;
         });
 
         this.server.post<{ Body: SaveFileBody }>('/api/file/save', async (request, reply) => {
@@ -206,6 +246,83 @@ export class ServerManager {
         });
     }
 
+    private startObsQueueProcessor(): void {
+        if (this.obsQueueTimer) return;
+
+        const processQueue = async () => {
+            if (this.obsRequestQueue.length === 0) {
+                this.obsQueueTimer = setTimeout(processQueue, 100);
+                return;
+            }
+
+            // Get batch of requests
+            const limit = Math.max(1, this.plugin.settings.obsRequestLimit || 10);
+            const interval = 1000 / limit;
+
+            const startTime = Date.now();
+            
+            const batch = this.obsRequestQueue.splice(0, this.obsRequestQueue.length);
+            
+            if (batch.length === 1 && !batch[0].requests) {
+                // Single request
+                const item = batch[0];
+                try {
+                    const result = await this.plugin.obs.call(item.requestType as any, item.requestData);
+                    item.scRequest.end(result);
+                } catch (err) {
+                    item.scRequest.error(err);
+                }
+            } else {
+                // Multiple requests - bundle into CallBatch
+                const obsRequests: any[] = [];
+                const requestMap: number[] = []; // Maps batch index to obsRequests index
+
+                batch.forEach((item, index) => {
+                    if (item.requests) {
+                        // It's already a batch from the client
+                        item.requests.forEach(r => {
+                            obsRequests.push(r);
+                            requestMap.push(index);
+                        });
+                    } else {
+                        obsRequests.push({
+                            requestType: item.requestType,
+                            requestData: item.requestData
+                        });
+                        requestMap.push(index);
+                    }
+                });
+
+                try {
+                    const results = await this.plugin.obs.callBatch(obsRequests);
+                    
+                    // Map results back to SC requests
+                    const scResults = new Array(batch.length).fill(null).map(() => [] as any[]);
+                    results.forEach((res, idx) => {
+                        const batchIdx = requestMap[idx];
+                        scResults[batchIdx].push(res);
+                    });
+
+                    batch.forEach((item, idx) => {
+                        if (item.requests) {
+                            item.scRequest.end(scResults[idx]);
+                        } else {
+                            item.scRequest.end(scResults[idx][0]);
+                        }
+                    });
+                } catch (err) {
+                    batch.forEach(item => item.scRequest.error(err));
+                }
+            }
+
+            const elapsed = Date.now() - startTime;
+            const waitTime = Math.max(0, interval - elapsed);
+            this.obsQueueTimer = setTimeout(processQueue, waitTime);
+        };
+
+        void processQueue();
+    }
+
     private async handleSocketClusterConnections(): Promise<void> {
         if (!this.scServer) return;
 
@@ -241,19 +358,13 @@ export class ServerManager {
                 // @ts-ignore
                 for await (const request of socket.procedure('obsRequest')) {
                     const reqData = request.data as any;
-                    try {
-                        let result;
-                        if (Array.isArray(reqData.requests)) {
-                            // Batch request
-                            result = await this.plugin.obs.callBatch(reqData.requests, reqData.options);
-                        } else {
-                            // Single request
-                            result = await this.plugin.obs.call(reqData.requestType, reqData.requestData);
-                        }
-                        request.end(result);
-                    } catch (err) {
-                        request.error(err);
-                    }
+                    this.obsRequestQueue.push({
+                        requestType: reqData.requestType,
+                        requestData: reqData.requestData,
+                        requests: reqData.requests,
+                        options: reqData.options,
+                        scRequest: request
+                    });
                 }
             })();
 
@@ -288,18 +399,37 @@ export class ServerManager {
                 }
             })();
 
-            // Generic incoming message handler for publishes
-            void (async () => {
-                for await (const { channel, data } of socket.listener('publish')) {
-                    this.handleIncomingPublish(channel, data);
-                }
-            })();
-
             void (async () => {
                 for await (const { code, reason } of socket.listener('close')) {
                     console.warn(`[SocketCluster] Client disconnected: ${socket.id} (Code: ${code}, Reason: ${reason})`);
                     this.clientMetadata.delete(socket.id);
                     this.broadcastServerState();
+                }
+            })();
+        }
+    }
+
+    /**
+     * Subscribes the plugin itself to all 'out' channels.
+     * This makes the plugin a "real" subscriber on the exchange.
+     */
+    private async setupDeviceChannels() {
+        if (!this.scServer) return;
+        
+        const outChannels = [
+            ...this.plugin.settings.oscDevices.map(d => `osc_out_${d.name}`),
+            ...this.plugin.settings.midiDevices.map(d => `midi_out_${d.name}`),
+            ...this.plugin.settings.gamepadDevices.map(d => `gamepad_in_${d.name}`)
+        ];
+
+        console.warn(`[Server] Plugin subscribing to:`, outChannels);
+
+        for (const channelName of outChannels) {
+            void (async () => {
+                const channel = this.scServer!.exchange.subscribe(channelName);
+                for await (const data of channel) {
+                    // Logic handled here when server is a real subscriber
+                    this.handleIncomingPublish(channelName, data);
                 }
             })();
         }
@@ -317,18 +447,39 @@ export class ServerManager {
             };
         });
 
+        // Add the plugin itself as a virtual client for the monitor
+        clients.push({
+            index: 0,
+            id: 'plugin-internal',
+            name: 'Slides-Studio Plugin',
+            channels: [
+                ...this.plugin.settings.oscDevices.map(d => `osc_out_${d.name}`),
+                ...this.plugin.settings.midiDevices.map(d => `midi_out_${d.name}`),
+                ...this.plugin.settings.gamepadDevices.map(d => `gamepad_in_${d.name}`)
+            ]
+        });
+
         void this.scServer.exchange.transmitPublish('serverState', { clients });
     }
 
     private handleIncomingPublish(channel: string, data: unknown): void {
-        if (channel.startsWith('osc_in_')) {
-            const deviceName = channel.replace('osc_in_', '');
-            const payload = data as { address: string, args: (string|number|boolean)[] };
-            const message = new Message(payload.address);
-            (payload.args || []).forEach(arg => message.append(arg));
-            this.plugin.oscManager.sendMessage(deviceName, message);
-        } else if (channel.startsWith('midi_in_')) {
-            const deviceName = channel.replace('midi_in_', '');
+        if (!data) return;
+
+        if (channel.startsWith('osc_out_')) {
+            const deviceName = channel.replace('osc_out_', '');
+            const payload = data as { address: string, args: any };
+            
+            if (payload && payload.address) {
+                const message = new Message(payload.address);
+                if (Array.isArray(payload.args)) {
+                    payload.args.forEach(arg => message.append(arg));
+                } else if (payload.args !== undefined) {
+                    message.append(payload.args);
+                }
+                this.plugin.oscManager.sendMessage(deviceName, message);
+            }
+        } else if (channel.startsWith('midi_out_')) {
+            const deviceName = channel.replace('midi_out_', '');
             this.plugin.midiManager.sendMidiMessage(deviceName, this.plugin.settings.midiDevices, data as MidiPayload);
         } else if (channel === 'mousePosition' || channel === 'mouseClick' || channel === 'mouseScroll' || 
                    channel === 'keyboardPress' || channel === 'keyboardRelease' || channel === 'uvcResponse' || 
@@ -346,12 +497,12 @@ export class ServerManager {
 
     public broadcastOscMessage(name: string, message: unknown[]): void {
         const data = { deviceName: name, message };
-        void this.scServer?.exchange.transmitPublish(`osc_out_${name}`, data);
+        void this.scServer?.exchange.transmitPublish(`osc_in_${name}`, data);
     }
 
     public broadcastMidiMessage(name: string, message: MidiPayload): void {
         const data = { deviceName: name, message };
-        void this.scServer?.exchange.transmitPublish(`midi_out_${name}`, data);
+        void this.scServer?.exchange.transmitPublish(`midi_in_${name}`, data);
     }
 
     public broadcastMouseMessage(topic: string, data: unknown): void {
@@ -370,6 +521,14 @@ export class ServerManager {
         
         const channel = topic === 'audioFFT' ? 'audioFFT' : (topic === 'audioSTT' ? 'audioSTT' : 'audioData');
         void this.scServer?.exchange.transmitPublish(channel, payload);
+    }
+
+    public broadcastGamepadMessage(name: string, data: unknown): void {
+        void this.scServer?.exchange.transmitPublish(`gamepad_in_${name}`, data);
+    }
+
+    public broadcastMediaPipeMessage(name: string, data: unknown): void {
+        void this.scServer?.exchange.transmitPublish(`mediapipe_in_${name}`, data);
     }
 
     public broadcastCustomMessage(name: string, data: Record<string, unknown>): void {
@@ -441,6 +600,11 @@ export class ServerManager {
         this.stopMouseMonitor();
         this.stopKeyboardMonitor();
         this.stopUvcUtilBridge();
+
+        if (this.obsQueueTimer) {
+            clearTimeout(this.obsQueueTimer);
+            this.obsQueueTimer = null;
+        }
         
         if (this.scServer) {
             await this.scServer.close();

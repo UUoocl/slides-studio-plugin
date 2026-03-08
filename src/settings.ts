@@ -1,7 +1,7 @@
 import { App, Platform, PluginSettingTab, Setting, Notice, FileSystemAdapter, TFolder, TFile } from "obsidian";
 import type slidesStudioPlugin from "./main";
 import { ServerManager } from "./utils/serverLogic";
-import { SlidesStudioPluginSettings } from "./types";
+import { SlidesStudioPluginSettings, MediaPipeDeviceSetting } from "./types";
 import { exec } from "child_process";
 import * as net from "net";
 
@@ -12,6 +12,10 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
     constructor(app: App, plugin: slidesStudioPlugin) {
         super(app, plugin);
         this.plugin = plugin;
+
+        // Listen for gamepad events to refresh the settings UI
+        window.addEventListener("gamepadconnected", () => this.display());
+        window.addEventListener("gamepaddisconnected", () => this.display());
     }
 
     private validatePythonPath(path: string) {
@@ -299,6 +303,17 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         void this.plugin.saveSettings();
                     });
             }); 
+
+        new Setting(containerEl)
+            .setName("Obs request limit (per second)")
+            .setDesc("Limit the number of requests sent to OBS per second. High volume requests will be bundled.")
+            .addText((item) => {
+                item.setValue(this.plugin.settings.obsRequestLimit?.toString() || "10").onChange(
+                    (value) => {
+                        this.plugin.settings.obsRequestLimit = parseInt(value) || 10;
+                        void this.plugin.saveSettings();
+                    });
+            });
         // #endregion
                     
         // #region ObsLaunch Parameters
@@ -442,11 +457,19 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
             new Setting(deviceDiv)
                 .setName("Osc device name")
-                .setDesc("Unique device name (used in server sent events)")
+                .setDesc("Unique device name (used for SocketCluster channels); enable auto-connect on load")
                 .addText(text => text
                     .setValue(device.name)
                     .onChange(async (value) => {
                         this.plugin.settings.oscDevices[index].name = value;
+                        await this.plugin.saveSettings();
+                    })
+                )
+                .addToggle(toggle => toggle
+                    .setTooltip("Auto-start on plugin load")
+                    .setValue(device.autoStart || false)
+                    .onChange(async (value) => {
+                        this.plugin.settings.oscDevices[index].autoStart = value;
                         await this.plugin.saveSettings();
                     })
                 )
@@ -560,7 +583,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
                 new Setting(deviceDiv)
                     .setName("Device name")
-                    .setDesc("Unique device name (used in server sent events)")
+                    .setDesc("Unique device name (SocketCluster channel); enable auto-connect on load")
                     .addText(text => text
                         .setValue(device.name)
                         .onChange((value) => {
@@ -572,6 +595,14 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         .setButtonText("Connect")
                         .onClick(() => {
                             this.plugin.midiManager.connectDevice(this.plugin.settings.midiDevices[index]);
+                        })
+                    )
+                    .addToggle(toggle => toggle
+                        .setTooltip("Auto-start on plugin load")
+                        .setValue(device.autoStart || false)
+                        .onChange(async (value) => {
+                            this.plugin.settings.midiDevices[index].autoStart = value;
+                            await this.plugin.saveSettings();
                         })
                     );
 
@@ -854,8 +885,8 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         .setHeading();
 
                     new Setting(deviceDiv)
-                        .setName("Device name (sse event name)")
-                        .setDesc("Unique name used as the sse event name (eg 'vocals')")
+                        .setName("Device name (SocketCluster channel)")
+                        .setDesc("Unique name used as the SocketCluster channel name (eg 'vocals'); enable auto-connect on load")
                         .addText(text => text
                             .setValue(device.name)
                             .onChange(async (value) => {
@@ -867,6 +898,14 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                             .setButtonText("Connect")
                             .onClick(() => {
                                 void this.plugin.audioManager.connectDevice(this.plugin.settings.audioDevices[index]);
+                            })
+                        )
+                        .addToggle(toggle => toggle
+                            .setTooltip("Auto-start on plugin load")
+                            .setValue(device.autoStart || false)
+                            .onChange(async (value) => {
+                                this.plugin.settings.audioDevices[index].autoStart = value;
+                                await this.plugin.saveSettings();
                             })
                         );
 
@@ -976,6 +1015,241 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         })
                     );
             })();
+        }
+        // #endregion
+
+        // #region Gamepad Settings
+        new Setting(containerEl)
+            .setName("Gamepad devices")
+            .setHeading();
+
+        containerEl.createEl("p", { text: "Manage connected gamepads and map them to SocketCluster channels. Use the Gamepad Input app to broadcast data." });
+
+        const connectedGamepads = navigator.getGamepads();
+        let hasConnectedGamepad = false;
+
+        // Process connected gamepads
+        for (let i = 0; i < connectedGamepads.length; i++) {
+            const gp = connectedGamepads[i];
+            if (!gp) continue;
+            hasConnectedGamepad = true;
+
+            let deviceSetting = this.plugin.settings.gamepadDevices.find(d => d.index === gp.index);
+            if (!deviceSetting) {
+                deviceSetting = {
+                    name: gp.id.replace(/\s+/g, '_').toLowerCase(),
+                    index: gp.index,
+                    enabled: false
+                };
+                this.plugin.settings.gamepadDevices.push(deviceSetting);
+                void this.plugin.saveSettings();
+            }
+
+            const deviceDiv = containerEl.createDiv();
+            deviceDiv.setCssProps({
+                'border': '1px solid var(--background-modifier-border)',
+                'padding': '10px',
+                'margin-bottom': '10px',
+                'border-radius': '5px'
+            });
+
+            new Setting(deviceDiv)
+                .setName(`Gamepad ${gp.index}: ${gp.id}`)
+                .setHeading();
+
+            new Setting(deviceDiv)
+                .setName("Enable broadcasting")
+                .setDesc("Allow this controller to send data to SocketCluster")
+                .addToggle(toggle => toggle
+                    .setValue(deviceSetting!.enabled)
+                    .onChange(async (value) => {
+                        deviceSetting!.enabled = value;
+                        await this.plugin.saveSettings();
+                        this.display();
+                    })
+                );
+
+            if (deviceSetting.enabled) {
+                new Setting(deviceDiv)
+                    .setName("Channel name")
+                    .setDesc("Channel: gamepad_in_{name}")
+                    .addText(text => text
+                        .setValue(deviceSetting!.name)
+                        .onChange(async (value) => {
+                            deviceSetting!.name = value;
+                            await this.plugin.saveSettings();
+                        })
+                    );
+            }
+        }
+
+        if (!hasConnectedGamepad) {
+            containerEl.createEl("p", { 
+                text: "No gamepads detected. Press a button on your controller to wake it up.",
+                cls: "text-muted" 
+            });
+        }
+        // #endregion
+
+        // #region MediaPipe Settings
+        const mediapipeHeader = new Setting(containerEl)
+            .setName("MediaPipe vision tasks")
+            .setHeading();
+
+        if (!this.plugin.isObsConnected) {
+            containerEl.createEl("p", { 
+                text: "MediaPipe requires an active OBS WebSocket connection. Please connect to OBS above first.",
+                cls: "text-muted"
+            });
+        } else {
+            containerEl.createEl("p", { text: "Process OBS screenshots with MediaPipe (Face, Hand, Pose) and broadcast results." });
+
+            const sourceOptions: Record<string, string> = { "": "Select source" };
+            this.plugin.settings.all_sources.forEach(s => sourceOptions[s] = s);
+
+            this.plugin.settings.mediapipeDevices.forEach((device, index) => {
+                const deviceDiv = containerEl.createDiv();
+                deviceDiv.setCssProps({
+                    'border': '1px solid var(--background-modifier-border)',
+                    'padding': '10px',
+                    'margin-bottom': '10px',
+                    'border-radius': '5px'
+                });
+
+                new Setting(deviceDiv)
+                    .setName(`Vision Task ${index + 1}`)
+                    .setHeading();
+
+                new Setting(deviceDiv)
+                    .setName("Task name (Channel)")
+                    .setDesc("Results on channel: mediapipe_{name}")
+                    .addText(text => text
+                        .setValue(device.name)
+                        .onChange(async (value) => {
+                            this.plugin.settings.mediapipeDevices[index].name = value;
+                            await this.plugin.saveSettings();
+                        })
+                    )
+                    .addButton(btn => btn
+                        .setButtonText("Start Task")
+                        .onClick(() => {
+                            void this.plugin.mediapipeManager.startTask(this.plugin.settings.mediapipeDevices[index]);
+                        })
+                    )
+                    .addToggle(toggle => toggle
+                        .setTooltip("Auto-start on plugin load")
+                        .setValue(device.autoStart || false)
+                        .onChange(async (value) => {
+                            this.plugin.settings.mediapipeDevices[index].autoStart = value;
+                            await this.plugin.saveSettings();
+                        })
+                    );
+
+                new Setting(deviceDiv)
+                    .setName("Task type")
+                    .addDropdown(dropdown => dropdown
+                        .addOptions({
+                            'face': 'Face Landmarker',
+                            'hand': 'Hand Landmarker',
+                            'pose': 'Pose Landmarker'
+                        })
+                        .setValue(device.type)
+                        .onChange(async (value: 'face' | 'hand' | 'pose') => {
+                            this.plugin.settings.mediapipeDevices[index].type = value;
+                            await this.plugin.saveSettings();
+                        })
+                    );
+
+                new Setting(deviceDiv)
+                    .setName("OBS Source")
+                    .addDropdown(dropdown => dropdown
+                        .addOptions(sourceOptions)
+                        .setValue(device.sourceName)
+                        .onChange(async (value) => {
+                            this.plugin.settings.mediapipeDevices[index].sourceName = value;
+                            await this.plugin.saveSettings();
+                        })
+                    );
+
+                new Setting(deviceDiv)
+                    .setName("Frames per second")
+                    .addText(text => text
+                        .setValue(device.fps.toString())
+                        .onChange(async (value) => {
+                            const val = parseFloat(value);
+                            if (!isNaN(val)) {
+                                this.plugin.settings.mediapipeDevices[index].fps = val;
+                                await this.plugin.saveSettings();
+                            }
+                        })
+                    );
+
+                new Setting(deviceDiv)
+                    .setName("Screenshot width")
+                    .setDesc("Input width for MediaPipe (lower is faster)")
+                    .addText(text => text
+                        .setValue(device.width.toString())
+                        .onChange(async (value) => {
+                            const val = parseInt(value);
+                            if (!isNaN(val)) {
+                                this.plugin.settings.mediapipeDevices[index].width = val;
+                                await this.plugin.saveSettings();
+                            }
+                        })
+                    );
+
+                new Setting(deviceDiv)
+                    .setName("Enabled")
+                    .addToggle(toggle => toggle
+                        .setValue(device.enabled)
+                        .onChange(async (value) => {
+                            this.plugin.settings.mediapipeDevices[index].enabled = value;
+                            await this.plugin.saveSettings();
+                            if (!value) {
+                                this.plugin.mediapipeManager.stopTask(device.name);
+                            }
+                        })
+                    );
+
+                new Setting(deviceDiv)
+                    .addButton(btn => btn
+                        .setButtonText("Remove task")
+                        .setWarning()
+                        .onClick(async () => {
+                            this.plugin.mediapipeManager.stopTask(device.name);
+                            this.plugin.settings.mediapipeDevices.splice(index, 1);
+                            await this.plugin.saveSettings();
+                            this.display();
+                        })
+                    );
+            });
+
+            new Setting(containerEl)
+                .setName("Add new vision task")
+                .addButton(btn => btn
+                    .setButtonText("Add task")
+                    .setCta()
+                    .onClick(async () => {
+                        this.plugin.settings.mediapipeDevices.push({
+                            name: "MyVisionTask",
+                            type: "face",
+                            sourceName: "",
+                            fps: 1,
+                            width: 200,
+                            enabled: false,
+                            autoStart: false
+                        });
+                        await this.plugin.saveSettings();
+                        this.display();
+                    })
+                )
+                .addButton(btn => btn
+                    .setButtonText("Refresh Sources")
+                    .onClick(async () => {
+                        await this.plugin.getObsTags();
+                        this.display();
+                    })
+                );
         }
         // #endregion
     }
