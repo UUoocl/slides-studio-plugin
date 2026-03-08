@@ -1,7 +1,7 @@
 import { App, Platform, PluginSettingTab, Setting, Notice, FileSystemAdapter, TFolder, TFile } from "obsidian";
 import type slidesStudioPlugin from "./main";
 import { ServerManager } from "./utils/serverLogic";
-import { SlidesStudioPluginSettings, MediaPipeDeviceSetting } from "./types";
+import { SlidesStudioPluginSettings } from "./types";
 import { exec } from "child_process";
 import * as net from "net";
 
@@ -306,7 +306,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Obs request limit (per second)")
-            .setDesc("Limit the number of requests sent to OBS per second. High volume requests will be bundled.")
+            .setDesc("Limit the number of requests sent to obs per second. High volume requests will be bundled.")
             .addText((item) => {
                 item.setValue(this.plugin.settings.obsRequestLimit?.toString() || "10").onChange(
                     (value) => {
@@ -457,7 +457,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
             new Setting(deviceDiv)
                 .setName("Osc device name")
-                .setDesc("Unique device name (used for SocketCluster channels); enable auto-connect on load")
+                .setDesc("Unique device name (used for socketcluster channels); enable auto-connect on load")
                 .addText(text => text
                     .setValue(device.name)
                     .onChange(async (value) => {
@@ -583,7 +583,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
                 new Setting(deviceDiv)
                     .setName("Device name")
-                    .setDesc("Unique device name (SocketCluster channel); enable auto-connect on load")
+                    .setDesc("Unique device name (socketcluster channel); enable auto-connect on load")
                     .addText(text => text
                         .setValue(device.name)
                         .onChange((value) => {
@@ -885,8 +885,8 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         .setHeading();
 
                     new Setting(deviceDiv)
-                        .setName("Device name (SocketCluster channel)")
-                        .setDesc("Unique name used as the SocketCluster channel name (eg 'vocals'); enable auto-connect on load")
+                        .setName("Device name (socketcluster channel)")
+                        .setDesc("Unique name used as the socketcluster channel name (eg 'vocals'); enable auto-connect on load")
                         .addText(text => text
                             .setValue(device.name)
                             .onChange(async (value) => {
@@ -1023,7 +1023,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
             .setName("Gamepad devices")
             .setHeading();
 
-        containerEl.createEl("p", { text: "Manage connected gamepads and map them to SocketCluster channels. Use the Gamepad Input app to broadcast data." });
+        containerEl.createEl("p", { text: "Manage connected gamepads and map them to socketcluster channels. Use the gamepad input app to broadcast data." });
 
         const connectedGamepads = navigator.getGamepads();
         let hasConnectedGamepad = false;
@@ -1059,11 +1059,11 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
             new Setting(deviceDiv)
                 .setName("Enable broadcasting")
-                .setDesc("Allow this controller to send data to SocketCluster")
+                .setDesc("Allow this controller to send data to socketcluster")
                 .addToggle(toggle => toggle
-                    .setValue(deviceSetting!.enabled)
+                    .setValue(deviceSetting.enabled)
                     .onChange(async (value) => {
-                        deviceSetting!.enabled = value;
+                        deviceSetting.enabled = value;
                         await this.plugin.saveSettings();
                         this.display();
                     })
@@ -1074,9 +1074,9 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     .setName("Channel name")
                     .setDesc("Channel: gamepad_in_{name}")
                     .addText(text => text
-                        .setValue(deviceSetting!.name)
+                        .setValue(deviceSetting.name)
                         .onChange(async (value) => {
-                            deviceSetting!.name = value;
+                            deviceSetting.name = value;
                             await this.plugin.saveSettings();
                         })
                     );
@@ -1092,17 +1092,17 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
         // #endregion
 
         // #region MediaPipe Settings
-        const mediapipeHeader = new Setting(containerEl)
-            .setName("MediaPipe vision tasks")
+        new Setting(containerEl)
+            .setName("Mediapipe vision tasks")
             .setHeading();
 
         if (!this.plugin.isObsConnected) {
             containerEl.createEl("p", { 
-                text: "MediaPipe requires an active OBS WebSocket connection. Please connect to OBS above first.",
+                text: "Mediapipe requires an active obs websocket connection. Please connect to obs above first.",
                 cls: "text-muted"
             });
         } else {
-            containerEl.createEl("p", { text: "Process OBS screenshots with MediaPipe (Face, Hand, Pose) and broadcast results." });
+            containerEl.createEl("p", { text: "Process obs screenshots with mediapipe (face, hand, pose) and broadcast results." });
 
             const sourceOptions: Record<string, string> = { "": "Select source" };
             this.plugin.settings.all_sources.forEach(s => sourceOptions[s] = s);
@@ -1121,7 +1121,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     .setHeading();
 
                 new Setting(deviceDiv)
-                    .setName("Task name (Channel)")
+                    .setName("Task name (channel)")
                     .setDesc("Results on channel: mediapipe_{name}")
                     .addText(text => text
                         .setValue(device.name)
@@ -1131,7 +1131,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         })
                     )
                     .addButton(btn => btn
-                        .setButtonText("Start Task")
+                        .setButtonText("Start task")
                         .onClick(() => {
                             void this.plugin.mediapipeManager.startTask(this.plugin.settings.mediapipeDevices[index]);
                         })
@@ -1161,7 +1161,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     );
 
                 new Setting(deviceDiv)
-                    .setName("OBS Source")
+                    .setName("Obs source")
                     .addDropdown(dropdown => dropdown
                         .addOptions(sourceOptions)
                         .setValue(device.sourceName)
@@ -1186,7 +1186,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
                 new Setting(deviceDiv)
                     .setName("Screenshot width")
-                    .setDesc("Input width for MediaPipe (lower is faster)")
+                    .setDesc("Input width for mediapipe (lower is faster)")
                     .addText(text => text
                         .setValue(device.width.toString())
                         .onChange(async (value) => {
@@ -1244,7 +1244,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     })
                 )
                 .addButton(btn => btn
-                    .setButtonText("Refresh Sources")
+                    .setButtonText("Refresh sources")
                     .onClick(async () => {
                         await this.plugin.getObsTags();
                         this.display();

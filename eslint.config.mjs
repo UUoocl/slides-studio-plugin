@@ -22,6 +22,7 @@ export default defineConfig([
     "docs",
     ".git/",
 		"node_modules",
+    "mediapipe_models",
 		"dist",
 		"apps/",
     "pythonScripts/",

@@ -199,21 +199,21 @@ export default class slidesStudioPlugin extends Plugin {
         this.app.workspace.onLayoutReady(async () => {
             this.settings.oscDevices.forEach(device => {
                 if (device.autoStart) {
-                    console.log(`[Plugin] Auto-connecting OSC device: ${device.name}`);
+                    console.warn(`[Plugin] Auto-connecting OSC device: ${device.name}`);
                     this.oscManager.connectDevice(device);
                 }
             });
 
             this.settings.midiDevices.forEach(device => {
                 if (device.autoStart) {
-                    console.log(`[Plugin] Auto-connecting MIDI device: ${device.name}`);
+                    console.warn(`[Plugin] Auto-connecting MIDI device: ${device.name}`);
                     this.midiManager.connectDevice(device);
                 }
             });
 
             this.settings.audioDevices.forEach(device => {
                 if (device.autoStart) {
-                    console.log(`[Plugin] Auto-connecting Audio device: ${device.name}`);
+                    console.warn(`[Plugin] Auto-connecting Audio device: ${device.name}`);
                     void this.audioManager.connectDevice(device);
                 }
             });
@@ -229,7 +229,7 @@ export default class slidesStudioPlugin extends Plugin {
                 
                 this.settings.mediapipeDevices.forEach(device => {
                     if (device.autoStart) {
-                        console.log(`[Plugin] Auto-starting MediaPipe task: ${device.name}`);
+                        console.warn(`[Plugin] Auto-starting MediaPipe task: ${device.name}`);
                         void this.mediapipeManager.startTask(device);
                     }
                 });
@@ -362,7 +362,7 @@ export default class slidesStudioPlugin extends Plugin {
             'StudioModeStateChanged', 'ScreenshotSaved'
 		];
 		commonEvents.forEach(eventName => {
-			this.obs.on(eventName as any, (data) => {
+			this.obs.on(eventName as unknown, (data) => {
 				this.serverManager?.broadcastObsEvent(eventName, data);
 			});
 		});

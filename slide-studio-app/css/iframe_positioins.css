@@ -30,10 +30,10 @@
 }
 
 .over-the-shoulder {
-    top: 2% !important;
-    left: 2% !important;
-    width: 46% !important;
-    height: 46% !important;
+    top: 10% !important;
+    left: 5% !important;
+    width: 40% !important;
+    height: 40% !important;
     border-radius: 24px;
     border-width: 2px;
     transform: perspective(1500px) rotateY(10deg); 

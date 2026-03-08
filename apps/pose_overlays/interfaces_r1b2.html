@@ -19,7 +19,7 @@
       let channelName = urlParams.get('channel') || 'default_pose_channel';
       
       // If the channel name doesn't have a prefix, assume it's a MediaPipe vision task name
-      if (!channelName.includes('_')) {
+      if (!channelName.includes('mediapipe_in_')) {
         channelName = `mediapipe_in_${channelName}`;
       }
 

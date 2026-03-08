@@ -8,20 +8,39 @@ import { Message } from 'node-osc';
 import { spawn, ChildProcess } from 'child_process';
 import * as scServer from 'socketcluster-server';
 import { WebSocketServer } from 'ws';
+import type { OBSRequestTypes } from 'obs-websocket-js';
 
 import type slidesStudioPlugin from '../main'; 
 import { SaveFileBody, FileListQuery, GetFileQuery, OscSendBody, MidiSendBody, MidiPayload, CustomMessageBody } from '../types';
 import { ObsServer } from './obsEndpoints';
 
+interface ScRequest {
+    end: (data?: unknown) => void;
+    error: (err: unknown) => void;
+    data: unknown;
+}
+
 interface QueuedObsRequest {
     requestType?: string;
-    requestData?: any;
-    requests?: any[];
-    options?: any;
-    scRequest: {
-        end: (data?: any) => void;
-        error: (err: any) => void;
-    };
+    requestData?: unknown;
+    requests?: unknown[];
+    options?: unknown;
+    scRequest: ScRequest;
+}
+
+interface IncomingObsRequest {
+    requestType?: string;
+    requestData?: unknown;
+    requests?: unknown[];
+    options?: unknown;
+}
+
+interface ScMiddlewareAction {
+    type: unknown;
+    channel: string;
+    data: unknown;
+    PUBLISH_IN: unknown;
+    allow: () => void;
 }
 
 /**
@@ -44,7 +63,7 @@ export class ServerManager {
     private uvcUtilBridgeProcess: ChildProcess | null = null;
 
     private obsRequestQueue: QueuedObsRequest[] = [];
-    private obsQueueTimer: NodeJS.Timeout | null = null;
+    private obsQueueTimer: ReturnType<typeof setTimeout> | null = null;
 
     constructor(app: App, plugin: slidesStudioPlugin, port: number) {
         this.app = app;
@@ -65,8 +84,9 @@ export class ServerManager {
         }
 
         const pluginManifest = this.plugin.manifest;
-        const libFolder = path.join(basePath, `${pluginManifest.dir}/lib`);
-        const appFolder = path.join(basePath, `${pluginManifest.dir}/slide-studio-app`);
+        const pluginFolder = path.join(basePath, pluginManifest.dir);
+        const libFolder = path.join(pluginFolder, 'lib');
+        const appFolder = path.join(pluginFolder, 'slide-studio-app');
 
         this.server = fastify();
 
@@ -74,19 +94,19 @@ export class ServerManager {
         this.server.addHook('preHandler', async (request, reply) => {
             reply.header('X-Frame-Options', 'ALLOWALL');
             reply.header('Access-Control-Allow-Origin', '*');
-            reply.header('Content-Security-Policy', "frame-ancestors *; frame-src *; default-src * 'unsafe-inline' 'unsafe-eval'; img-src * data:; media-src *;");
+            reply.header('Content-Security-Policy', "frame-ancestors *; frame-src *; default-src * 'unsafe-inline' 'unsafe-eval' blob:; img-src * data:; media-src *;");
         });
 
         await this.server.register(fastifyCors, { origin: '*' });
 
         // Register static serving
         void this.server.register(fastifyStatic, {
-            root: [libFolder, appFolder, basePath],
+            root: [libFolder, appFolder, pluginFolder, basePath],
             prefix: '/', 
             setHeaders: (res, path) => {
                 res.setHeader('X-Frame-Options', 'ALLOWALL');
                 res.setHeader('Access-Control-Allow-Origin', '*');
-                res.setHeader('Content-Security-Policy', "frame-ancestors *; frame-src *; default-src * 'unsafe-inline' 'unsafe-eval'; img-src * data:; media-src *;");
+                res.setHeader('Content-Security-Policy', "frame-ancestors *; frame-src *; default-src * 'unsafe-inline' 'unsafe-eval' blob:; img-src * data:; media-src *;");
                 
                 if (path.endsWith('.mjs')) res.setHeader('Content-Type', 'application/javascript');
                 else if (path.endsWith('.task')) res.setHeader('Content-Type', 'application/octet-stream');
@@ -100,14 +120,13 @@ export class ServerManager {
         this.registerApiRoutes();
 
         // Debug upgrade requests
-        this.server.server.on('upgrade', (req, socket, head) => {
+        this.server.server.on('upgrade', (req, _socket, _head) => {
             console.warn(`[Server] Incoming UPGRADE request for ${req.url} from ${req.headers.origin}`);
         });
 
         try {
             // Attach SocketCluster to the same HTTP server
-            // We pass the WebSocketServer constructor explicitly.
-            // @ts-ignore
+            // We pass the WebSocketServer constructor explicitly
             this.scServer = scServer.attach(this.server.server, {
                 wsEngine: { Server: WebSocketServer },
                 path: '/socketcluster/',
@@ -118,22 +137,23 @@ export class ServerManager {
             void this.handleSocketClusterConnections();
             
             // Critical: Intercept all client-side publishes via middleware
-            // This is the most reliable way to catch publishes to the exchange.
-            // @ts-ignore
-            this.scServer.setMiddleware(this.scServer.MIDDLEWARE_INBOUND, async (middlewareStream) => {
-                for await (const action of middlewareStream) {
-                    // console.warn(`[Server] Middleware action: ${action.type} on ${action.channel}`);
-                    if (action.type === action.PUBLISH_IN || action.type === 'publish' || action.type === 1) {
-                        this.handleIncomingPublish(action.channel, action.data);
+            // This is the most reliable way to catch publishes to the exchange
+            this.scServer.setMiddleware(this.scServer.MIDDLEWARE_INBOUND, (middlewareStream: scServer.AGMiddlewareStream) => {
+                void (async () => {
+                    for await (const action of middlewareStream) {
+                        const scAction = action as unknown as ScMiddlewareAction;
+                        if (scAction.type === scAction.PUBLISH_IN || scAction.type === 'publish' || scAction.type === 1) {
+                            this.handleIncomingPublish(scAction.channel, scAction.data);
+                        }
+                        scAction.allow();
                     }
-                    action.allow();
-                }
+                })();
             });
 
             // setup device channels for visibility and internal consumption
             void this.setupDeviceChannels();
 
-            await this.server.listen({ port: this.port, host: '127.0.0.1' });
+            await this.server.listen({ port: this.port, host: '0.0.0.0' });
             
             this.isRunning = true;
             console.warn(`[Server] Listening on http://127.0.0.1:${this.port} (Fastify + SocketCluster)`);
@@ -251,7 +271,7 @@ export class ServerManager {
 
         const processQueue = async () => {
             if (this.obsRequestQueue.length === 0) {
-                this.obsQueueTimer = setTimeout(processQueue, 100);
+                this.obsQueueTimer = setTimeout(() => { void processQueue(); }, 100);
                 return;
             }
 
@@ -267,26 +287,36 @@ export class ServerManager {
                 // Single request
                 const item = batch[0];
                 try {
-                    const result = await this.plugin.obs.call(item.requestType as any, item.requestData);
+                    const reqType = item.requestType as keyof OBSRequestTypes;
+                    const reqData = item.requestData as OBSRequestTypes[keyof OBSRequestTypes];
+                    const result = await this.plugin.obs.call(reqType, reqData);
                     item.scRequest.end(result);
                 } catch (err) {
-                    item.scRequest.error(err);
+                    const msg = err instanceof Error ? err.message : String(err);
+                    // Handle common missing item errors gracefully for metadata queries
+                    if (item.requestType === "GetSceneItemList" && msg.includes("No source was found")) {
+                        item.scRequest.end({ sceneItems: [] });
+                    } else if (item.requestType === "GetInputSettings" && msg.includes("No source was found")) {
+                        item.scRequest.end({ inputSettings: {} });
+                    } else {
+                        item.scRequest.error(err);
+                    }
                 }
             } else {
                 // Multiple requests - bundle into CallBatch
-                const obsRequests: any[] = [];
+                const obsRequests: { requestType: keyof OBSRequestTypes, requestData?: unknown }[] = [];
                 const requestMap: number[] = []; // Maps batch index to obsRequests index
 
                 batch.forEach((item, index) => {
                     if (item.requests) {
                         // It's already a batch from the client
                         item.requests.forEach(r => {
-                            obsRequests.push(r);
+                            obsRequests.push(r as { requestType: keyof OBSRequestTypes, requestData?: unknown });
                             requestMap.push(index);
                         });
                     } else {
                         obsRequests.push({
-                            requestType: item.requestType,
+                            requestType: item.requestType as keyof OBSRequestTypes,
                             requestData: item.requestData
                         });
                         requestMap.push(index);
@@ -294,20 +324,35 @@ export class ServerManager {
                 });
 
                 try {
-                    const results = await this.plugin.obs.callBatch(obsRequests);
+                    const results = await this.plugin.obs.callBatch(
+                        obsRequests as unknown as Parameters<typeof this.plugin.obs.callBatch>[0],
+                        { haltOnFailure: false }
+                    );
                     
                     // Map results back to SC requests
-                    const scResults = new Array(batch.length).fill(null).map(() => [] as any[]);
+                    const scResults = new Array(batch.length).fill(null).map(() => [] as unknown[]);
                     results.forEach((res, idx) => {
                         const batchIdx = requestMap[idx];
                         scResults[batchIdx].push(res);
                     });
 
                     batch.forEach((item, idx) => {
+                        const resList = scResults[idx];
                         if (item.requests) {
-                            item.scRequest.end(scResults[idx]);
+                            item.scRequest.end(resList);
                         } else {
-                            item.scRequest.end(scResults[idx][0]);
+                            const res = resList[0] as { requestStatus: { result: boolean, code: number }, error?: string };
+                            // Handle common missing item errors gracefully for metadata queries in batch
+                            if (!res.requestStatus.result && 
+                                (item.requestType === "GetSceneItemList" || item.requestType === "GetInputSettings") && 
+                                res.error?.includes("No source was found")) {
+                                if (item.requestType === "GetSceneItemList") item.scRequest.end({ sceneItems: [] });
+                                else item.scRequest.end({ inputSettings: {} });
+                            } else if (!res.requestStatus.result) {
+                                item.scRequest.error(res.error || `OBS Request failed with code ${res.requestStatus.code}`);
+                            } else {
+                                item.scRequest.end(res);
+                            }
                         }
                     });
                 } catch (err) {
@@ -317,7 +362,7 @@ export class ServerManager {
 
             const elapsed = Date.now() - startTime;
             const waitTime = Math.max(0, interval - elapsed);
-            this.obsQueueTimer = setTimeout(processQueue, waitTime);
+            this.obsQueueTimer = setTimeout(() => { void processQueue(); }, waitTime);
         };
 
         void processQueue();
@@ -328,14 +373,14 @@ export class ServerManager {
 
         // Log potential errors
         void (async () => {
-            for await (const {error} of this.scServer!.listener('error')) {
+            for await (const {error} of this.scServer.listener('error')) {
                 console.error(`[SocketCluster] Server error:`, error);
             }
         })();
 
         // Log handshake attempts
         void (async () => {
-            for await (const {socket} of this.scServer!.listener('handshake')) {
+            for await (const {socket} of this.scServer.listener('handshake')) {
                 console.warn(`[SocketCluster] Handshake initiated: ${socket.id}`);
             }
         })();
@@ -345,40 +390,46 @@ export class ServerManager {
             this.broadcastServerState();
 
             void (async () => {
-                // @ts-ignore
                 for await (const request of socket.procedure('setInfo')) {
-                    const data = request.data as { name: string };
+                    const scReq = request as unknown as ScRequest;
+                    const data = scReq.data as { name: string };
                     this.clientMetadata.set(socket.id, { name: data.name || 'Unknown' });
                     this.broadcastServerState();
-                    request.end();
+                    scReq.end();
                 }
             })();
 
             void (async () => {
-                // @ts-ignore
+                for await (const request of socket.procedure('isObsConnected')) {
+                    const scReq = request as unknown as ScRequest;
+                    scReq.end({ connected: this.plugin.isObsConnected });
+                }
+            })();
+
+            void (async () => {
                 for await (const request of socket.procedure('obsRequest')) {
-                    const reqData = request.data as any;
+                    const scReq = request as unknown as ScRequest;
+                    const reqData = scReq.data as IncomingObsRequest;
                     this.obsRequestQueue.push({
                         requestType: reqData.requestType,
                         requestData: reqData.requestData,
                         requests: reqData.requests,
                         options: reqData.options,
-                        scRequest: request
+                        scRequest: scReq
                     });
                 }
             })();
 
             void (async () => {
-                // @ts-ignore
                 for await (const request of socket.procedure('uvcCommand')) {
-                    void this.scServer?.exchange.transmitPublish('uvcCommands', request.data);
-                    request.end();
+                    const scReq = request as unknown as ScRequest;
+                    void this.scServer?.exchange.transmitPublish('uvcCommands', scReq.data);
+                    scReq.end();
                 }
             })();
 
             // Handle 'uvcResponse' emits (from Python bridge)
             void (async () => {
-                // @ts-ignore
                 for await (const data of socket.receiver('uvcResponse')) {
                     void this.scServer?.exchange.transmitPublish('uvcResponse', data);
                 }
@@ -426,10 +477,12 @@ export class ServerManager {
 
         for (const channelName of outChannels) {
             void (async () => {
-                const channel = this.scServer!.exchange.subscribe(channelName);
-                for await (const data of channel) {
-                    // Logic handled here when server is a real subscriber
-                    this.handleIncomingPublish(channelName, data);
+                const channel = this.scServer?.exchange.subscribe(channelName);
+                if (channel) {
+                    for await (const data of channel) {
+                        // Logic handled here when server is a real subscriber
+                        this.handleIncomingPublish(channelName, data);
+                    }
                 }
             })();
         }
@@ -467,14 +520,14 @@ export class ServerManager {
 
         if (channel.startsWith('osc_out_')) {
             const deviceName = channel.replace('osc_out_', '');
-            const payload = data as { address: string, args: any };
+            const payload = data as { address: string, args: unknown };
             
             if (payload && payload.address) {
                 const message = new Message(payload.address);
                 if (Array.isArray(payload.args)) {
-                    payload.args.forEach(arg => message.append(arg));
+                    payload.args.forEach(arg => message.append(arg as string | number | boolean));
                 } else if (payload.args !== undefined) {
-                    message.append(payload.args);
+                    message.append(payload.args as string | number | boolean);
                 }
                 this.plugin.oscManager.sendMessage(deviceName, message);
             }
@@ -582,7 +635,7 @@ export class ServerManager {
     }
 
     private setupProcessLogging(process: ChildProcess, name: string): void {
-        process.stdout?.on('data', (data) => console.log(`[${name}] ${data}`));
+        process.stdout?.on('data', (data) => console.warn(`[${name}] ${data}`));
         process.stderr?.on('data', (data) => console.error(`[${name}] ERR: ${data}`));
         process.on('close', (code) => console.warn(`[${name}] Process exited with code ${code}`));
         process.on('error', (err) => console.error(`[${name}] Failed to start:`, err));

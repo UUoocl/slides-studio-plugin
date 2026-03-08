@@ -7,6 +7,12 @@ interface ActiveOscConnection {
     server: Server;
 }
 
+interface OscClientWithDetails {
+    host?: string;
+    port?: number;
+    send(message: Message, callback?: (err: Error | null) => void): void;
+}
+
 /**
  * Manages Open Sound Control (OSC) connections.
  * Handles creating clients/servers for bidirectional communication with OSC devices.
@@ -106,10 +112,9 @@ export class OscManager {
         }
 
         if (activeDevice) {
-            const client = activeDevice.client;
-            // @ts-ignore - Accessing private fields for debug logging
+            const client = activeDevice.client as unknown as OscClientWithDetails;
+            // Accessing private fields for debug logging
             const host = client.host || 'unknown';
-            // @ts-ignore
             const port = client.port || 'unknown';
 
             console.warn(`[OscManager] Sending OSC to ${deviceName} at ${host}:${port}`, message);

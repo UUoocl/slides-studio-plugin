@@ -374,7 +374,7 @@
             async ensureVision() {
                 if (!this.vision) {
                     console.log("Initializing MediaPipe Vision WASM...");
-                    this.vision = await FilesetResolver.forVisionTasks("./models/wasm");
+                    this.vision = await FilesetResolver.forVisionTasks("/mediapipe_models/wasm");
                 }
             }
 
@@ -382,7 +382,7 @@
                 if (this.poseLandmarker) return this.poseLandmarker;
                 await this.ensureVision();
                 this.poseLandmarker = await PoseLandmarker.createFromOptions(this.vision, {
-                    baseOptions: { modelAssetPath: `./models/pose_landmarker_lite.task`, delegate: "GPU" },
+                    baseOptions: { modelAssetPath: `/mediapipe_models/pose_landmarker_lite.task`, delegate: "GPU" },
                     runningMode: "IMAGE",
                     numPoses: 1
                 });
@@ -393,7 +393,7 @@
                 if (this.faceLandmarker) return this.faceLandmarker;
                 await this.ensureVision();
                 this.faceLandmarker = await FaceLandmarker.createFromOptions(this.vision, {
-                    baseOptions: { modelAssetPath: `./models/face_landmarker.task`, delegate: "GPU" },
+                    baseOptions: { modelAssetPath: `/mediapipe_models/face_landmarker.task`, delegate: "GPU" },
                     outputFaceBlendshapes: true,
                     runningMode: "IMAGE",
                     numFaces: 1
@@ -405,7 +405,7 @@
                 if (this.handLandmarker) return this.handLandmarker;
                 await this.ensureVision();
                 this.handLandmarker = await HandLandmarker.createFromOptions(this.vision, {
-                    baseOptions: { modelAssetPath: `./models/hand_landmarker.task`, delegate: "GPU" },
+                    baseOptions: { modelAssetPath: `/mediapipe_models/hand_landmarker.task`, delegate: "GPU" },
                     runningMode: "IMAGE",
                     numHands: 2
                 });

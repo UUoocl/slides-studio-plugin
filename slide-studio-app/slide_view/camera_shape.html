@@ -28,48 +28,61 @@
     </style>
 </head>
 <body>
-    <div id="debug-status" style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; font-family: monospace; font-size: 12px; z-index: 1000; border-radius: 4px; display: none;"></div>
     <div id="container" class="none"></div>
-    <script>
-        function showDebug(text, duration, color = "rgba(0,0,0,0.7)") {
-            const debugEl = document.getElementById("debug-status");
-            if (!debugEl) return;
-            debugEl.innerText = text;
-            debugEl.style.background = color;
-            debugEl.style.display = "block";
-            if (duration) setTimeout(() => { debugEl.style.display = "none"; }, duration);
+    
+    <script type="module" src="../lib/sc-connection.js"></script>
+    
+    <script type="module">
+        const container = document.getElementById("container");
+
+        function applyShape(shape) {
+            const finalShape = (shape && shape !== "none" && shape.trim() !== "") ? shape : "none";
+            container.className = finalShape;
         }
 
+        // Handle BroadcastChannel (Local Sync)
+        const bc = new BroadcastChannel("cameraShapes_channel");
+        bc.onmessage = (event) => {
+            applyShape(event.data);
+        };
+
         window.addEventListener('DOMContentLoaded', async(event) => {
-            console.log("[CameraShape] Initializing SSE connection...");
-            // Unified SSE listener for all plugin events (slides, commands, etc.)
-            const customSse = new EventSource('/api/events');
-            
-            customSse.onopen = () => {
-                console.log("[CameraShape] SSE connection opened.");
-                showDebug("SSE Connected", 3000, "green");
-            };
+            while (!window.scSocket) {
+                await new Promise(r => setTimeout(r, 100));
+            }
 
-            customSse.addEventListener('slidesCommands', (e) => {
-                try {
-                    const data = JSON.parse(e.data);
-                    if (data.msgParam && data.msgParam.cameraShape) {
-                        const shape = data.msgParam.cameraShape;
-                        console.debug("[CameraShape] Applying shape:", shape);
-                        showDebug(`Shape: ${shape}`, 2000);
-                        document.getElementById("container").className = shape;
-                    }
-                } catch (err) {
-                    console.error("[CameraShape] Error parsing message:", err);
+            // Connection listener loop
+            (async () => {
+                for await (let event of window.scSocket.listener('connect')) {
+                    // Connected
                 }
-            });
+            })();
 
-            customSse.onerror = (e) => {
-                console.error("[CameraShape] SSE connection error", e);
-                showDebug("SSE Error", 0, "red");
-            };
+            // Disconnection listener loop
+            (async () => {
+                for await (let event of window.scSocket.listener('disconnect')) {
+                    // Disconnected
+                }
+            })();
+
+            // Subscribe to the broadcast channel for overrides
+            const channel = window.scSocket.subscribe('slides_navigation');
+            
+            (async () => {
+                for await (let data of channel) {
+                    try {
+                        const payload = data.msgParam || {};
+                        const shape = payload.cameraShape || (payload.attributes ? payload.attributes.cameraShape : null);
+                        
+                        if (shape !== null && shape !== undefined) {
+                            applyShape(shape);
+                        }
+                    } catch (err) {
+                        console.error("[CameraShape] Error parsing SC message:", err);
+                    }
+                }
+            })();
         })
     </script>
 </body>
 </html>
-    

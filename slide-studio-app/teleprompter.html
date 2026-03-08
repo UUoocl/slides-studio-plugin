@@ -52,12 +52,11 @@
       <i class="icon-play marker" style="display: none"></i>
     </article>
 
-    <script src="lib/socketcluster-client.min.js"></script>
-    <script src="lib/sc-connection.js"></script>
+    <script type="module" src="lib/sc-connection.js"></script>
     <script src="lib/teleprompter.plugins.v122.js"></script>
     <script src="lib/teleprompter.js"></script>
 
-    <script>
+    <script type="module">
       // Initialize App
       window.onload = function() {
         TelePrompter.init();

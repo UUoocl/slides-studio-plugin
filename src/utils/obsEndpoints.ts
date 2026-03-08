@@ -46,10 +46,6 @@ export class ObsServer {
         // Proxy OBS batch calls
         server.post<{ Body: { requests: RequestBatchRequest[], options?: RequestBatchOptions } }>('/api/v1/obs/batch', async (request, reply) => {
             const { requests, options } = request.body;
-            if (requests) {
-                requests.forEach((req, idx) => {
-                });
-            }
 
             if (!this.plugin.isObsConnected) {
                 console.warn("[ObsServer] Batch request failed: OBS not connected");
@@ -85,6 +81,17 @@ export class ObsServer {
                 return result || {};
             } catch (error) {
                 const msg = error instanceof Error ? error.message : String(error);
+                
+                // Graceful handling for optional metadata fetches
+                if (name === "GetSceneItemList") {
+                    console.warn(`[ObsServer] Optional call to ${name} failed (Item likely missing):`, msg);
+                    return { sceneItems: [] };
+                }
+                if (name === "GetInputSettings") {
+                    console.warn(`[ObsServer] Optional call to ${name} failed (Input likely missing):`, msg);
+                    return { inputSettings: {} };
+                }
+
                 console.error(`[ObsServer] Call to ${name} failed:`, msg);
                 return reply.code(500).send({ error: msg });
             }

@@ -1,28 +1,31 @@
-# Slides studio plugin
+# Slides-Studio plugin
 
 ## Description 
-Slides Studio is a plugin for the electron app obsidian notes. Slides Studio integrates obsidian and open broadcast studio(OBS). By connecting to the OBS websocket server Slides Studio manages the state of OBS and Slides Studio apps.
+Slides-Studio is a plugin for the electron app obsidian notes. Slides-Studio integrates obsidian and open broadcast studio(OBS). By connecting to the OBS websocket server Slides-Studio manages the state of OBS and Slides-Studio apps.
 
 ## Features
-Slides Studio has 2 features.  
+Slides-Studio has 2 features.  
  1. **Input bridge**   
-Slides Studio converts input from OSC devices, MIDI devices, UVC Devices, Mouse, Keyboard and HTML apps into OBS websocket server commands and Server Sent Events.  
+Slides-Studio has a socketcluster server that handles input and output from OSC devices, MIDI devices, UVC Devices, Mouse, Keyboard, HTML apps, and OBS websocket server messages .  
  2. **Slide Tags View**   
-Slides Studio features an Obsidian view that allows the User to add tags to notes.  
+Slides-Studio features an Obsidian view that allows the User to add tags to notes.  
 
 ## Architecture 
 Obsidian has an API. 
-Through the obsidian API Slides Studio runs a npm packages.
+Through the obsidian API Slides-Studio runs a npm packages.
 * fastify server
+* socketcluster-server
+* socketcluster-client
 * node-osc server 
 * webMIDI
 * obs-websocket-js
+* @mediapipe/tasks-vision
 
-Python Scripts are used to retrieve device data not available through Node js.  Slides Studio uses sockets to communicate between python scripts and node js.  
+Python Scripts are used to retrieve device data not available through Node js.  Slides-Studio uses sockets to communicate between python scripts and node js.  
 
 ## Bridge 
-Slides Studio handles npm package and Python inputs and input from slide studio apps.
-Slide Studio plugin converts the various inputs into OBS websocket requests and server sent events.
+Slides-Studio bridges devices by creating input and output channels for each device. Input channels are from the device into Slides-plugin (device -> Slides-Studio). Output channels are from the client (either Slides-Studio or an HTML app) to a device (Slides-Studio -> device)
+Slides-Studio plugin converts OBS websocket requests and events into socketcluster channels.
 
 ## Settings
 * **Fastify** : the user can set the fastify server port. The port number can be set to 8080 to 65535. After setting a port, a check is performed to determine if the port is available. The server will listen on the localhost on the selected port.
@@ -49,7 +52,7 @@ The user can add a MIDI device by clicking an "Add Device" button.
 The user set MIDI device name is used as sse topics. Each device becomes an sse route in fastify. 
 After configuring a MIDI device's settings the User can click "Connect device" to start listening for the device messages.  
 
-* **Python Scripts** : Python scripts are used to monitor mouse, keyboard and uvc devices.  Sockets are used to communicate between the python scripts and node js. 
+* **Python Scripts** : Python scripts are used to monitor mouse, keyboard and uvc devices.  Socketcluster channels are used to communicate between the python scripts and Slides-Studio. 
 * 
 * **Python Installation** : The User sets the path and executable in a text field. If python is not found the setting description indicates "Python not found or invalid path.". If python is found the setting description includes "Python loaded: ${version}".  
 The User sets a socket port to communicate between python and node. After setting a port a check is perfrmed to ensure the port is available. 
@@ -69,20 +72,21 @@ Settings are saves to an obsidian folder. the User can choose from a list of Obs
 ## Port availabity check
 the Node net is used to check for port availablity.  The setting requesting a port check will update it's description to indicate if the port is available or in use. 
 
-## Slides Studio Tag View
-The Slides Studio includes an Obsidian View to allow the User to add tags to the open and in focus note.  The OBS websocket connection to get the OBS data to include in the tags.  OBS Scenes that start with "Scene" are made available.  The User can create key:value pairs to use as custom tags. 
+## Slides-Studio Tag View
+The Slides-Studio includes an Obsidian View to allow the User to add tags to the open and in focus note.  The OBS websocket connection to get the OBS data to include in the tags.  OBS Scenes that start with "Scene" are made available.  The User can create key:value pairs to use as custom tags. 
 
 ## ESLint 
 apply ESlint rules to @src/ files only. 
 
 ## Build
-The Slides Studio Build destination is an Obsidian vault 
+The Slides-Studio Build destination is an Obsidian vault 
 Build the 
 * src/
 
 and copy these folders to the build destination
 * pythonScripts/
 * slide-studio-app/
+* apps/
 
 ## This project's location relative to build destination
 /parentFolder

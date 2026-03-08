@@ -20,7 +20,7 @@ function copyFiles() {
         fs.mkdirSync(dir, { recursive: true });
     }
 
-    const itemsToCopy = ["manifest.json", "styles.css", "pythonScripts", "slide-studio-app"];
+    const itemsToCopy = ["manifest.json", "styles.css", "pythonScripts", "slide-studio-app", "mediapipe_models"];
     
     for (const item of itemsToCopy) {
         if (fs.existsSync(item)) {

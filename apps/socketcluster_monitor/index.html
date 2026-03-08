@@ -107,14 +107,17 @@
     </table>
 
     <script type="module">
-        import { create } from '../lib/socketcluster-client.min.js';
+        import { create } from '../../lib/socketcluster-client.min.js';
 
         const statusEl = document.getElementById('sc-status');
         const countEl = document.getElementById('client-count');
         const tableBody = document.getElementById('client-table-body');
 
+        // Force 127.0.0.1 context for consistent origin
+        const hostname = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
+
         const socket = create({
-            hostname: window.location.hostname,
+            hostname: hostname,
             port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
             path: '/socketcluster/'
         });

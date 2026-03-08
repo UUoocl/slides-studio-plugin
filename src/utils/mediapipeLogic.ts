@@ -1,9 +1,10 @@
 import { OBSWebSocket } from 'obs-websocket-js';
 import { MediaPipeDeviceSetting, WssDetails } from '../types';
 import type slidesStudioPlugin from '../main';
-import { FilesetResolver, FaceLandmarker, HandLandmarker, PoseLandmarker } from '@mediapipe/tasks-vision';
-import path from 'path';
+import { FilesetResolver, FaceLandmarker, HandLandmarker, PoseLandmarker, FaceLandmarkerResult, HandLandmarkerResult, PoseLandmarkerResult } from '@mediapipe/tasks-vision';
 import { FileSystemAdapter } from 'obsidian';
+
+type WasmFileset = Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>>;
 
 /**
  * Manages MediaPipe vision tasks (Face, Hand, Pose detection).
@@ -13,7 +14,7 @@ export class MediaPipeManager {
     private plugin: slidesStudioPlugin;
     private obs: OBSWebSocket;
     private isObsConnected = false;
-    private vision: any = null;
+    private vision: WasmFileset | null = null;
     private faceLandmarker: FaceLandmarker | null = null;
     private handLandmarker: HandLandmarker | null = null;
     private poseLandmarker: PoseLandmarker | null = null;
@@ -34,12 +35,9 @@ export class MediaPipeManager {
         const adapter = this.plugin.app.vault.adapter;
         if (!(adapter instanceof FileSystemAdapter)) return;
         
-        const basePath = adapter.getBasePath();
-        const wasmPath = path.join(basePath, this.plugin.manifest.dir, 'apps/source_capture/models/wasm');
-        
         // FilesetResolver for Node.js environment might need specific configuration
         // In Obsidian (Electron), we might need to point to the local filesystem or a URL
-        const wasmUrl = `http://127.0.0.1:${this.plugin.settings.serverPort}/apps/source_capture/models/wasm`;
+        const wasmUrl = `http://127.0.0.1:${this.plugin.settings.serverPort}/mediapipe_models/wasm`;
         
         console.warn(`[MediaPipe] Initializing vision tasks from ${wasmUrl}`);
         this.vision = await FilesetResolver.forVisionTasks(wasmUrl);
@@ -48,7 +46,8 @@ export class MediaPipeManager {
     private async getFaceLandmarker() {
         if (this.faceLandmarker) return this.faceLandmarker;
         await this.ensureInitialized();
-        const modelUrl = `http://127.0.0.1:${this.plugin.settings.serverPort}/apps/source_capture/models/face_landmarker.task`;
+        if (!this.vision) throw new Error("Vision not initialized");
+        const modelUrl = `http://127.0.0.1:${this.plugin.settings.serverPort}/mediapipe_models/face_landmarker.task`;
         this.faceLandmarker = await FaceLandmarker.createFromOptions(this.vision, {
             baseOptions: { modelAssetPath: modelUrl, delegate: "GPU" },
             outputFaceBlendshapes: true,
@@ -61,7 +60,8 @@ export class MediaPipeManager {
     private async getHandLandmarker() {
         if (this.handLandmarker) return this.handLandmarker;
         await this.ensureInitialized();
-        const modelUrl = `http://127.0.0.1:${this.plugin.settings.serverPort}/apps/source_capture/models/hand_landmarker.task`;
+        if (!this.vision) throw new Error("Vision not initialized");
+        const modelUrl = `http://127.0.0.1:${this.plugin.settings.serverPort}/mediapipe_models/hand_landmarker.task`;
         this.handLandmarker = await HandLandmarker.createFromOptions(this.vision, {
             baseOptions: { modelAssetPath: modelUrl, delegate: "GPU" },
             runningMode: "IMAGE",
@@ -73,7 +73,8 @@ export class MediaPipeManager {
     private async getPoseLandmarker() {
         if (this.poseLandmarker) return this.poseLandmarker;
         await this.ensureInitialized();
-        const modelUrl = `http://127.0.0.1:${this.plugin.settings.serverPort}/apps/source_capture/models/pose_landmarker_lite.task`;
+        if (!this.vision) throw new Error("Vision not initialized");
+        const modelUrl = `http://127.0.0.1:${this.plugin.settings.serverPort}/mediapipe_models/pose_landmarker_lite.task`;
         this.poseLandmarker = await PoseLandmarker.createFromOptions(this.vision, {
             baseOptions: { modelAssetPath: modelUrl, delegate: "GPU" },
             runningMode: "IMAGE",
@@ -145,7 +146,7 @@ export class MediaPipeManager {
                     }
                 ]);
 
-                const response = batchResults[0]?.responseData as any;
+                const response = batchResults[0]?.responseData as { imageData?: string } | undefined;
 
                 if (response && response.imageData) {
                     await this.processScreenshot(setting, response.imageData);
@@ -162,14 +163,6 @@ export class MediaPipeManager {
     }
 
     private async processScreenshot(setting: MediaPipeDeviceSetting, base64Data: string) {
-        // In Node.js/Electron main thread, we need to convert base64 to something MediaPipe can handle.
-        // MediaPipe detect() in web takes ImageSource. In Node, it might be different.
-        // Since we are in Electron, we might have access to Image/Canvas if we are in a window,
-        // but in the main thread we don't.
-        
-        // HOWEVER, Obsidian plugins run in the RENDERER process context mostly, but without a full DOM if not in a view.
-        // Let's assume we can use the 'Image' object if it's available.
-        
         const fullDataUrl = base64Data.startsWith('data:') ? base64Data : `data:image/png;base64,${base64Data}`;
         
         try {
@@ -181,7 +174,7 @@ export class MediaPipeManager {
                 img.src = fullDataUrl;
             });
 
-            let result: any = null;
+            let result: FaceLandmarkerResult | HandLandmarkerResult | PoseLandmarkerResult | null = null;
             if (setting.type === 'face') {
                 const model = await this.getFaceLandmarker();
                 result = model.detect(img);
