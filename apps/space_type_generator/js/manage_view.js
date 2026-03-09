@@ -8,8 +8,11 @@
 function getParams(){
   const params = new URLSearchParams(window.location.search)
   if(params.has("preset")){
-    document.getElementById("loadSelect").value = `${params.get("preset")}.json`
-    loadSettings()  
+    const loadSelect = document.getElementById("loadSelect");
+    if (loadSelect && typeof loadSettings === 'function') {
+        loadSelect.value = `${params.get("preset")}.json`
+        loadSettings()  
+    }
     hideui()
   }else{
     console.log("add a preset parameter")

@@ -2,11 +2,11 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>STG _v.stripes - Display</title>
+    <title>STG _v.flag - Display</title>
     <script src="./js/p5.min.1.1.0.js"></script>
     <link rel="stylesheet" type="text/css" href="./css/stgStyle.css" />
-    <script src="./js/sketch_stripes.js" type="text/javascript"></script>
-    <script src="./js/keyboardEngine_190221.js" type="text/javascript"></script>
+    <script src="./js/sketch_flag.js" type="text/javascript"></script>
+    <script src="./js/keyboardEngine_190402_corners.js" type="text/javascript"></script>
     <style>
       body { padding: 0; margin: 0; background: transparent !important; overflow: hidden; }
       canvas { vertical-align: top; }
@@ -20,22 +20,28 @@
     <script src="./js/manage_view.js"></script>
     <script src="./js/keyboard_input.js"></script>
     <script id="sketchSettings">
-      let hideCanvasUI = true; // Default to true for display page
       function setSketchSettings(json){
           if (!json) return;
           if (typeof typeXSlider !== 'undefined') typeXSlider.value(json.typeX);
           if (typeof typeYSlider !== 'undefined') typeYSlider.value(json.typeY);
           if (typeof typeStrokeSlider !== 'undefined') typeStrokeSlider.value(json.typeStroke);
-          if (typeof trackingSlider !== 'undefined') trackingSlider.value(json.tracking);
-          if (typeof ribbonCountSlider !== 'undefined') ribbonCountSlider.value(json.ribbonCount);
-          if (typeof ribbonSpaceXSlider !== 'undefined') ribbonSpaceXSlider.value(json.ribbonSpaceX);
-          if (typeof ribbonSpaceYSlider !== 'undefined') ribbonSpaceYSlider.value(json.ribbonSpaceY);
-          if (typeof ribbonSizeSlider !== 'undefined') ribbonSizeSlider.value(json.ribbonSize);
-          if (typeof ribbonOffsetSlider !== 'undefined') ribbonOffsetSlider.value(json.ribbonOffset);
-          if (typeof yWaveSlider !== 'undefined') yWaveSlider.value(json.yWave);
-          if (typeof speedSlider !== 'undefined') speedSlider.value(json.speed);
+          if (typeof rowSlider !== 'undefined') rowSlider.value(json.rows);
+          if (typeof paddingSlider !== 'undefined') paddingSlider.value(json.padding * 100);
+          
+          if (typeof xWaveSlider !== 'undefined') xWaveSlider.value(json.xWaveRaw);
+          if (typeof yWaveSlider !== 'undefined') yWaveSlider.value(json.yWaveRaw);
+          if (typeof zWaveSlider !== 'undefined') zWaveSlider.value(json.zWave);
           if (typeof offsetSlider !== 'undefined') offsetSlider.value(json.offset);
+          if (typeof speedSlider !== 'undefined') speedSlider.value(-json.speed);
+          if (typeof rowOffsetSlider !== 'undefined') rowOffsetSlider.value(json.rowOffset);
           if (typeof slopeSlider !== 'undefined') slopeSlider.value(json.slope);
+          
+          if (typeof typePushSlider !== 'undefined') typePushSlider.value(json.typePush);
+          
+          if (typeof xRotCameraSlider !== 'undefined') xRotCameraSlider.value(json.xRotCamera);
+          if (typeof yRotCameraSlider !== 'undefined') yRotCameraSlider.value(json.yRotCamera);
+          if (typeof zRotCameraSlider !== 'undefined') zRotCameraSlider.value(json.zRotCamera);
+          if (typeof zoomCameraSlider !== 'undefined') zoomCameraSlider.value(json.zoomCamera);
 
           if (typeof inp1 !== 'undefined') inp1.value(json.inp1color);
           if (typeof inp2 !== 'undefined') inp2.value(json.inp2color);
@@ -45,6 +51,8 @@
           if (json.inp6color && typeof color === 'function') {
               inp6 = color(json.inp6color);
           }
+          
+          if (typeof inp0check !== 'undefined') inp0check.checked(json.inp0check);
           if (typeof inp1check !== 'undefined') inp1check.checked(json.inp1check);
           if (typeof inp2check !== 'undefined') inp2check.checked(json.inp2check);
           if (typeof inp3check !== 'undefined') inp3check.checked(json.inp3check);
@@ -55,8 +63,12 @@
 
           if (typeof inpNumber !== 'undefined') inpNumber = json.inpNumber;
           if (typeof bkgdColorPicker !== 'undefined') bkgdColorPicker.value(json.bkgdColor);
+          if (typeof backSide !== 'undefined') backSide = json.backSide;
+          
           PRESET_SETTINGS = json;
       }
+      
+      window.setSketchSettings = setSketchSettings;
     </script>
     <script src="./js/stg_sc_sync.js" type="module"></script>
   </body>

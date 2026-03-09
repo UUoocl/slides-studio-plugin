@@ -4,16 +4,16 @@ stgMenuDiv.innerHTML = `
     <div class="dropdown">
       <button class="dropbtn">Select...</button>
       <div class="dropdown-content">
-        <a href="./cylinder.html" >CYLINDER</a>
+        <a href="./cylinder_settings.html" >CYLINDER</a>
         <!-- <a href="./field.html" >FIELD</a> -->
-        <a href="./stripes.html" >STRIPES</a>
+        <a href="./stripes_settings.html" >STRIPES</a>
         <!-- <a href="./coil.html" >COIL</a>
         <a href="./flag.html" >FLAG</a>
         <a href="./morisawa.html" >MORISAWA</a>
         <a href="./cascade.html" >CASCADE</a>
         <a href="./ribbon.html" >RIBBON</a> -->
-        <a href="./layers.html" >LAYERS</a>
-        <a href="./danger.html" >DANGER</a>
+        <a href="./layers_settings.html" >LAYERS</a>
+        <a href="./danger_settings.html" >DANGER</a>
         <!-- <a href="./string.html" >STRING</a>
         <a href="./badge.html" >BADGE</a>
         <a href="./clutter.html" >CLUTTER</a>
@@ -25,7 +25,7 @@ stgMenuDiv.innerHTML = `
         <a href="./crashclock.html" >CRASH CLOCK</a>
         <a href="./vessel.html" >VESSEL</a>
         <a href="./shine.html" >SHINE</a> -->
-        <a href="./boost.html" >BOOST</a>
+        <a href="./boost_settings.html" >BOOST</a>
       </div>
     </div>
     `;

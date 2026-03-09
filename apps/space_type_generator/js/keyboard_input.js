@@ -1,18 +1,26 @@
-let hotKeyTimer;     
-let PRESET_SETTINGS;
+var hotKeyTimer;     
+var PRESET_SETTINGS;
 
 function setHotkeyText(newText){
   if (!PRESET_SETTINGS) {
     console.log("Initializing PRESET_SETTINGS from current state...");
-    // Attempt to get current settings if getSketchSettings is available
     if (typeof getSketchSettings === 'function') {
-      PRESET_SETTINGS = getSketchSettings(filename || 'default');
+      PRESET_SETTINGS = getSketchSettings(typeof filename !== 'undefined' ? filename : 'default');
     } else {
       PRESET_SETTINGS = { text: "" };
     }
   }
+
+  // Restore previous settings before applying new text
+  // This ensures that if the previous animation had faded out (e.g. ribbonCount went to 0),
+  // it is restored to its preset state for the new text.
+  if (typeof setSketchSettings === 'function' && PRESET_SETTINGS) {
+      console.log("Restoring settings for new hotkey text");
+      setSketchSettings(PRESET_SETTINGS);
+  }
   
   PRESET_SETTINGS.text = newText;
+  window.hotKeyTimer = 5; // Reset timer
   
   // Update UI input if it exists
   const textfield = document.getElementById("textfield") || document.getElementById("textArea");
@@ -20,42 +28,10 @@ function setHotkeyText(newText){
     textfield.value = newText;
   }
 
-  if (typeof setSketchSettings === 'function') {
-    setSketchSettings(PRESET_SETTINGS);
+  // Surgical update: trigger specific sketch update functions if they exist.
+  if (typeof setText === 'function') {
+    setText(); // Used in Boost
+  } else if (typeof createSplits === 'function') {
+    createSplits(); // Used in Danger
   }
-}
-
-// Support for multiple input sources via query param ?inputSource=audio or ?inputSource=keyboard (default)
-const urlParams = new URLSearchParams(window.location.search);
-const inputSource = urlParams.get('inputSource') || 'keyboard';
-
-if (inputSource === 'audio') {
-    console.log('STG: Listening to audio_stt channel');
-    const audioChannel = new BroadcastChannel('audio_stt');
-    audioChannel.onmessage = (event) => {
-        const data = event.data;
-        if (data && data.stt) {
-            console.log('Audio STT received:', data.stt);
-            setHotkeyText(data.stt);
-            hotKeyTimer = 5; // Display for 5 seconds
-        }
-    };
-} else {
-    // Default to keyboard
-    console.log('STG: Listening to keyboard_events channel');
-    const keyboardChannel = new BroadcastChannel('keyboard_events');
-    keyboardChannel.onmessage = (event) => {
-        const data = event.data;
-        // The master_listener sends { type, data: { key, combo } }
-        if (data && data.type === 'keyboardPress') {
-            const keyData = data.data;
-            // Support both direct key if it contains + or combo
-            const displayKey = keyData.combo || keyData.key;
-            if (displayKey && displayKey.includes("+")) {
-                console.log('Hotkey broadcast received:', displayKey);
-                setHotkeyText(displayKey);
-                hotKeyTimer = 3;
-            }
-        }
-    };
 }

@@ -3,44 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interfaces Gemini2</title>
+    <title>r1b2 - Display</title>
+    <style>
+      body { padding: 0; margin: 0; background: transparent !important; overflow: hidden; }
+      canvas { vertical-align: top; }
+      /* Hide all UI elements */
+      #obsidian-save-ui-layer { display: none !important; }
+    </style>
 </head>
 <body>
+    <script>const APP_FOLDER = "apps/pose_overlays/presets";</script>
     <script src="./lib/p5.js"></script>
-    <script src="./sketch/gemini2.js"></script>
+    <script src="./sketch/r1b2.js"></script>
     <script src="./js/obsidian_save_load.js"></script>
     <script src="./js/manage_view.js"></script>
 
-    <script>
-      const urlParams = new URLSearchParams(window.location.search);
-      const channelName = urlParams.get('channel') || 'default_pose_channel';
-      const channel = new BroadcastChannel(channelName);
-
-      loadPreset()
-
-      channel.onmessage = (event) => {
-        const data = event.data;
-        // Support multiple data formats from Broadcast Channel
-        if (data.type === 'pose' && data.payload?.landmarks) {
-          cur_data = data.payload.landmarks[0];
-        } else if (data.type === 'face' && data.payload?.faceLandmarks) {
-          cur_data = data.payload.faceLandmarks[0];
-        } else if (data.type === 'hands' && data.payload?.landmarks) {
-          cur_data = data.payload.landmarks[0];
-        } else if (data.poseLandmarkerResult) {
-          // Format previously sent via OBS CustomEvent
-          cur_data = Array.isArray(data.poseLandmarkerResult[0]) ? data.poseLandmarkerResult[0] : data.poseLandmarkerResult;
-        } else if (Array.isArray(data)) {
-          // Raw landmarks array or nested landmarks
-          cur_data = Array.isArray(data[0]) ? data[0] : data;
-        }
-      };
-    </script>
-
-
     <main id="p5_stage"></main>
 <script id="sketchSettings">
-      let hideCanvasUI = false;
+      let hideCanvasUI = true;
   function getSketchSettings(filename){
       const settings = {
           "filename" : filename,
@@ -53,13 +33,14 @@
           "inp4color" : inp4.value(),
           "inp5color" : inp5.value(),
           "inp6color" : inp6.value(),
-          "inp7color" : inp7.value()
+          "inp7color" : inp7.value(),
+          "bkgdColor" : bkgdColorPicker.value()
       }
       return settings
   }
 
   function setSketchSettings(json){
-    
+    if (!json) return;
     EPHEMERAL =json.ephemeral;
     EPHEMERAL_ALPHA = json.ephemeral_alpha;
     if(ephemeralCheckBox) ephemeralCheckBox.checked(json.ephemeral);
@@ -75,6 +56,8 @@
     if(inp6) inp6.value(json.inp6color);
     if(inp7) inp7.value(json.inp7color);
 
+    if(bkgdColorPicker && typeof bkgdColorPicker.value === 'function') bkgdColorPicker.value(json.bkgdColor);
+
     PALETTE = ["Custom", '#00000000', [
     json.inp1color, json.inp2color, json.inp3color, json.inp4color, json.inp5color, json.inp6color, json.inp7color,
     json.inp1color, json.inp2color, json.inp3color, json.inp4color, json.inp5color, json.inp6color, json.inp7color,
@@ -84,7 +67,11 @@
     ]]
     PALETTES[0] = PALETTE
 
-    if(window.newPaintLines) newPaintLines();
+    if(typeof newPaintLines === 'function') {
+        newPaintLines();
+    } else if (window.newPaintLines) {
+        window.newPaintLines();
+    }
     
     if(hideCanvasUI && stage && stage.setup){
         stage.setup()
@@ -92,6 +79,6 @@
     
   }
 </script>
-
+<script src="./js/pose_sc_sync.js" type="module"></script>
 </body>
 </html>

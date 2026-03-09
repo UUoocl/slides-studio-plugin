@@ -54,7 +54,7 @@ class TumbleLet {
     this.liveReset();
 
     for(var p = 0; p < this.p.commands.length; p++){
-      this.cols[p] = round(random(colorSet.length - 1));
+      this.cols[p] = (this.coreNumber + this.index + p) % colorSet.length;
     }
   }
 

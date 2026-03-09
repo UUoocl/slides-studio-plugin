@@ -506,7 +506,7 @@ function reset() {
 
   inp1.value("#ff0000");
   inp2.value("#0000ff");
-  inp3.value("#ffffoo");
+  inp3.value("#ffff00");
   inp4.value("#ffff00");
   inp5.value("#000");
   inp1check.checked(true);
