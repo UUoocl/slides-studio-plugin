@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dynamic Zoom Gallery</title>
     <!-- Import local libraries -->
+    <script type="module">
+        import { create } from '../lib/socketcluster-client.min.js';
+        window.socketClusterClient = { create };
+    </script>
     <script src="/apps/lib/p5.min.js"></script>
     <style>
         body {
@@ -39,7 +43,6 @@
     <script>
         // --- Configuration ---
         const CONFIG = {
-            serverUrl: 'http://127.0.0.1:57000',
             obsScene: 'Scene Custom View',
             activeSpeakerName: 'Scene zoom active speaker',
             participantPrefix: 'Participant', // e.g. "Participant 1"
@@ -65,25 +68,19 @@
         };
 
         // --- Globals ---
-        let eventSource = null;
+        let socket = null;
         let participants = [];
         let isObsConnected = false;
         let statusElem = document.getElementById('status-text');
 
         // --- OBS Proxy Helper ---
         async function callObs(requestType, requestData = {}) {
-            const response = await fetch(`${CONFIG.serverUrl}/api/v1/obs/${requestType}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData)
+            if (!socket) throw new Error('Socket not connected');
+            
+            return await socket.invoke('obsRequest', {
+                requestType,
+                requestData
             });
-            
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || `HTTP error ${response.status}`);
-            }
-            
-            return await response.json();
         }
 
         // --- Class: Participant ---
@@ -240,69 +237,89 @@
         }
 
         // --- Networking ---
-        let socket = null;
         async function initNetwork() {
-            try {
-                const response = await fetch(`${CONFIG.serverUrl}/api/v1/obs/isconnected`);
-                if (!response.ok) throw new Error("Plugin Error");
-                const status = await response.json();
+            if (!window.socketClusterClient) {
+                setTimeout(initNetwork, 100);
+                return;
+            }
 
+            socket = window.socketClusterClient.create({
+                hostname: window.location.hostname,
+                port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
+                path: '/socketcluster/'
+            });
+
+            (async () => {
+                for await (let {error} of socket.listener('error')) {
+                    console.error('SocketCluster error:', error);
+                }
+            })();
+
+            (async () => {
+                for await (let event of socket.listener('connect')) {
+                    statusElem.textContent = "SocketCluster Connected. Checking OBS...";
+                    statusElem.style.color = "#4caf50";
+                    checkObsStatus();
+                }
+            })();
+
+            (async () => {
+                for await (let event of socket.listener('disconnect')) {
+                    statusElem.textContent = "SocketCluster Disconnected. Retrying...";
+                    statusElem.style.color = "red";
+                    isObsConnected = false;
+                }
+            })();
+
+            // Listen for OBS events to update connection status
+            (async () => {
+                const channel = socket.subscribe('obs:ConnectionOpened');
+                for await (let data of channel) {
+                    isObsConnected = true;
+                    statusElem.textContent = "OBS Connected";
+                    statusElem.style.color = "#4caf50";
+                }
+            })();
+
+            (async () => {
+                const channel = socket.subscribe('obs:ConnectionClosed');
+                for await (let data of channel) {
+                    isObsConnected = false;
+                    statusElem.textContent = "OBS Disconnected";
+                    statusElem.style.color = "orange";
+                }
+            })();
+
+            // Subscribe to OSC messages for ZoomOSC
+            const oscChannelName = "osc_in_ZoomOSC";
+            (async () => {
+                const channel = socket.subscribe(oscChannelName);
+                for await (let data of channel) {
+                    handleOscMessage(data);
+                }
+            })();
+        }
+
+        async function checkObsStatus() {
+            try {
+                const status = await socket.invoke('isObsConnected');
                 isObsConnected = status.connected;
                 if (isObsConnected) {
-                    statusElem.textContent = "OBS Ready (via Proxy). Waiting for WebSocket...";
+                    statusElem.textContent = "Ready (OBS Connected)";
                     statusElem.style.color = "#4caf50";
                 } else {
                     statusElem.textContent = "OBS Disconnected in Plugin";
                     statusElem.style.color = "orange";
                 }
-
             } catch (e) {
-                statusElem.textContent = "Connection Failed: " + e.message;
-                statusElem.style.color = "red";
-                return;
-            }
-
-            const oscName = "ZoomOSC";
-            try {
-                const devResp = await fetch(`${CONFIG.serverUrl}/api/devices`);
-                if (!devResp.ok) throw new Error('Failed to fetch devices');
-                const devices = await devResp.json();
-                const device = devices.osc.find(d => d.name === oscName);
-
-                if (!device || !device.wsPort) {
-                    statusElem.textContent = `OSC Port for ${oscName} not found`;
-                    statusElem.style.color = "red";
-                    return;
-                }
-
-                socket = new WebSocket(`ws://127.0.0.1:${device.wsPort}`);
-                
-                socket.onopen = () => {
-                    statusElem.textContent = "System Ready (OBS Proxy + WS)";
-                };
-
-                socket.onmessage = (e) => {
-                    handleOscMessage(e.data);
-                };
-
-                socket.onerror = (err) => {
-                    statusElem.textContent = "WS Error";
-                    statusElem.style.color = "red";
-                };
-
-                socket.onclose = () => {
-                    statusElem.textContent = "WS Closed. Retrying...";
-                    setTimeout(initNetwork, 5000);
-                };
-            } catch (e) {
-                console.error("Init network error", e);
-                setTimeout(initNetwork, 5000);
+                console.error("Failed to check OBS status:", e);
             }
         }
 
-        function handleOscMessage(dataStr) {
+        function handleOscMessage(payload) {
             try {
-                const payload = JSON.parse(dataStr);
+                // SocketCluster payload format is the actual data (usually the array for OSC)
+                // If it follows the same structure as WS: { message: ["/address", args...] }
                 if (payload.message && Array.isArray(payload.message)) {
                     const address = payload.message[0];
                     const args = payload.message.slice(1);

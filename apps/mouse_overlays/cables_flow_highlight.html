@@ -41,7 +41,12 @@
 <body>
     <canvas id="glcanvas" width="100vw" height="100vh" tabindex="1"></canvas>
 
-        <script>
+    <script type="module">
+        import { create } from '../lib/socketcluster-client.min.js';
+        window.socketClusterClient = { create };
+    </script>
+
+    <script>
         let mousePosX = 0, mousePosY = 0;
         
         let displayXmin = 0;
@@ -57,6 +62,7 @@
 
         desktopBoundsChannel.onmessage = (event) => {
             if(event.data && typeof event.data.minX !== 'undefined') {
+                console.log('Received desktop bounds via BroadcastChannel:', event.data);
                 updateLocalBounds(event.data);
             }
         };
@@ -66,16 +72,105 @@
             displayXmax = bounds.maxX;
             displayYmin = bounds.minY;
             displayYmax = bounds.maxY;
+
+            // Update CABLES variables if patch is already loaded
+            if (typeof CABLES !== 'undefined' && CABLES.patch) {
+                const monitorsXmin = CABLES.patch.getVar("monitorsXmin")
+                const monitorsXmax = CABLES.patch.getVar("monitorsXmax")
+                const monitorsYmin = CABLES.patch.getVar("monitorsYmin")
+                const monitorsYmax = CABLES.patch.getVar("monitorsYmax")
+                if (monitorsXmin) monitorsXmin.setValue(displayXmin);
+                if (monitorsXmax) monitorsXmax.setValue(displayXmax);
+                if (monitorsYmin) monitorsYmin.setValue(displayYmin);
+                if (monitorsYmax) monitorsYmax.setValue(displayYmax);
+
+                // Update height based on new ratio
+                const varCanvasHeight = CABLES.patch.getVar("ColorHeight");
+                if (varCanvasHeight) {
+                    const monitorWidth = (Math.abs(displayXmin)+Math.abs(displayXmax));
+                    const monitorHeight = (Math.abs(displayYmin)+Math.abs(displayYmax));
+                    if (monitorWidth > 0) {
+                        const ratio = monitorHeight/monitorWidth;
+                        varCanvasHeight.setValue(640 * ratio);
+                    }
+                }
+            }
+        }
+
+        let socket;
+
+        async function initSocket() {
+            if (!window.socketClusterClient) {
+                setTimeout(initSocket, 100);
+                return;
+            }
+
+            socket = window.socketClusterClient.create({
+                hostname: window.location.hostname,
+                port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
+                path: '/socketcluster/'
+            });
+
+            (async () => {
+                for await (let {error} of socket.listener('error')) {
+                    console.error('SocketCluster error:', error);
+                }
+            })();
+
+            (async () => {
+                for await (let event of socket.listener('connect')) {
+                    console.log('Connected to SocketCluster');
+                    // Request bounds from other apps first
+                    desktopBoundsChannel.postMessage('request_bounds');
+                    // Fetch from OBS as fallback after a short delay if no one responded
+                    setTimeout(() => {
+                        if (displayXmax === 1920 && displayYmax === 1080) {
+                            fetchDesktopBounds();
+                        }
+                    }, 500);
+                }
+            })();
+
+            // Subscribe to mouse position updates
+            (async () => {
+                const channel = socket.subscribe('mousePosition');
+                for await (let data of channel) {
+                    mousePosX = Math.round(data.x);
+                    mousePosY = Math.round(data.y);
+
+                    if (typeof CABLES !== 'undefined' && CABLES.patch) {
+                        const varMouseX = CABLES.patch.getVar("MouseInX");
+                        const varMouseY = CABLES.patch.getVar("MouseInY");
+                        if (varMouseX && varMouseY) {
+                            const currentValueX = varMouseX.getValue();
+                            const currentValueY = varMouseY.getValue();
+
+                            const varPreviousMouseX = CABLES.patch.getVar("prevMousePosX");
+                            const varPreviousMouseY = CABLES.patch.getVar("prevMousePosY");
+
+                            const varMouseMoving = CABLES.patch.getVar("MouseMoving");
+                            const varMouseDrag = CABLES.patch.getVar("MouseIsDragged");
+                            if(varMouseMoving) varMouseMoving.setValue(1);
+                            if(varMouseDrag) varMouseDrag.setValue(1);
+
+                            varMouseX.setValue(Number(mousePosX));
+                            varMouseY.setValue(Number(mousePosY));
+                            if(varPreviousMouseX) varPreviousMouseX.setValue(currentValueX);
+                            if(varPreviousMouseY) varPreviousMouseY.setValue(currentValueY);
+                            if(varMouseMoving) varMouseMoving.setValue(0);
+                            if(varMouseDrag) varMouseDrag.setValue(1);
+                        }
+                    }
+                }
+            })();
         }
 
         async function fetchDesktopBounds() {
+            if (!socket) return;
             try {
-                const res = await fetch('/api/v1/obs/GetMonitorList', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({})
+                const data = await socket.invoke('obsRequest', {
+                    requestType: 'GetMonitorList'
                 });
-                const data = await res.json();
                 const monitors = data.monitors || [];
                 if (monitors.length > 0) {
                     const bounds = {
@@ -87,45 +182,12 @@
                     updateLocalBounds(bounds);
                 }
             } catch (e) {
-                console.error("Failed to fetch desktop bounds from OBS Proxy", e);
+                console.error("Failed to fetch desktop bounds from SocketCluster", e);
             }
         }
 
-        const mousePosSource = new EventSource('/api/mouse/events/mousePosition');
-
-        mousePosSource.addEventListener('mousePosition', (event) => {
-            const data = JSON.parse(event.data);
-            mousePosX = Math.round(data.x);
-            mousePosY = Math.round(data.y);
-
-            if (typeof CABLES !== 'undefined' && CABLES.patch) {
-                const varMouseX = CABLES.patch.getVar("MouseInX");
-                const varMouseY = CABLES.patch.getVar("MouseInY");
-                if (varMouseX && varMouseY) {
-                    const currentValueX = varMouseX.getValue();
-                    const currentValueY = varMouseY.getValue();
-
-                    const varPreviousMouseX = CABLES.patch.getVar("prevMousePosX");
-                    const varPreviousMouseY = CABLES.patch.getVar("prevMousePosY");
-
-                    const varMouseMoving = CABLES.patch.getVar("MouseMoving");
-                    const varMouseDrag = CABLES.patch.getVar("MouseIsDragged");
-                    if(varMouseMoving) varMouseMoving.setValue(1);
-                    if(varMouseDrag) varMouseDrag.setValue(1);
-
-                    varMouseX.setValue(Number(mousePosX));
-                    varMouseY.setValue(Number(mousePosY));
-                    if(varPreviousMouseX) varPreviousMouseX.setValue(currentValueX);
-                    if(varPreviousMouseY) varPreviousMouseY.setValue(currentValueY);
-                    if(varMouseMoving) varMouseMoving.setValue(0);
-                    if(varMouseDrag) varMouseDrag.setValue(1);
-                }
-            }
-        });
-
         // Initial setup
-        fetchDesktopBounds();
-        desktopBoundsChannel.postMessage('request_bounds');
+        initSocket();
 
         // p5 map/constrain helpers for cables logic if needed
         let map = (n, start1, stop1, start2, stop2) => {
@@ -168,10 +230,10 @@
             const monitorsXmax = CABLES.patch.getVar("monitorsXmax")
             const monitorsYmin = CABLES.patch.getVar("monitorsYmin")
             const monitorsYmax = CABLES.patch.getVar("monitorsYmax")
-            monitorsXmin.setValue(displayXmin);
-            monitorsXmax.setValue(displayXmax);
-            monitorsYmin.setValue(displayYmin);
-            monitorsYmax.setValue(displayYmax);
+            if (monitorsXmin) monitorsXmin.setValue(displayXmin);
+            if (monitorsXmax) monitorsXmax.setValue(displayXmax);
+            if (monitorsYmin) monitorsYmin.setValue(displayYmin);
+            if (monitorsYmax) monitorsYmax.setValue(displayYmax);
         }
 
         document.addEventListener("CABLES.jsLoaded", function (event)

@@ -341,7 +341,7 @@ export class ServerManager {
                         if (item.requests) {
                             item.scRequest.end(resList);
                         } else {
-                            const res = resList[0] as { requestStatus: { result: boolean, code: number }, error?: string };
+                            const res = resList[0] as any;
                             // Handle common missing item errors gracefully for metadata queries in batch
                             if (!res.requestStatus.result && 
                                 (item.requestType === "GetSceneItemList" || item.requestType === "GetInputSettings") && 
@@ -351,7 +351,8 @@ export class ServerManager {
                             } else if (!res.requestStatus.result) {
                                 item.scRequest.error(res.error || `OBS Request failed with code ${res.requestStatus.code}`);
                             } else {
-                                item.scRequest.end(res);
+                                // For single requests, return only the responseData to match obs.call() behavior
+                                item.scRequest.end(res.responseData);
                             }
                         }
                     });

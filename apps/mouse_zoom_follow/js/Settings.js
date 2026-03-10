@@ -1,5 +1,6 @@
 let mappings = {}; 
 let settingsVisible = false;
+let learningHotkey = null;
 
 let config = {
     hotkeyZoomIn: '=',
@@ -148,14 +149,34 @@ window.updateMapping = function(index, key, value) {
     } else {
         mappings[index][key] = value;
     }
+
+    // Live update shared bounds if monitors change
+    if (window.recalculateDesktopBounds) {
+        window.recalculateDesktopBounds();
+    }
 };
 
 function handleKeyboard(data) {
-    if (config.hotkeyZoomIn && data.key === config.hotkeyZoomIn) {
+    const keyVal = data.combo || data.key;
+
+    if (learningHotkey) {
+        config[learningHotkey] = keyVal;
+        const idMap = {
+            'hotkeyZoomIn': 'hotkey-zoom-in',
+            'hotkeyZoomOut': 'hotkey-zoom-out',
+            'hotkeyToggleMenu': 'hotkey-toggle-menu'
+        };
+        const el = document.getElementById(idMap[learningHotkey]);
+        if (el) el.value = keyVal;
+        learningHotkey = null;
+        return;
+    }
+
+    if (config.hotkeyZoomIn && keyVal === config.hotkeyZoomIn) {
         if (typeof targetZoomLevel !== 'undefined') targetZoomLevel += config.zoomIncrement;
-    } else if (config.hotkeyZoomOut && data.key === config.hotkeyZoomOut) {
+    } else if (config.hotkeyZoomOut && keyVal === config.hotkeyZoomOut) {
         if (typeof targetZoomLevel !== 'undefined') targetZoomLevel = Math.max(0.1, targetZoomLevel - config.zoomIncrement);
-    } else if (config.hotkeyToggleMenu && data.key === config.hotkeyToggleMenu) {
+    } else if (config.hotkeyToggleMenu && (keyVal.toLowerCase() === config.hotkeyToggleMenu.toLowerCase())) {
         window.toggleSettings();
     }
 }
@@ -168,21 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
             el.addEventListener('click', function() {
                 const configKey = id.replace(/-([a-z])/g, (g) => g[1].toUpperCase()).replace('Hotkey', 'hotkey');
                 this.value = 'Press a key...';
-                
-                // One-time listener for the next SSE keyboard event
-                const listener = (event) => {
-                    const data = JSON.parse(event.data);
-                    this.value = data.key;
-                    config[configKey] = data.key;
-                    // Note: keyboardSSESource is global from sketch.js
-                    if (window.keyboardSSESource) {
-                        window.keyboardSSESource.removeEventListener('keyboardPress', listener);
-                    }
-                };
-                
-                if (window.keyboardSSESource) {
-                    window.keyboardSSESource.addEventListener('keyboardPress', listener);
-                }
+                learningHotkey = configKey;
             });
         }
     });

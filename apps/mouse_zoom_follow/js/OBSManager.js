@@ -3,7 +3,9 @@ class OBSManager {
         this.isConnected = false;
         this.currentScene = "";
         this.lastUpdateTimes = {};
-        this.sseSource = null;
+        
+        // SocketCluster
+        this.socket = null;
         
         // Callbacks
         this.onConnectionChange = null;
@@ -11,51 +13,102 @@ class OBSManager {
     }
 
     async connect() {
+        if (this.socket) return;
+
+        this.socket = socketClusterClient.create({
+            hostname: window.location.hostname,
+            port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
+            path: '/socketcluster/'
+        });
+
+        // Error handling
+        (async () => {
+            for await (let {error} of this.socket.listener('error')) {
+                console.error('SocketCluster error:', error);
+            }
+        })();
+
+        // Connect handling
+        (async () => {
+            for await (let event of this.socket.listener('connect')) {
+                console.warn('SocketCluster connected');
+                try {
+                    await this.socket.invoke('setInfo', { name: 'Mouse_Zoom_and_Follow' });
+                } catch (e) {
+                    console.error('Failed to set SocketCluster info:', e);
+                }
+                await this.checkObsConnection();
+            }
+        })();
+
+        // Disconnect handling
+        (async () => {
+            for await (let event of this.socket.listener('disconnect')) {
+                console.warn('SocketCluster disconnected');
+                this.isConnected = false;
+                if (this.onConnectionChange) this.onConnectionChange(false);
+            }
+        })();
+
+        // Listen for OBS events
+        this.setupEventListeners();
+
+        // Initial check
+        await this.checkObsConnection();
+        return this.isConnected;
+    }
+
+    async checkObsConnection() {
         try {
-            // Check if plugin is connected to OBS
-            const res = await fetch('/api/v1/obs/isconnected');
-            const status = await res.json();
-            
+            const status = await this.socket.invoke('isObsConnected');
             this.isConnected = status.connected;
             if (this.onConnectionChange) this.onConnectionChange(this.isConnected);
 
             if (this.isConnected) {
-                this.setupSSE();
                 await this.refreshCurrentScene();
             }
-
-            return this.isConnected;
         } catch (err) {
-            console.error('OBS Proxy connection check failed:', err);
+            console.error('Failed to check OBS connection:', err);
+            this.isConnected = false;
             if (this.onConnectionChange) this.onConnectionChange(false);
-            return false;
         }
     }
 
-    setupSSE() {
-        if (this.sseSource) this.sseSource.close();
-        
-        this.sseSource = new EventSource('/api/v1/obs/events');
-        
-        this.sseSource.addEventListener('CurrentProgramSceneChanged', (event) => {
-            const data = JSON.parse(event.data);
-            this.currentScene = data.sceneName;
-            if (this.onSceneChange) this.onSceneChange(data.sceneName);
-        });
+    setupEventListeners() {
+        // Listen for connection opened
+        (async () => {
+            const channel = this.socket.subscribe('obs:ConnectionOpened');
+            for await (let data of channel) {
+                this.isConnected = true;
+                if (this.onConnectionChange) this.onConnectionChange(true);
+            }
+        })();
 
-        this.sseSource.addEventListener('ConnectionOpened', () => {
-            this.isConnected = true;
-            if (this.onConnectionChange) this.onConnectionChange(true);
-        });
+        // Listen for connection closed
+        (async () => {
+            const channel = this.socket.subscribe('obs:ConnectionClosed');
+            for await (let data of channel) {
+                this.isConnected = false;
+                if (this.onConnectionChange) this.onConnectionChange(false);
+            }
+        })();
 
-        this.sseSource.addEventListener('ConnectionClosed', () => {
-            this.isConnected = false;
-            if (this.onConnectionChange) this.onConnectionChange(false);
-        });
+        // Listen for scene change
+        (async () => {
+            const channel = this.socket.subscribe('obs:CurrentProgramSceneChanged');
+            for await (let data of channel) {
+                this.currentScene = data.sceneName;
+                if (this.onSceneChange) this.onSceneChange(data.sceneName);
+            }
+        })();
 
-        this.sseSource.onerror = () => {
-            console.warn('OBS SSE connection lost, retrying...');
-        };
+        // Listen for identified (re-check status)
+        (async () => {
+            const channel = this.socket.subscribe('obs:Identified');
+            for await (let data of channel) {
+                await this.checkObsConnection();
+            }
+        })();
     }
 
     async refreshCurrentScene() {
@@ -69,18 +122,12 @@ class OBSManager {
     }
 
     async call(requestType, requestData = {}) {
-        const response = await fetch(`/api/v1/obs/${requestType}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestData)
+        if (!this.socket) throw new Error('Socket not connected');
+        
+        return await this.socket.invoke('obsRequest', {
+            requestType,
+            requestData
         });
-        
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || `HTTP error ${response.status}`);
-        }
-        
-        return await response.json();
     }
 
     async getMonitorList() {
@@ -100,7 +147,7 @@ class OBSManager {
     }
 
     async getVideoSettings() {
-        if (!this.isConnected) return { baseWidth: 1920, baseHeight: 1080 };
+        if (!this.isConnected) return { width: 1920, height: 1080 };
         try {
             const settings = await this.call('GetVideoSettings');
             return {

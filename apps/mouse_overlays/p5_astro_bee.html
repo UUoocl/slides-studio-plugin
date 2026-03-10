@@ -9,6 +9,11 @@
     </style>
 </head>
 <body>
+    <script type="module">
+        import { create } from '../lib/socketcluster-client.min.js';
+        window.socketClusterClient = { create };
+    </script>
+
     <script>
         let mousePosX = window.innerWidth / 2;
         let mousePosY = window.innerHeight / 2;
@@ -23,6 +28,7 @@
 
         desktopBoundsChannel.onmessage = (event) => {
             if (event.data && typeof event.data.minX !== 'undefined') {
+                console.log('Received desktop bounds via BroadcastChannel:', event.data);
                 updateLocalBounds(event.data);
             }
         };
@@ -34,14 +40,81 @@
             displayYmax = bounds.maxY;
         }
 
+        let socket;
+
+        async function initSocket() {
+            if (!window.socketClusterClient) {
+                setTimeout(initSocket, 100);
+                return;
+            }
+
+            socket = window.socketClusterClient.create({
+                hostname: window.location.hostname,
+                port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
+                path: '/socketcluster/'
+            });
+
+            (async () => {
+                for await (let {error} of socket.listener('error')) {
+                    console.error('SocketCluster error:', error);
+                }
+            })();
+
+            (async () => {
+                for await (let event of socket.listener('connect')) {
+                    console.log('Connected to SocketCluster');
+                    // Request bounds from other apps first
+                    desktopBoundsChannel.postMessage('request_bounds');
+                    // Fetch from OBS as fallback after a short delay if no one responded
+                    setTimeout(() => {
+                        if (displayXmax === 1920 && displayYmax === 1080) {
+                            fetchDesktopBounds();
+                        }
+                    }, 500);
+                }
+            })();
+
+            // Subscribe to mouse position updates
+            (async () => {
+                const channel = socket.subscribe('mousePosition');
+                for await (let data of channel) {
+                    mousePosX = Math.round(remap(data.x, displayXmin, displayXmax, 0, window.innerWidth));
+                    mousePosY = Math.round(remap(data.y, displayYmin, displayYmax, 0, window.innerHeight));
+                }
+            })();
+
+            // Subscribe to mouse click updates
+            (async () => {
+                const channel = socket.subscribe('mouseClick');
+                for await (let data of channel) {
+                    if (data.pressed) {
+                        if (typeof triggerClickEffect === 'function') {
+                            triggerClickEffect();
+                        }
+                    }
+                }
+            })();
+
+            // Subscribe to keyboard press updates
+            (async () => {
+                const channel = socket.subscribe('keyboardPress');
+                for await (let data of channel) {
+                    const key = data.key;
+                    if (key === '+' || key === '=') {
+                        if (typeof updateZoom === 'function') updateZoom(20);
+                    } else if (key === '-') {
+                        if (typeof updateZoom === 'function') updateZoom(-20);
+                    }
+                }
+            })();
+        }
+
         async function fetchDesktopBounds() {
+            if (!socket) return;
             try {
-                const res = await fetch('/api/v1/obs/GetMonitorList', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({})
+                const data = await socket.invoke('obsRequest', {
+                    requestType: 'GetMonitorList'
                 });
-                const data = await res.json();
                 const monitors = data.monitors || [];
                 if (monitors.length > 0) {
                     const bounds = {
@@ -53,42 +126,12 @@
                     updateLocalBounds(bounds);
                 }
             } catch (e) {
-                console.error("Failed to fetch desktop bounds from OBS Proxy", e);
+                console.error("Failed to fetch desktop bounds from SocketCluster", e);
             }
         }
 
-        const mousePosSource = new EventSource('/api/mouse/events/mousePosition');
-        const mouseClickSource = new EventSource('/api/mouse/events/mouseClick');
-        const keyboardPressSource = new EventSource('/api/keyboard/events/keyboardPress');
-
-        mousePosSource.addEventListener('mousePosition', (event) => {
-            const data = JSON.parse(event.data);
-            mousePosX = Math.round(remap(data.x, displayXmin, displayXmax, 0, window.innerWidth));
-            mousePosY = Math.round(remap(data.y, displayYmin, displayYmax, 0, window.innerHeight));
-        });
-
-        mouseClickSource.addEventListener('mouseClick', (event) => {
-            const data = JSON.parse(event.data);
-            if (data.pressed) {
-                if (typeof triggerClickEffect === 'function') {
-                    triggerClickEffect();
-                }
-            }
-        });
-
-        keyboardPressSource.addEventListener('keyboardPress', (event) => {
-            const data = JSON.parse(event.data);
-            const key = data.key;
-            if (key === '+' || key === '=') {
-                if (typeof updateZoom === 'function') updateZoom(20);
-            } else if (key === '-') {
-                if (typeof updateZoom === 'function') updateZoom(-20);
-            }
-        });
-
         // Initial setup
-        fetchDesktopBounds();
-        desktopBoundsChannel.postMessage('request_bounds');
+        initSocket();
     </script>
     <script src="../lib/p5.min.js"></script>
     <script src="./sketch/astroBee_Sketch.js"></script>

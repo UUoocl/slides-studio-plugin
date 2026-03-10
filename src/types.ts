@@ -69,6 +69,9 @@ export interface SlidesStudioPluginSettings {
     user_tags: string[];
     obsAppName_Text: string;
     obsCollection_Text: string;
+    obsProfile_Text: string;
+    obsCollections_List: string[];
+    obsProfiles_List: string[];
     obsDebugPort_Text: string;
     obsAppPath_Text: string;
     obsRequestLimit: number;

@@ -1,6 +1,7 @@
 let obsManager = new OBSManager();
 let monitorInstances = [];
 let availableSources = [];
+let expandedMonitors = {}; // Track which monitor source lists are expanded
 
 // State
 let mousePos = { x: 0, y: 0 };
@@ -14,10 +15,6 @@ const IDLE_TIMEOUT = 4000; // 4 seconds
 
 // Keep internal channel for layout bounds sharing between browser sources
 const desktopBoundsChannel = new BroadcastChannel('desktop_bounds');
-
-// SSE Sources
-let mouseSSESource = null;
-let keyboardSSESource = null;
 
 let currentDesktopBounds = null;
 
@@ -39,7 +36,7 @@ async function initApp() {
     obsManager.onConnectionChange = (connected) => {
         const statusEl = document.getElementById('connection-status');
         if (connected) {
-            statusEl.textContent = 'Connected to OBS via Proxy';
+            statusEl.textContent = 'Connected to OBS via SocketCluster';
             statusEl.className = 'status connected';
             refreshData();
         } else {
@@ -49,31 +46,29 @@ async function initApp() {
     };
 
     await obsManager.connect();
-    setupInputSSE();
+    setupInputSocket();
 }
 
-function setupInputSSE() {
-    if (mouseSSESource) mouseSSESource.close();
-    if (keyboardSSESource) keyboardSSESource.close();
+function setupInputSocket() {
+    if (!obsManager.socket) return;
 
     // Subscribe to mouse position updates
-    mouseSSESource = new EventSource('/api/mouse/events/mousePosition');
-    mouseSSESource.addEventListener('mousePosition', (event) => {
-        const data = JSON.parse(event.data);
-        mousePos = data;
-        recordActivity();
-    });
+    (async () => {
+        const channel = obsManager.socket.subscribe('mousePosition');
+        for await (let data of channel) {
+            mousePos = data;
+            recordActivity();
+        }
+    })();
 
     // Subscribe to keyboard press events
-    keyboardSSESource = new EventSource('/api/keyboard/events/keyboardPress');
-    keyboardSSESource.addEventListener('keyboardPress', (event) => {
-        const data = JSON.parse(event.data);
-        handleKeyboard(data);
-        recordActivity();
-    });
-
-    mouseSSESource.onerror = () => console.warn('Mouse SSE lost');
-    keyboardSSESource.onerror = () => console.warn('Keyboard SSE lost');
+    (async () => {
+        const channel = obsManager.socket.subscribe('keyboardPress');
+        for await (let data of channel) {
+            handleKeyboard(data);
+            recordActivity();
+        }
+    })();
 }
 
 async function refreshData() {
@@ -109,6 +104,11 @@ window.recalculateDesktopBounds = function() {
     }
 };
 
+window.toggleMonitorSourceList = function(index) {
+    expandedMonitors[index] = !expandedMonitors[index];
+    renderMappingUI();
+};
+
 function renderMappingUI() {
     const container = document.getElementById('monitor-mappings');
     if (!container) return;
@@ -117,21 +117,36 @@ function renderMappingUI() {
     monitorInstances.forEach(mon => {
         const div = document.createElement('div');
         div.className = 'monitor-mapping';
+        const isExpanded = expandedMonitors[mon.index];
         
         div.innerHTML = `
-            <h4>${mon.name} (${mon.width}x${mon.height})</h4>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <div style="flex: 2;">
+            <h4 onclick="toggleMonitorSourceList(${mon.index})" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                <span>${mon.name} (${mon.width}x${mon.height})</span>
+                <span style="font-size: 0.8em; opacity: 0.7;">${isExpanded ? '▼' : '▶'}</span>
+            </h4>
+            <div style="display: flex; gap: 10px; flex-direction: column;">
+                <div>
                     <label style="font-size: 0.7em;">Source</label>
-                    <select onchange="updateMapping(${mon.index}, 'sourceName', this.value)">
-                        <option value="">None</option>
-                        ${availableSources.map(s => `<option value="${s}" ${mon.sourceName === s ? 'selected' : ''}>${s}</option>`).join('')}
-                    </select>
+                    <input type="text" id="src-input-${mon.index}"
+                        value="${mon.sourceName || ''}"
+                        placeholder="Type source name..."
+                        onchange="updateMapping(${mon.index}, 'sourceName', this.value)"
+                        style="width: 100%; box-sizing: border-box; margin-bottom: 4px;">
+                    
+                    <div id="src-list-container-${mon.index}" style="display: ${isExpanded ? 'block' : 'none'};">
+                        <select size="4" 
+                            onchange="const val = this.value; document.getElementById('src-input-${mon.index}').value = val; updateMapping(${mon.index}, 'sourceName', val); toggleMonitorSourceList(${mon.index});"
+                            style="width: 100%; background: #1e1e1e; color: #ce9178; border: 1px solid #3c3c3c; cursor: pointer; font-size: 0.8em;">
+                            <option value="" ${!mon.sourceName ? 'selected' : ''}>-- None --</option>
+                            ${availableSources.map(s => `<option value="${s}" ${mon.sourceName === s ? 'selected' : ''}>${s}</option>`).join('')}
+                        </select>
+                    </div>
                 </div>
-                <div style="flex: 1;">
+                <div>
                     <label style="font-size: 0.7em;">Res Factor</label>
                     <input type="number" step="0.1" min="0.1" value="${mon.resolutionFactor || 1.0}" 
-                        onchange="updateMapping(${mon.index}, 'resolutionFactor', this.value)">
+                        onchange="updateMapping(${mon.index}, 'resolutionFactor', this.value)"
+                        style="width: 100%; box-sizing: border-box;">
                 </div>
             </div>
         `;
@@ -365,8 +380,3 @@ function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
 }
 
-window.addEventListener('keydown', (e) => {
-    if (config.hotkeyToggleMenu && e.key.toLowerCase() === config.hotkeyToggleMenu.toLowerCase()) {
-        toggleSettings();
-    }
-});

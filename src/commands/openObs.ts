@@ -15,7 +15,7 @@ export const OpenObsCommand = (plugin: slidesStudioPlugin): Command => ({
 
         if (Platform.isMacOS) {
             commandString = `open -n -a "${settings.obsAppName_Text}"`;
-            commandString += ` --args --collection "${settings.obsCollection_Text}"`;
+            commandString += ` --args --collection "${settings.obsCollection_Text}" --profile "${settings.obsProfile_Text}"`;
             commandString += ` --remote-debugging-port=${settings.obsDebugPort_Text}`;
             commandString += ` --remote-allow-origins=http://127.0.0.1:${settings.obsDebugPort_Text}`;
             commandString += ` --websocket_port "${settings.websocketPort_Text}"`;
@@ -28,8 +28,8 @@ export const OpenObsCommand = (plugin: slidesStudioPlugin): Command => ({
             const obsDir = path.dirname(obsPath);
             process.chdir(obsDir);
 
-            commandString = `${settings.obsAppName_Text}`;
-            commandString += ` --args --collection "${settings.obsCollection_Text}"`;
+            commandString = `"${settings.obsAppName_Text}"`;
+            commandString += ` --collection "${settings.obsCollection_Text}" --profile "${settings.obsProfile_Text}"`;
             commandString += ` --remote-debugging-port=${settings.obsDebugPort_Text}`;
             commandString += ` --remote-allow-origins=http://127.0.0.1:${settings.obsDebugPort_Text}`;
             commandString += ` --websocket_port "${settings.websocketPort_Text}"`;

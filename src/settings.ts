@@ -378,11 +378,39 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
         
         new Setting(containerEl)
             .setName("Collection")
-            .addText((item) => {
-                item.setValue(this.plugin.settings.obsCollection_Text).onChange(
-                    (value) => {
+            .setDesc("Select the OBS scene collection to use on launch")
+            .addDropdown(dropdown => {
+                const collections = this.plugin.settings.obsCollections_List || [];
+                const options: Record<string, string> = {};
+                if (collections.length === 0) {
+                    options[this.plugin.settings.obsCollection_Text] = this.plugin.settings.obsCollection_Text;
+                } else {
+                    collections.forEach(c => options[c] = c);
+                }
+                dropdown.addOptions(options)
+                    .setValue(this.plugin.settings.obsCollection_Text)
+                    .onChange(async (value) => {
                         this.plugin.settings.obsCollection_Text = value;
-                        void this.plugin.saveSettings();
+                        await this.plugin.saveSettings();
+                    });
+            });
+
+        new Setting(containerEl)
+            .setName("Profile")
+            .setDesc("Select the OBS profile to use on launch")
+            .addDropdown(dropdown => {
+                const profiles = this.plugin.settings.obsProfiles_List || [];
+                const options: Record<string, string> = {};
+                if (profiles.length === 0) {
+                    options[this.plugin.settings.obsProfile_Text] = this.plugin.settings.obsProfile_Text;
+                } else {
+                    profiles.forEach(p => options[p] = p);
+                }
+                dropdown.addOptions(options)
+                    .setValue(this.plugin.settings.obsProfile_Text)
+                    .onChange(async (value) => {
+                        this.plugin.settings.obsProfile_Text = value;
+                        await this.plugin.saveSettings();
                     });
             });
 

@@ -44,6 +44,9 @@ const DEFAULT_SETTINGS: Partial<SlidesStudioPluginSettings> = {
 	newTag: "",
 	obsAppName_Text: "OBS",
 	obsCollection_Text: "Untitled",
+	obsProfile_Text: "Untitled",
+	obsCollections_List: [],
+	obsProfiles_List: [],
 	obsDebugPort_Text: "9222",
 	obsAppPath_Text: "",
     obsRequestLimit: 10,
@@ -332,6 +335,11 @@ export default class slidesStudioPlugin extends Plugin {
 				console.warn(`[Plugin] Executing automatic command: ${id}`);
 				this.app.commands.executeCommandById(id);
 			});
+
+			void (async () => {
+				await this.getObsCollectionsAndProfiles();
+				await this.ensureSlidesStudioCollection();
+			})();
 		});
 
 		// Forward common OBS events to SocketCluster
@@ -403,6 +411,27 @@ export default class slidesStudioPlugin extends Plugin {
 	}
 
 	/**
+	 * Fetches scene collections and profiles from OBS to populate dropdown lists.
+	 */
+	async getObsCollectionsAndProfiles(): Promise<void> {
+		try {
+			const collectionList = await this.obs.call("GetSceneCollectionList") as unknown as { currentSceneCollectionName: string, sceneCollections: string[] };
+			this.settings.obsCollections_List = collectionList.sceneCollections.sort((a, b) => 
+                a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+            );
+			
+			const profileList = await this.obs.call("GetProfileList") as unknown as { currentProfileName: string, profiles: string[] };
+			this.settings.obsProfiles_List = profileList.profiles.sort((a, b) => 
+                a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+            );
+
+			await this.saveData(this.settings);
+		} catch (error) {
+			console.error("Error fetching OBS collections and profiles", error);
+		}
+	}
+
+	/**
 	 * Fetches scenes and scene items from OBS to populate tag lists.
 	 * Identifies scenes starting with "Scene" and specific items like "Camera Position".
 	 */
@@ -451,6 +480,14 @@ export default class slidesStudioPlugin extends Plugin {
 					});
 				}
 			}
+
+			// Sort all lists alphanumeric ascending for better UX
+			const sortFn = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+			this.settings.all_sources.sort(sortFn);
+			this.settings.scene_tags.sort(sortFn);
+			this.settings.camera_tags.sort(sortFn);
+			this.settings.camera_shape_tags.sort(sortFn);
+			this.settings.slide_tags.sort(sortFn);
 
 			await this.saveData(this.settings);
 		} catch (error) {
@@ -529,6 +566,125 @@ export default class slidesStudioPlugin extends Plugin {
 		});
 		void workspace.revealLeaf(leaf);
 
+	}
+
+	/**
+	 * Ensures the "slides-studio" scene collection exists in OBS.
+	 * If not, creates it and populates it from the template JSON.
+	 */
+	async ensureSlidesStudioCollection(): Promise<void> {
+		if (!this.isObsConnected) return;
+
+		try {
+			if (this.settings.obsCollections_List.includes("slides-studio")) {
+				console.warn("[Plugin] Collection 'slides-studio' already exists.");
+				return;
+			}
+
+			new Notice("Creating 'slides-studio' OBS collection...");
+
+			// Reference the JSON location in the plugin directory using Obsidian API
+			const jsonPath = `${this.manifest.dir}/slide-studio-app/slidesstudio_obs_collection.json`;
+			const adapter = this.app.vault.adapter;
+			
+			if (!(await adapter.exists(jsonPath))) {
+				console.error(`[Plugin] Collection template not found at ${jsonPath}`);
+				return;
+			}
+
+			const jsonStr = await adapter.read(jsonPath);
+			const collectionData = JSON.parse(jsonStr);
+
+			// 1. Create the collection
+			await this.obs.call("CreateSceneCollection", { sceneCollectionName: "slides-studio" });
+			
+			// Wait for switch
+			await new Promise(resolve => setTimeout(resolve, 2000));
+
+			// 2. Recreate the collection using WebSocket commands
+			await this.recreateCollectionFromData(collectionData);
+			
+			// Refresh lists and tags
+			await this.getObsCollectionsAndProfiles();
+			await this.getObsTags();
+
+			new Notice("Finished creating 'slides-studio' collection");
+		} catch (error) {
+			console.error("Error ensuring slides-studio collection:", error);
+		}
+	}
+
+	/**
+	 * Converts collection JSON data to OBS WebSocket commands.
+	 */
+	private async recreateCollectionFromData(data: any): Promise<void> {
+		const sources = data.sources || [];
+		const sceneOrder = [...(data.scene_order || [])].reverse(); // Reverse to ensure first item ends up at top
+		
+		// 1. Create all scenes in reverse order specified in scene_order
+		// OBS often inserts new scenes at the top, so creating in reverse preserves top-to-bottom order.
+		for (const sceneItem of sceneOrder) {
+			const sceneName = sceneItem.name;
+			const sceneDef = sources.find((s: any) => s.name === sceneName && s.id === 'scene');
+			if (sceneDef) {
+				try {
+					await this.obs.call("CreateScene", { sceneName: sceneName });
+				} catch (e) {
+					// Scene might already exist
+				}
+			}
+		}
+
+		// Fallback: Create any scenes defined in sources but missing from scene_order (also reversed)
+		const otherScenes = sources.filter((s: any) => s.id === 'scene' && !sceneOrder.find(so => so.name === s.name)).reverse();
+		for (const scene of otherScenes) {
+			try {
+				await this.obs.call("CreateScene", { sceneName: scene.name });
+			} catch (e) {}
+		}
+
+		// 2. Create inputs and add items to scenes
+		// We use the original sources list here as the scenes now exist in the correct order
+		const scenesToPopulate = sources.filter((s: any) => s.id === 'scene');
+		for (const sceneDef of scenesToPopulate) {
+			const items = sceneDef.settings?.items || [];
+			for (const item of items) {
+				// Find the source definition for this item
+				const sourceDef = sources.find((s: any) => s.uuid === item.source_uuid || s.name === item.name);
+				if (!sourceDef) continue;
+
+				if (sourceDef.id === 'scene') {
+					// It's a sub-scene item
+					try {
+						await this.obs.call("CreateSceneItem", {
+							sceneName: sceneDef.name,
+							sourceName: sourceDef.name,
+							sceneItemEnabled: item.visible
+						});
+					} catch (e) {}
+				} else {
+					// It's an input
+					try {
+						await this.obs.call("CreateInput", {
+							sceneName: sceneDef.name,
+							inputName: sourceDef.name,
+							inputKind: sourceDef.id,
+							inputSettings: sourceDef.settings,
+							sceneItemEnabled: item.visible
+						});
+					} catch (e) {
+						// Input might already exist, just add it to this scene
+						try {
+							await this.obs.call("CreateSceneItem", {
+								sceneName: sceneDef.name,
+								sourceName: sourceDef.name,
+								sceneItemEnabled: item.visible
+							});
+						} catch (innerE) {}
+					}
+				}
+			}
+		}
 	}
 
 	/**

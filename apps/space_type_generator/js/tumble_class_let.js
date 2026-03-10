@@ -269,7 +269,7 @@ class TumbleLet {
           }
 
           var closePoint = 0;
-          for (i = 0; i < this.p.commands.length; i++) {
+          for (let i = 0; i < this.p.commands.length; i++) {
             if (this.p.commands[i].type == "M") {
               if(i > 0){
                 beginContour();
@@ -332,7 +332,7 @@ class TumbleLet {
 
     var closePoint = 0;
     var z = 0;
-    for (i = 0; i < this.p.commands.length; i++) {
+    for (let i = 0; i < this.p.commands.length; i++) {
       if(sidesType == 2){
         fill(colorSet[this.cols[i]]);
       }
@@ -398,7 +398,7 @@ class TumbleLet {
       stroke(strokeColor);
       strokeWeight(strokeW);
 
-      for (i = 0; i < this.p.commands.length; i++) {
+      for (let i = 0; i < this.p.commands.length; i++) {
         if(this.p.commands[i].type != "Z"){
           line(
             this.p.commands[i].x, this.p.commands[i].y, 0,
