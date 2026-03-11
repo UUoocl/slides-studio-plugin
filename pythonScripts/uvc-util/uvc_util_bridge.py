@@ -12,7 +12,7 @@ lib_path = os.path.join(os.path.dirname(__file__), "libuvcutil.dylib")
 uvc_lib = None
 sc = None
 connected = False
-configs = {} # name -> {index, polling, pps, last_poll}
+configs = {} # name -> {index, polling, pps, last_poll, mapEnabled, mapMin, mapMax}
 lock = threading.Lock()
 
 # --- UVC Library Interface ---
@@ -91,11 +91,51 @@ class UVCLib:
             return json.loads(res_ptr.decode('utf-8'))
         return None
 
+def lerp(val, in_min, in_max, out_min, out_max):
+    if in_max == in_min:
+        return out_min
+    res = (val - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+    return round(float(res), 4)
+
+def apply_mapping(control_data, config):
+    if not config.get('mapEnabled'):
+        return control_data
+        
+    out_min = config.get('mapMin', 0)
+    out_max = config.get('mapMax', 1)
+    
+    if isinstance(control_data, list):
+        for ctrl in control_data:
+            _map_single_control(ctrl, out_min, out_max)
+    else:
+        _map_single_control(control_data, out_min, out_max)
+        
+    return control_data
+
+def _map_single_control(ctrl, out_min, out_max):
+    if 'current-value' not in ctrl or 'minimum' not in ctrl or 'maximum' not in ctrl:
+        return
+        
+    val = ctrl['current-value']
+    c_min = ctrl['minimum']
+    c_max = ctrl['maximum']
+    
+    if isinstance(val, dict) and isinstance(c_min, dict) and isinstance(c_max, dict):
+        # Compound value (eg pan-tilt)
+        mapped = {}
+        for key in val:
+            if key in c_min and key in c_max:
+                mapped[key] = lerp(val[key], c_min[key], c_max[key], out_min, out_max)
+        ctrl['mapped-value'] = mapped
+    elif isinstance(val, (int, float)):
+        # Scalar value
+        ctrl['mapped-value'] = lerp(val, c_min, c_max, out_min, out_max)
+
 def send_to_sc(channel, data):
     if connected and sc:
         sc.publish(channel, data)
 
-def process_command(payload, device_index=None):
+def process_command(payload, device_index=None, config=None):
     global uvc_lib, lock
     if not uvc_lib or not uvc_lib.is_loaded():
         return {"error": "UVC library not loaded"}
@@ -112,12 +152,28 @@ def process_command(payload, device_index=None):
             return {"action": "list_devices", "data": uvc_lib.get_devices()}
             
         elif action == "get_controls":
-            return {"action": "get_controls", "data": uvc_lib.get_controls()}
+            controls = uvc_lib.get_controls()
+            if config:
+                controls = apply_mapping(controls, config)
+            return {"action": "get_controls", "data": controls}
             
         elif action == "get_value":
             control = payload.get("control")
             if control:
-                return {"action": "get_value", "control": control, "data": uvc_lib.get_value(control)}
+                val = uvc_lib.get_value(control)
+                if config:
+                    # We need the min/max to map get_value results too
+                    # The get_value from libuvcutil usually returns just the value or a dict
+                    # To map it properly we might need the full control metadata.
+                    # For now, let's just try to map if it's a known format.
+                    # Optimization: maybe the bridge should cache min/max for mapped devices.
+                    controls = uvc_lib.get_controls()
+                    ctrl_meta = next((c for c in controls if c['name'] == control), None)
+                    if ctrl_meta:
+                        ctrl_meta['current-value'] = val
+                        apply_mapping([ctrl_meta], config)
+                        return {"action": "get_value", "control": control, "data": val, "mapped-value": ctrl_meta.get('mapped-value')}
+                return {"action": "get_value", "control": control, "data": val}
             return {"error": "Missing control name"}
             
         elif action == "set_value":
@@ -137,7 +193,7 @@ def on_uvc_out(channel, data):
         return
         
     try:
-        response = process_command(data, device_index=config['index'])
+        response = process_command(data, device_index=config['index'], config=config)
         if response:
             send_to_sc(f"uvc_in_{name}", response)
     except Exception as e:
@@ -164,7 +220,10 @@ def update_configs(device_list):
             'index': d['index'],
             'polling': d.get('pollingEnabled', False),
             'pps': d.get('pollsPerSecond', 1),
-            'last_poll': 0
+            'last_poll': 0,
+            'mapEnabled': d.get('mapEnabled', False),
+            'mapMin': d.get('mapMin', 0),
+            'mapMax': d.get('mapMax', 1)
         }
         # Subscribe to out channel if new
         if name not in configs:
@@ -190,7 +249,7 @@ def polling_loop():
                 if now - config['last_poll'] >= interval:
                     config['last_poll'] = now
                     try:
-                        res = process_command({"action": "get_controls"}, device_index=config['index'])
+                        res = process_command({"action": "get_controls"}, device_index=config['index'], config=config)
                         if res and "data" in res:
                             send_to_sc(f"uvc_in_{name}", {"action": "poll", "data": res['data']})
                     except:

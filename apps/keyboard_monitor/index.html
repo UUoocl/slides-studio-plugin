@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Keyboard Monitor (Broadcast Channel)</title>
+    <title>Keyboard Monitor (SocketCluster)</title>
     <style>
         body {
             margin: 0;
@@ -59,59 +59,92 @@
 </head>
 <body>
     <div id="info">
-        Keyboard Monitor (BC)<br>
-        Source: master_listener
+        Keyboard Monitor (SocketCluster)<br>
+        Status: Disconnected
     </div>
     
     <div id="key-display"></div>
     <div class="history" id="history"></div>
 
-    <script>
+    <script type="module">
+        import { create } from '../lib/socketcluster-client.min.js';
+
         const keyDisplay = document.getElementById('key-display');
         const historyDisplay = document.getElementById('history');
+        const info = document.getElementById('info');
         const history = [];
         const MAX_HISTORY = 5;
         let showCombinations = true;
 
-        // Fetch initial settings from plugin server
-        fetch('/api/keyboard/settings')
-            .then(res => res.json())
-            .then(settings => {
-                showCombinations = settings.showCombinations;
-            })
-            .catch(err => console.error("Failed to fetch keyboard settings", err));
+        const socket = create({
+            hostname: window.location.hostname,
+            port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
+            path: '/socketcluster/'
+        });
 
-        // Listen via Broadcast Channel
-        const bc = new BroadcastChannel('keyboard_events');
+        (async () => {
+            for await (let {error} of socket.listener('error')) {
+                console.error('SocketCluster error:', error);
+            }
+        })();
 
-        bc.onmessage = (event) => {
-            console.log('hi')
-            const { type, data } = event.data;
-            const { key, combo } = data;
+        (async () => {
+            for await (let event of socket.listener('connect')) {
+                console.log('Connected to SocketCluster');
+                updateStatus('Connected');
+                socket.invoke('setInfo', { name: 'Keyboard Monitor' });
+            }
+        })();
 
-            if (type === 'keyboardPress') {
+        (async () => {
+            for await (let event of socket.listener('disconnect')) {
+                console.log('Disconnected from SocketCluster');
+                updateStatus('Disconnected');
+            }
+        })();
+
+        function updateStatus(status) {
+            if (!info) return;
+            info.innerHTML = `Keyboard Monitor (SocketCluster)<br>Status: ${status}`;
+        }
+
+        // Listen for keyboard events
+        (async () => {
+            const channel = socket.subscribe('keyboardPress');
+            for await (let data of channel) {
+                const { key, combo } = data;
                 const activeKey = showCombinations ? combo : key;
                 showKey(activeKey);
-                
-                // Re-sync setting on press to stay responsive to UI changes
-                fetch('/api/keyboard/settings')
-                    .then(res => res.json())
-                    .then(settings => {
-                        showCombinations = settings.showCombinations;
-                    });
-            } else if (type === 'keyboardRelease') {
+            }
+        })();
+
+        (async () => {
+            const channel = socket.subscribe('keyboardRelease');
+            for await (let data of channel) {
+                const { key, combo } = data;
                 hideKey(showCombinations ? combo : key);
             }
-        };
+        })();
+
+        // Listen for setting updates (optional)
+        (async () => {
+            const channel = socket.subscribe('keyboardSettings');
+            for await (let data of channel) {
+                if (typeof data.showCombinations !== 'undefined') {
+                    showCombinations = data.showCombinations;
+                }
+            }
+        })();
 
         function showKey(key) {
+            if (!keyDisplay) return;
             let displayKey = formatKey(key);
             keyDisplay.textContent = displayKey;
             keyDisplay.classList.add('active');
         }
 
         function hideKey(key) {
-            keyDisplay.classList.remove('active');
+            if (keyDisplay) keyDisplay.classList.remove('active');
             
             let displayKey = formatKey(key, true);
             if (displayKey) {
@@ -141,6 +174,7 @@
         }
 
         function updateHistory() {
+            if (!historyDisplay) return;
             historyDisplay.innerHTML = history.map(k => `<span>${k}</span>`).join(' &rsaquo; ');
         }
     </script>

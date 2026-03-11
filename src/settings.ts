@@ -930,15 +930,17 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     const devDiv = containerEl.createDiv();
                     devDiv.setCssProps({
                         'border': '1px solid var(--background-modifier-border)',
-                        'padding': '10px',
-                        'margin-bottom': '10px',
-                        'border-radius': '5px'
+                        'padding': '15px',
+                        'margin-bottom': '15px',
+                        'border-radius': '8px',
+                        'background-color': 'var(--background-secondary-alt)'
                     });
 
                     let deviceSetting = this.plugin.settings.uvcDevices.find(d => d.index === dev.index);
                     
                     new Setting(devDiv)
-                        .setName(`${dev.name} (Index: ${dev.index})`)
+                        .setName(`${dev.name}`)
+                        .setDesc(`Index: ${dev.index}`)
                         .addToggle(toggle => toggle
                             .setTooltip("Enable this device for socketcluster messaging")
                             .setValue(!!deviceSetting?.enabled)
@@ -950,7 +952,10 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                                             name: dev.name.replace(/\s+/g, '_').toLowerCase(),
                                             enabled: true,
                                             pollingEnabled: false,
-                                            pollsPerSecond: 1
+                                            pollsPerSecond: 1,
+                                            mapEnabled: false,
+                                            mapMin: 0,
+                                            mapMax: 1
                                         };
                                         this.plugin.settings.uvcDevices.push(deviceSetting);
                                     } else {
@@ -1006,6 +1011,50 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                                     })
                                 );
                         }
+
+                        // Mapping settings
+                        new Setting(devDiv)
+                            .setName("Enable value mapping")
+                            .setDesc("Map all raw device values to a user-defined range.")
+                            .addToggle(toggle => toggle
+                                .setValue(!!deviceSetting.mapEnabled)
+                                .onChange(async (value) => {
+                                    deviceSetting.mapEnabled = value;
+                                    await this.plugin.saveSettings();
+                                    this.updateBridgeConfig();
+                                    this.display();
+                                })
+                            );
+
+                        if (deviceSetting.mapEnabled) {
+                            new Setting(devDiv)
+                                .setName("Mapped range")
+                                .setDesc("Set the target min and max values for mapping.")
+                                .addText(text => text
+                                    .setPlaceholder("Min (eg 0)")
+                                    .setValue(deviceSetting.mapMin?.toString() ?? "0")
+                                    .onChange(async (value) => {
+                                        const val = parseFloat(value);
+                                        if (!isNaN(val)) {
+                                            deviceSetting.mapMin = val;
+                                            await this.plugin.saveSettings();
+                                            this.updateBridgeConfig();
+                                        }
+                                    })
+                                )
+                                .addText(text => text
+                                    .setPlaceholder("Max (eg 1)")
+                                    .setValue(deviceSetting.mapMax?.toString() ?? "1")
+                                    .onChange(async (value) => {
+                                        const val = parseFloat(value);
+                                        if (!isNaN(val)) {
+                                            deviceSetting.mapMax = val;
+                                            await this.plugin.saveSettings();
+                                            this.updateBridgeConfig();
+                                        }
+                                    })
+                                );
+                        }
                     }
                 });
             }
@@ -1014,11 +1063,12 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
 
         // #region Audio Settings
         if (this.plugin.audioManager) {
-            new Setting(containerEl)
+            const audioContainer = containerEl.createDiv();
+            new Setting(audioContainer)
                 .setName("Audio input devices")
                 .setHeading();
             
-            containerEl.createEl("p", { text: "Add audio inputs (microphones, etc) and transform via fft." });
+            audioContainer.createEl("p", { text: "Add audio inputs (microphones, etc) and transform via fft." });
 
             void (async () => {
                 const audioInputs = await this.plugin.audioManager.getDevices();
@@ -1028,7 +1078,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                 });
 
                 this.plugin.settings.audioDevices.forEach((device, index) => {
-                    const deviceDiv = containerEl.createDiv();
+                    const deviceDiv = audioContainer.createDiv();
                     deviceDiv.setCssProps({
                         'border': '1px solid var(--background-modifier-border)',
                         'padding': '10px',
@@ -1131,7 +1181,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                         );
                 });
 
-                new Setting(containerEl)
+                new Setting(audioContainer)
                     .setName("Add new audio device")
                     .addButton(btn => btn
                         .setButtonText("Add device")
@@ -1152,7 +1202,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     );
 
                 // --- STT Transcriber Button ---
-                new Setting(containerEl)
+                new Setting(audioContainer)
                     .setName("Speech to text transcriber")
                     .setDesc("Open the speech to text transcriber in your default browser to manually start transcription for any device")
                     .addButton(btn => btn
@@ -1172,6 +1222,7 @@ export class slidesStudioSettingsTab extends PluginSettingTab {
                     );
             })();
         }
+        // #endregion
         // #endregion
 
         // #region Gamepad Settings

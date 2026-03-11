@@ -78,6 +78,7 @@
         (async () => {
             for await (let event of socket.listener('connect')) {
                 updateStatus('Connected');
+                socket.invoke('setInfo', { name: 'Mouse Monitor' });
             }
         })();
 

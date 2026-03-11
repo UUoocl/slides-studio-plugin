@@ -49,6 +49,9 @@ export interface UvcDeviceSetting {
     enabled: boolean;
     pollingEnabled: boolean;
     pollsPerSecond: number;
+    mapEnabled?: boolean;
+    mapMin?: number;
+    mapMax?: number;
 }
 
 /**

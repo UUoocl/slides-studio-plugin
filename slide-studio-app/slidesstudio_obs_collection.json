@@ -895,7 +895,7 @@
             "id": "browser_source",
             "versioned_id": "browser_source",
             "settings": {
-                "url": "http://127.0.0.1:58000/apps/socketcluster_test/Keyboard_sc_viz.html",
+                "url": "http://127.0.0.1:58000/apps/keyboard_monitor/index.html",
                 "css": "body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; \n--update-port: 1;\n}"
             },
             "mixers": 255,
@@ -998,7 +998,7 @@
             "settings": {
                 "is_local_file": false,
                 "local_file": "/Users/jonwood/Documents/myGithub/python_mouse_input/mouse_monitor_custom_event.html",
-                "url": "http://127.0.0.1:58000/apps/socketcluster_test/mouse_sc_viz.html",
+                "url": "http://127.0.0.1:58000/apps/mouse_monitor/index.html",
                 "width": 800,
                 "height": 600,
                 "fps_custom": true,
