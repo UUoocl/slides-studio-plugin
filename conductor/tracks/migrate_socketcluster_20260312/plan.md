@@ -15,9 +15,9 @@
 - [x] Task: Update Slide Studio App [77df18e]
     - [x] Update `slide-studio-app/lib/sc-connection.js` (or equivalent) to the new protocol with client naming.
     - [x] Verify slide state synchronization via SocketCluster using flat naming.
-- [~] Task: Update Overlays and Monitors
-    - [ ] Migrate `apps/audio_monitor/`, `apps/mouse_monitor/`, and other critical tools, providing unique client names and using namespaced flat channels.
-    - [ ] Ensure `p5.js` and `cables.gl` integrations are updated to the new client with unique names.
+- [x] Task: Update Overlays and Monitors [c67a1b9]
+    - [x] Migrate `apps/audio_monitor/`, `apps/mouse_monitor/`, and other critical tools, providing unique client names and using namespaced flat channels.
+    - [x] Ensure `p5.js` and `cables.gl` integrations are updated to the new client with unique names.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Client Migration (HTML Apps)' (Protocol in workflow.md)
 
 ## Phase 3: Device Bridge Migration (Python)
