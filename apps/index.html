@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slides Studio - Apps Gallery</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 40px;
+            margin: 0;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #007acc;
+            font-size: 2.5em;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 15px;
+        }
+        .subtitle {
+            color: #888;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+        }
+        .app-card {
+            background-color: #252526;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #333;
+            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .app-card:hover {
+            transform: translateY(-5px);
+            border-color: #007acc;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+        }
+        .app-link {
+            text-decoration: none;
+            color: inherit;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .app-card h2 {
+            margin: 0 0 10px 0;
+            color: #4ec9b0;
+            font-size: 1.4em;
+        }
+        .app-card p {
+            margin: 0;
+            font-size: 0.95em;
+            color: #cccccc;
+            flex-grow: 1;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+        }
+        .tag {
+            display: inline-block;
+            background: #333;
+            color: #aaa;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7em;
+            text-transform: uppercase;
+            font-weight: bold;
+            border: 1px solid #444;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            text-decoration: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: background 0.2s;
+        }
+        .btn-launch {
+            background-color: #0e639c;
+            color: white;
+        }
+        .btn-launch:hover {
+            background-color: #1177bb;
+        }
+        .btn-readme {
+            background-color: #3c3c3c;
+            color: #ccc;
+            border: 1px solid #555;
+        }
+        .btn-readme:hover {
+            background-color: #4c4c4c;
+            color: white;
+        }
+        .path {
+            font-family: 'Consolas', monospace;
+            font-size: 0.7em;
+            color: #555;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Apps Gallery</h1>
+    <p class="subtitle">A collection of specialized tools and overlays for Slides Studio.</p>
+
+    <div class="gallery-grid">
+        
+        <div class="app-card">
+            <a href="rule_engine/index.html" class="app-link">
+                <h2>Rule Engine</h2>
+                <p>Middleware for creating If-Then rules to route SocketCluster messages. Map inputs like MIDI or keyboard to outputs like OBS scene changes or custom triggers.</p>
+            </a>
+            <div class="card-footer">
+                <span class="tag">Middleware</span>
+                <div class="actions">
+                    <a href="rule_engine/readme.md" class="btn btn-readme">Readme</a>
+                    <a href="rule_engine/index.html" class="btn btn-launch">Launch</a>
+                </div>
+            </div>
+            <span class="path">rule_engine/index.html</span>
+        </div>
+
+        <div class="app-card">
+            <a href="mouse_zoom_follow/zoom_follow.html" class="app-link">
+                <h2>Mouse Zoom & Follow</h2>
+                <p>Automates OBS scene item transformations to "follow" the system mouse cursor with smooth zooming capabilities. Perfect for high-quality screen recordings.</p>
+            </a>
+            <div class="card-footer">
+                <span class="tag">OBS Overlay</span>
+                <div class="actions">
+                    <a href="mouse_zoom_follow/readme.md" class="btn btn-readme">Readme</a>
+                    <a href="mouse_zoom_follow/zoom_follow.html" class="btn btn-launch">Launch</a>
+                </div>
+            </div>
+            <span class="path">mouse_zoom_follow/zoom_follow.html</span>
+        </div>
+
+        <div class="app-card">
+            <a href="source_capture/index.html" class="app-link">
+                <h2>Source Capture & Vision</h2>
+                <p>High-performance source monitoring and computer vision processing. Integrated support for MediaPipe Pose, Face, and Hand tracking.</p>
+            </a>
+            <div class="card-footer">
+                <span class="tag">Computer Vision</span>
+                <div class="actions">
+                    <a href="source_capture/readme.md" class="btn btn-readme">Readme</a>
+                    <a href="source_capture/index.html" class="btn btn-launch">Launch</a>
+                </div>
+            </div>
+            <span class="path">source_capture/index.html</span>
+        </div>
+
+        <div class="app-card">
+            <a href="midi_monitor/midi_monitor_sc.html" class="app-link">
+                <h2>MIDI Monitor SC</h2>
+                <p>Real-time MIDI monitoring and control. Receive and send MIDI messages via SocketCluster, compatible with Cables.gl extensions.</p>
+            </a>
+            <div class="card-footer">
+                <span class="tag">Monitoring</span>
+                <div class="actions">
+                    <a href="midi_monitor/readme.md" class="btn btn-readme">Readme</a>
+                    <a href="midi_monitor/midi_monitor_sc.html" class="btn btn-launch">Launch</a>
+                </div>
+            </div>
+            <span class="path">midi_monitor/midi_monitor_sc.html</span>
+        </div>
+
+        <div class="app-card">
+            <a href="osc_monitor/osc_monitor_sc.html" class="app-link">
+                <h2>OSC Monitor SC</h2>
+                <p>Real-time OSC monitoring and control. Track Open Sound Control messages and send test payloads to your projects.</p>
+            </a>
+            <div class="card-footer">
+                <span class="tag">Monitoring</span>
+                <div class="actions">
+                    <a href="osc_monitor/readme.md" class="btn btn-readme">Readme</a>
+                    <a href="osc_monitor/osc_monitor_sc.html" class="btn btn-launch">Launch</a>
+                </div>
+            </div>
+            <span class="path">osc_monitor/osc_monitor_sc.html</span>
+        </div>
+
+        <div class="app-card">
+            <a href="pose_overlays/r1b2.html" class="app-link">
+                <h2>Pose Overlays</h2>
+                <p>Collection of interactive p5.js sketches that visualize MediaPipe vision results. Includes parabolic painting and fluid movement effects.</p>
+            </a>
+            <div class="card-footer">
+                <span class="tag">Visuals</span>
+                <div class="actions">
+                    <a href="pose_overlays/readme.md" class="btn btn-readme">Readme</a>
+                    <a href="pose_overlays/r1b2.html" class="btn btn-launch">Launch</a>
+                </div>
+            </div>
+            <span class="path">pose_overlays/r1b2.html</span>
+        </div>
+
+        <div class="app-card">
+            <a href="space_type_generator/stg_obs.html" class="app-link">
+                <h2>Space Type Generator</h2>
+                <p>Kinetic type generators built with P5.js. Create, customize, and animate text in various styles like Cylinder, Layers, and Danger.</p>
+            </a>
+            <div class="card-footer">
+                <span class="tag">Typography</span>
+                <div class="actions">
+                    <a href="space_type_generator/readme.md" class="btn btn-readme">Readme</a>
+                    <a href="space_type_generator/stg_obs.html" class="btn btn-launch">Launch</a>
+                </div>
+            </div>
+            <span class="path">space_type_generator/stg_obs.html</span>
+        </div>
+
+        <div class="app-card">
+            <a href="gamepad_monitor/gamepad_input.html" class="app-link">
+                <h2>Gamepad Monitor</h2>
+                <p>Visualize gamepad input received from the SocketCluster server. Real-time display of button presses and axis movements.</p>
+            </a>
+            <div class="card-footer">
+                <span class="tag">Monitoring</span>
+                <div class="actions">
+                    <a href="gamepad_monitor/readme.md" class="btn btn-readme">Readme</a>
+                    <a href="gamepad_monitor/gamepad_input.html" class="btn btn-launch">Launch</a>
+                </div>
+            </div>
+            <span class="path">gamepad_monitor/gamepad_input.html</span>
+        </div>
+
+        <div class="app-card">
+            <a href="uvc_monitor/uvc_util_monitor.html" class="app-link">
+                <h2>UVC Monitor</h2>
+                <p>Tools for monitoring and controlling USB Video Class (UVC) devices. Interact with Pan, Tilt, Zoom, and Focus hardware controls.</p>
+            </a>
+            <div class="card-footer">
+                <span class="tag">Hardware Control</span>
+                <div class="actions">
+                    <a href="uvc_monitor/README.md" class="btn btn-readme">Readme</a>
+                    <a href="uvc_monitor/uvc_util_monitor.html" class="btn btn-launch">Launch</a>
+                </div>
+            </div>
+            <span class="path">uvc_monitor/uvc_util_monitor.html</span>
+        </div>
+
+        <div class="app-card">
+            <a href="socketcluster_monitor/index.html" class="app-link">
+                <h2>SocketCluster Monitor</h2>
+                <p>A debugging tool to view active clients and their channel subscriptions on the internal SocketCluster server.</p>
+            </a>
+            <div class="card-footer">
+                <span class="tag">Dev Tools</span>
+                <div class="actions">
+                    <a href="socketcluster_monitor/index.html" class="btn btn-launch">Launch</a>
+                </div>
+            </div>
+            <span class="path">socketcluster_monitor/index.html</span>
+        </div>
+
+        <div class="app-card">
+            <a href="keyboard_monitor/index.html" class="app-link">
+                <h2>Keyboard Monitor</h2>
+                <p>Displays real-time keyboard events and key combinations being broadcast by the Python bridge.</p>
+            </a>
+            <div class="card-footer">
+                <span class="tag">Monitoring</span>
+                <div class="actions">
+                    <a href="keyboard_monitor/index.html" class="btn btn-launch">Launch</a>
+                </div>
+            </div>
+            <span class="path">keyboard_monitor/index.html</span>
+        </div>
+
+        <div class="app-card">
+            <a href="audio_monitor/audio_fft_sc_viz.html" class="app-link">
+                <h2>Audio Monitor</h2>
+                <p>Visualize audio FFT data and Speech-to-Text results in real-time. Connects your microphone to visual reactions.</p>
+            </a>
+            <div class="card-footer">
+                <span class="tag">Monitoring</span>
+                <div class="actions">
+                    <a href="audio_monitor/audio_fft_sc_viz.html" class="btn btn-launch">Launch</a>
+                </div>
+            </div>
+            <span class="path">audio_monitor/audio_fft_sc_viz.html</span>
+        </div>
+
+    </div>
+
+</body>
+</html>

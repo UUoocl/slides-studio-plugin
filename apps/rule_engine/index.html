@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SocketCluster Rule Engine</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 {
+            color: #007acc;
+            font-size: 1.5em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        .status-bar {
+            background: #252526;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .status.connected { color: #4ec9b0; }
+        .status.disconnected { color: #f44747; }
+
+        .rule-container {
+            background-color: #252526;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 1px solid #333;
+        }
+        .rule-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+            gap: 10px;
+        }
+        .rule-name-input {
+            flex-grow: 1;
+            font-weight: bold;
+            color: #4ec9b0;
+            background: transparent;
+            border: 1px solid transparent;
+            padding: 2px 5px;
+        }
+        .rule-name-input:hover, .rule-name-input:focus {
+            background: #1e1e1e;
+            border-color: #555;
+        }
+        .rule-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .rule-side {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .rule-side h3 {
+            margin: 0;
+            font-size: 1em;
+            color: #808080;
+            text-transform: uppercase;
+        }
+        .control-group {
+            display: flex;
+            gap: 5px;
+        }
+        select, textarea, input {
+            background-color: #3c3c3c;
+            color: #cccccc;
+            border: 1px solid #555;
+            padding: 5px;
+            border-radius: 2px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9em;
+        }
+        select {
+            flex-grow: 1;
+        }
+        textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        button {
+            background-color: #0e639c;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #1177bb;
+        }
+        button.remove-btn {
+            background-color: #d83b01;
+        }
+        button.remove-btn:hover {
+            background-color: #ef4411;
+        }
+        button.listen-btn.listening {
+            background-color: #ca5010;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        .add-rule-btn {
+            width: 100%;
+            padding: 10px;
+            font-weight: bold;
+            font-size: 1em;
+            margin-top: 10px;
+            background-color: #333;
+            border: 1px dashed #555;
+        }
+        .add-rule-btn:hover {
+            background-color: #444;
+            border-color: #777;
+        }
+        
+        .throttle-settings {
+            grid-column: span 2;
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #444;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 0.85em;
+            color: #888;
+        }
+        .throttle-settings label {
+            color: #ccc;
+        }
+
+        /* Actions & File Management */
+        .actions-bar {
+            margin-top: 20px;
+            background: #252526;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #333;
+        }
+        .save-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .filename-input {
+            flex-grow: 1;
+        }
+
+        /* Accordion */
+        .accordion {
+            border: 1px solid #444;
+            border-radius: 4px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .accordion-header {
+            background: #333;
+            padding: 8px 12px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9em;
+            user-select: none;
+        }
+        .accordion-header:hover {
+            background: #3c3c3c;
+        }
+        .accordion-content {
+            display: none;
+            padding: 10px;
+            background: #1e1e1e;
+        }
+        .accordion.open .accordion-content {
+            display: block;
+        }
+        .file-list-box {
+            width: 100%;
+            height: 120px;
+            background: #2d2d2d;
+        }
+
+        #message-log {
+            margin-top: 20px;
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            height: 150px;
+            overflow-y: auto;
+            font-family: 'Consolas', monospace;
+            font-size: 0.8em;
+            padding: 10px;
+        }
+        .log-entry { margin-bottom: 2px; }
+        .log-time { color: #888; }
+        .log-channel { color: #4ec9b0; }
+        .log-trigger { color: #ce9178; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>SocketCluster Rule Engine</h1>
+
+    <div class="status-bar">
+        <span>Server: <strong id="sc-status" class="status disconnected">Disconnected</strong></span>
+        <span>Active Rules: <strong id="rule-count">0</strong></span>
+    </div>
+
+    <div id="rules-list">
+        <!-- Rules will be added here -->
+    </div>
+
+    <button class="add-rule-btn" onclick="addRule()">+ ADD NEW RULE</button>
+
+    <div class="actions-bar">
+        <div class="save-group">
+            <label>Save As:</label>
+            <input type="text" id="save-filename" class="filename-input" placeholder="socketcluster-rules.json" value="socketcluster-rules.json">
+            <button onclick="saveRules()">SAVE TO VAULT</button>
+        </div>
+
+        <div class="accordion" id="load-accordion">
+            <div class="accordion-header" onclick="toggleAccordion()">
+                <span>LOAD FROM VAULT</span>
+                <span id="accordion-arrow">▼</span>
+            </div>
+            <div class="accordion-content">
+                <p style="font-size: 0.8em; margin-bottom: 5px;">Select a file to load:</p>
+                <select id="file-list-box" class="file-list-box" size="5">
+                    <!-- Files populated dynamically -->
+                </select>
+                <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                    <button onclick="loadSelectedFile()">LOAD SELECTED</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="message-log">
+        <div class="log-entry">Waiting for rules to trigger...</div>
+    </div>
+
+    <script type="module">
+        import { create } from '../lib/socketcluster-client.min.js';
+
+        const statusEl = document.getElementById('sc-status');
+        const countEl = document.getElementById('rule-count');
+        const rulesList = document.getElementById('rules-list');
+        const logEl = document.getElementById('message-log');
+        const fileListSelect = document.getElementById('file-list-box');
+        const saveFilenameInput = document.getElementById('save-filename');
+
+        let rules = [];
+        let availableChannels = new Set([
+            'mousePosition', 'mouseClick', 'mouseScroll',
+            'keyboardPress', 'keyboardRelease', 'uvcResponse', 'uvcCommands',
+            'obsEvents', 'serverState', 'custom_slidesCommands'
+        ]);
+        
+        let socket;
+        const hostname = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
+
+        socket = create({
+            hostname: hostname,
+            port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
+            path: '/socketcluster/'
+        });
+
+        (async () => {
+            for await (let event of socket.listener('connect')) {
+                statusEl.textContent = "Connected";
+                statusEl.className = "status connected";
+                
+                try {
+                    await socket.invoke('setInfo', { name: 'Rule Engine' });
+                } catch (e) {}
+
+                const channel = socket.subscribe('serverState');
+                for await (let data of channel) {
+                    updateAvailableChannels(data.clients);
+                }
+            }
+        })();
+
+        (async () => {
+            for await (let event of socket.listener('disconnect')) {
+                statusEl.textContent = "Disconnected";
+                statusEl.className = "status disconnected";
+            }
+        })();
+
+        function updateAvailableChannels(clients) {
+            const oldSize = availableChannels.size;
+            clients.forEach(client => {
+                if (client.channels) {
+                    client.channels.forEach(ch => availableChannels.add(ch));
+                }
+            });
+            
+            if (availableChannels.size !== oldSize) {
+                updateAllSelects();
+            }
+        }
+
+        function updateAllSelects() {
+            const selects = document.querySelectorAll('select.channel-select');
+            const channelsArr = Array.from(availableChannels).sort();
+            
+            selects.forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">-- Select Channel --</option>';
+                channelsArr.forEach(ch => {
+                    const opt = document.createElement('option');
+                    opt.value = ch;
+                    opt.textContent = ch;
+                    if (ch === currentValue) opt.selected = true;
+                    select.appendChild(opt);
+                });
+            });
+        }
+
+        window.addRule = function(initialData = null) {
+            const ruleId = Date.now() + Math.random().toString(36).substr(2, 9);
+            const rule = initialData || {
+                id: ruleId,
+                name: `New Rule ${rules.length + 1}`,
+                ifChannel: '',
+                ifPayload: '',
+                thenChannel: '',
+                thenPayload: '',
+                throttleMode: 'change', // 'always', 'change', 'interval'
+                throttleValue: 1000,
+                active: true
+            };
+            
+            // Runtime tracking (not saved)
+            rule._lastTriggerTime = 0;
+            rule._lastPayload = null;
+
+            if (!initialData) {
+                rules.push(rule);
+            }
+
+            const ruleDiv = document.createElement('div');
+            ruleDiv.className = 'rule-container';
+            ruleDiv.id = `rule-${rule.id}`;
+            
+            const channelsArr = Array.from(availableChannels).sort();
+            const ifOptions = channelsArr.map(ch => 
+                `<option value="${ch}" ${ch === rule.ifChannel ? 'selected' : ''}>${ch}</option>`
+            ).join('');
+            const thenOptions = channelsArr.map(ch => 
+                `<option value="${ch}" ${ch === rule.thenChannel ? 'selected' : ''}>${ch}</option>`
+            ).join('');
+
+            ruleDiv.innerHTML = `
+                <div class="rule-header">
+                    <input type="text" class="rule-name-input" value="${rule.name}" oninput="updateRule('${rule.id}', 'name', this.value)" placeholder="Rule Name">
+                    <button class="remove-btn" onclick="removeRule('${rule.id}')">REMOVE</button>
+                </div>
+                <div class="rule-grid">
+                    <div class="rule-side">
+                        <h3>IF</h3>
+                        <div class="control-group">
+                            <select class="channel-select" onchange="updateRule('${rule.id}', 'ifChannel', this.value)">
+                                <option value="">-- Select Channel --</option>
+                                ${ifOptions}
+                            </select>
+                            <button id="listen-if-${rule.id}" class="listen-btn" onclick="listenToChannel('${rule.id}', 'if')">LISTEN</button>
+                        </div>
+                        <textarea placeholder='{"type": "noteon", "note": 60}' oninput="updateRule('${rule.id}', 'ifPayload', this.value)">${rule.ifPayload}</textarea>
+                    </div>
+                    <div class="rule-side">
+                        <h3>THEN</h3>
+                        <div class="control-group">
+                            <select class="channel-select" onchange="updateRule('${rule.id}', 'thenChannel', this.value)">
+                                <option value="">-- Select Channel --</option>
+                                ${thenOptions}
+                            </select>
+                            <button id="listen-then-${rule.id}" class="listen-btn" onclick="listenToChannel('${rule.id}', 'then')">LISTEN</button>
+                        </div>
+                        <textarea placeholder='{"type": "noteon", "note": 64}' oninput="updateRule('${rule.id}', 'thenPayload', this.value)">${rule.thenPayload}</textarea>
+                    </div>
+                    <div class="throttle-settings">
+                        <label>Trigger:</label>
+                        <select onchange="updateRule('${rule.id}', 'throttleMode', this.value)" style="flex-grow: 0; width: 150px;">
+                            <option value="always" ${rule.throttleMode === 'always' ? 'selected' : ''}>Always</option>
+                            <option value="change" ${rule.throttleMode === 'change' ? 'selected' : ''}>Once per Change</option>
+                            <option value="interval" ${rule.throttleMode === 'interval' ? 'selected' : ''}>Per Interval</option>
+                        </select>
+                        <div id="interval-group-${rule.id}" style="display: ${rule.throttleMode === 'interval' ? 'flex' : 'none'}; align-items: center; gap: 5px;">
+                            <label>Every</label>
+                            <input type="number" style="width: 60px;" value="${rule.throttleValue}" oninput="updateRule('${rule.id}', 'throttleValue', parseInt(this.value))">
+                            <label>ms</label>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            rulesList.appendChild(ruleDiv);
+            countEl.textContent = rules.length;
+            
+            if (rule.ifChannel && rule.active) {
+                startRuleListener(rule);
+            }
+        };
+
+        window.updateRule = function(id, field, value) {
+            const rule = rules.find(r => r.id === id);
+            if (rule) {
+                rule[field] = value;
+                if (field === 'ifChannel') {
+                    startRuleListener(rule);
+                }
+                if (field === 'throttleMode') {
+                    const intervalGroup = document.getElementById(`interval-group-${id}`);
+                    if (intervalGroup) intervalGroup.style.display = (value === 'interval' ? 'flex' : 'none');
+                }
+            }
+        };
+
+        window.removeRule = function(id) {
+            rules = rules.filter(r => r.id !== id);
+            const el = document.getElementById(`rule-${id}`);
+            if (el) el.remove();
+            countEl.textContent = rules.length;
+            if (activeListeners.has(id)) {
+                activeListeners.get(id).stop = true;
+                activeListeners.delete(id);
+            }
+        };
+
+        let activeListeners = new Map(); // ruleId -> stopFlag object
+
+        async function startRuleListener(rule) {
+            if (!rule.ifChannel) return;
+            
+            // Cleanup existing listener for this rule
+            if (activeListeners.has(rule.id)) {
+                activeListeners.get(rule.id).stop = true;
+            }
+
+            const stopFlag = { stop: false };
+            activeListeners.set(rule.id, stopFlag);
+
+            const scChannel = socket.subscribe(rule.ifChannel);
+            
+            for await (let data of scChannel) {
+                if (stopFlag.stop) break;
+                
+                if (matchRule(rule, data)) {
+                    processRuleTrigger(rule, data);
+                }
+            }
+        }
+
+        function matchRule(rule, incomingData) {
+            if (!rule.ifPayload || rule.ifPayload.trim() === '') return true;
+
+            try {
+                const target = JSON.parse(rule.ifPayload);
+                return partialMatch(target, incomingData);
+            } catch (e) {
+                const incomingStr = typeof incomingData === 'string' ? incomingData : JSON.stringify(incomingData);
+                return incomingStr.includes(rule.ifPayload);
+            }
+        }
+
+        function partialMatch(target, data) {
+            if (target === data) return true;
+            if (typeof target !== 'object' || target === null || typeof data !== 'object' || data === null) {
+                return target == data;
+            }
+            
+            for (const key in target) {
+                if (!(key in data) || !partialMatch(target[key], data[key])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function processRuleTrigger(rule, data) {
+            const now = Date.now();
+            
+            if (rule.throttleMode === 'change') {
+                const currentPayloadStr = JSON.stringify(data);
+                if (rule._lastPayload === currentPayloadStr) return;
+                rule._lastPayload = currentPayloadStr;
+            } else if (rule.throttleMode === 'interval') {
+                if (now - rule._lastTriggerTime < rule.throttleValue) return;
+            }
+
+            rule._lastTriggerTime = now;
+            triggerRule(rule, data);
+        }
+
+        async function triggerRule(rule, incomingData) {
+            if (!rule.thenChannel) return;
+
+            log(`Triggered: "${rule.name}" (${rule.ifChannel} -> ${rule.thenChannel})`, 'trigger');
+            
+            let payload;
+            try {
+                payload = JSON.parse(rule.thenPayload);
+            } catch (e) {
+                payload = rule.thenPayload;
+            }
+
+            try {
+                await socket.invokePublish(rule.thenChannel, payload);
+            } catch (e) {
+                log(`Publish Error: ${e.message}`, 'error');
+            }
+        }
+
+        let activeCaptureFlags = new Map(); // ruleId-side -> stopFlag
+
+        window.listenToChannel = async function(ruleId, side) {
+            const rule = rules.find(r => r.id === ruleId);
+            const channelName = side === 'if' ? rule.ifChannel : rule.thenChannel;
+            
+            if (!channelName) {
+                alert("Please select a channel first.");
+                return;
+            }
+
+            const flagKey = `${ruleId}-${side}`;
+            if (activeCaptureFlags.has(flagKey)) {
+                activeCaptureFlags.get(flagKey).stop = true;
+            }
+
+            const stopFlag = { stop: false };
+            activeCaptureFlags.set(flagKey, stopFlag);
+
+            const btn = document.getElementById(`listen-${side}-${ruleId}`);
+            btn.classList.add('listening');
+            btn.textContent = "LISTENING...";
+
+            const scChannel = socket.subscribe(channelName);
+            
+            (async () => {
+                for await (let data of scChannel) {
+                    if (stopFlag.stop) break;
+
+                    const payloadStr = JSON.stringify(data, null, 2);
+                    const textarea = document.querySelector(`#rule-${ruleId} .rule-side:${side === 'if' ? 'first-child' : 'last-child'} textarea`);
+                    if (textarea) {
+                        textarea.value = payloadStr;
+                        updateRule(ruleId, side === 'if' ? 'ifPayload' : 'thenPayload', payloadStr);
+                    }
+                    
+                    btn.classList.remove('listening');
+                    btn.textContent = "LISTEN";
+                    activeCaptureFlags.delete(flagKey);
+                    break;
+                }
+            })();
+        };
+
+        function log(msg, type = '') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const time = new Date().toLocaleTimeString();
+            entry.innerHTML = `<span class="log-time">[${time}]</span> ${msg}`;
+            logEl.prepend(entry);
+            
+            while (logEl.children.length > 50) {
+                logEl.removeChild(logEl.lastChild);
+            }
+        }
+
+        window.saveRules = async function() {
+            const filename = saveFilenameInput.value.trim() || 'socketcluster-rules.json';
+            try {
+                const response = await fetch('/api/file/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        folder: 'rules',
+                        filename: filename,
+                        data: rules
+                    })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    log(`Rules saved to vault (rules/${filename})`);
+                    fetchSavedFiles();
+                } else {
+                    alert('Save failed: ' + result.error);
+                }
+            } catch (e) {
+                alert('Save error: ' + e.message);
+            }
+        };
+
+        async function fetchSavedFiles() {
+            try {
+                const response = await fetch('/api/file/list?folder=rules');
+                if (!response.ok) return;
+                const files = await response.json();
+                fileListSelect.innerHTML = '';
+                files.forEach(f => {
+                    const opt = document.createElement('option');
+                    opt.value = f;
+                    opt.textContent = f;
+                    fileListSelect.appendChild(opt);
+                });
+            } catch (e) {
+                console.error("Failed to fetch file list", e);
+            }
+        }
+
+        window.loadSelectedFile = async function() {
+            const filename = fileListSelect.value;
+            if (!filename) {
+                alert("Please select a file first.");
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/file/get?folder=rules&filename=${filename}`);
+                if (!response.ok) throw new Error("File not found");
+                const loadedRules = await response.json();
+                
+                rulesList.innerHTML = '';
+                for (const flag of activeListeners.values()) flag.stop = true;
+                activeListeners.clear();
+                
+                rules = [];
+                loadedRules.forEach(r => addRule(r));
+                saveFilenameInput.value = filename;
+                log(`Rules loaded from vault: ${filename}`);
+                toggleAccordion(false);
+            } catch (e) {
+                alert('Load error: ' + e.message);
+            }
+        };
+
+        window.toggleAccordion = function(forceState = null) {
+            const acc = document.getElementById('load-accordion');
+            const arrow = document.getElementById('accordion-arrow');
+            const isOpen = forceState !== null ? !forceState : acc.classList.contains('open');
+            
+            if (!isOpen) {
+                acc.classList.add('open');
+                arrow.textContent = '▲';
+                fetchSavedFiles();
+            } else {
+                acc.classList.remove('open');
+                arrow.textContent = '▼';
+            }
+        };
+
+        addRule();
+
+    </script>
+</body>
+</html>

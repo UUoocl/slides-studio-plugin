@@ -66,6 +66,18 @@ export class slidesStudioView extends ItemView {
                     })
                     .setCta();
             });
+
+        new Setting(container)
+            .setName('Open apps gallery')
+            .setHeading()
+            .setDesc('Open the collection of specialized apps and overlays in a new tab')
+            .addButton((button) => {
+                button.setButtonText("Open")
+                    .onClick(() => {
+                        void this.app.commands.executeCommandById('slides-studio:open-apps-gallery');
+                    })
+                    .setCta();
+            });
             
         new Setting(container)
             .setName('Add tags')

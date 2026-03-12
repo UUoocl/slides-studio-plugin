@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Migrate messaging system to SocketCluster**
+- [~] **Track: Migrate messaging system to SocketCluster**
   *Link: [./tracks/migrate_socketcluster_20260312/](./tracks/migrate_socketcluster_20260312/)*

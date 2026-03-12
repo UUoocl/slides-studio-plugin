@@ -28,6 +28,7 @@ import { ConnectObsCommand } from './commands/connectObs';
 import { OpenObsCommand } from './commands/openObs';
 import { GetObsTagsCommand } from './commands/getObsTags';
 import { OpenWebviewCommand } from './commands/webviewCommands';
+import { OpenAppsGalleryCommand } from './commands/ruleEngineCommands';
 import { SetObsReceiverCommand, UpdateBrowsersUrlCommand, RefreshObsBrowsersCommand } from './commands/obsBrowserCommands';
 import { ConnectOscCommand, ConnectMidiCommand, ConnectAudioCommand } from './commands/deviceCommands';
 
@@ -160,6 +161,7 @@ export default class slidesStudioPlugin extends Plugin {
 		this.addCommand(OpenObsCommand(this));
 		this.addCommand(GetObsTagsCommand(this));
 		this.addCommand(OpenWebviewCommand(this));
+		this.addCommand(OpenAppsGalleryCommand(this));
 		this.addCommand(SetObsReceiverCommand(this));
 		this.addCommand(UpdateBrowsersUrlCommand(this));
 		this.addCommand(RefreshObsBrowsersCommand(this));
@@ -566,6 +568,23 @@ export default class slidesStudioPlugin extends Plugin {
 		});
 		void workspace.revealLeaf(leaf);
 
+	}
+
+	/**
+	 * Opens a webview in a new tab pointing to the apps gallery page.
+	 */
+	async openAppsGallery(): Promise<void> {
+		const { workspace } = this.app;
+
+		const leaf = workspace.getLeaf('tab');
+		const port = this.settings.serverPort;
+		const url = `http://127.0.0.1:${port}/${this.manifest.dir}/apps/index.html`;
+		await leaf.setViewState({
+			type: 'webviewer',
+			state: { url, navigate: true },
+			active: true,
+		});
+		void workspace.revealLeaf(leaf);
 	}
 
 	/**

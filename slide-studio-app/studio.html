@@ -304,6 +304,14 @@
                     // Relay the URL to the broadcast navigation channel so OBS views can load the deck
                     window.broadcastSlidesCommand('set-slides-studio-url', { url: payload.url });
                 }
+
+                if (eventName === 'next-slide') {
+                    window.handleKeyboardNavigation(39); // Simulate right arrow
+                }
+
+                if (eventName === 'previous-slide') {
+                    window.handleKeyboardNavigation(37); // Simulate left arrow
+                }
             });
 
             // Listen specifically for viewer reporting its state

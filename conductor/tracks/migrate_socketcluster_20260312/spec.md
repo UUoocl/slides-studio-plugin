@@ -14,6 +14,15 @@ The primary goal of this track is to consolidate and modernize the project's rea
 - **Channel-based Communication**: Move from generic streams to specific, discoverable channels.
 - **Bidirectional Support**: Leverage SocketCluster's native support for complex bidirectional interactions.
 
+## Client Identification & Monitoring
+- **Named Clients**: Every client (HTML app, Python script, or plugin component) must provide a unique name upon connection to the SocketCluster server.
+- **Traceability**: This name will be used by the server to identify, monitor, and log client activity, facilitating easier debugging and system health checks.
+- **Dynamic Registration**: Clients should ideally pass their identification as part of the initial handshake or connection metadata.
+
+## Authentication
+- **Localhost Focus**: As a localhost-based Obsidian plugin, the system assumes a trusted environment.
+- **Minimal Requirements**: For the initial implementation, minimal or no authentication is required for client connections. This simplifies integration for creative coding overlays and local hardware bridges while maintaining compatibility with the existing trust model.
+
 ## Key Considerations
 - **Backward Compatibility**: Ensure that existing OBS workflows are maintained during the transition.
 - **Performance**: Maintain or improve the low-latency requirements for hardware-level events (MIDI, OSC).
