@@ -481,10 +481,13 @@ export class ServerManager {
         if (!this.scServer) return;
         
         const outChannels = [
+            ...this.plugin.settings.oscDevices.map(d => `osc/out/${d.name}`),
+            ...this.plugin.settings.midiDevices.map(d => `midi/out/${d.name}`),
+            ...this.plugin.settings.gamepadDevices.map(d => `gamepad/in/${d.name}`),
+            ...this.plugin.settings.uvcDevices.filter(d => d.enabled).map(d => `uvc/out/${d.name}`),
+            // Legacy support (to be removed in Phase 4)
             ...this.plugin.settings.oscDevices.map(d => `osc_out_${d.name}`),
-            ...this.plugin.settings.midiDevices.map(d => `midi_out_${d.name}`),
-            ...this.plugin.settings.gamepadDevices.map(d => `gamepad_in_${d.name}`),
-            ...this.plugin.settings.uvcDevices.filter(d => d.enabled).map(d => `uvc_out_${d.name}`)
+            ...this.plugin.settings.midiDevices.map(d => `midi_out_${d.name}`)
         ];
 
         console.warn(`[Server] Plugin subscribing to:`, outChannels);
@@ -520,9 +523,9 @@ export class ServerManager {
             id: 'plugin-internal',
             name: 'Slides-Studio Plugin',
             channels: [
-                ...this.plugin.settings.oscDevices.map(d => `osc_out_${d.name}`),
-                ...this.plugin.settings.midiDevices.map(d => `midi_out_${d.name}`),
-                ...this.plugin.settings.gamepadDevices.map(d => `gamepad_in_${d.name}`)
+                ...this.plugin.settings.oscDevices.map(d => `osc/out/${d.name}`),
+                ...this.plugin.settings.midiDevices.map(d => `midi/out/${d.name}`),
+                ...this.plugin.settings.gamepadDevices.map(d => `gamepad/in/${d.name}`)
             ]
         });
 
@@ -532,8 +535,8 @@ export class ServerManager {
     private handleIncomingPublish(channel: string, data: unknown): void {
         if (!data) return;
 
-        if (channel.startsWith('osc_out_')) {
-            const deviceName = channel.replace('osc_out_', '');
+        if (channel.startsWith('osc/out/') || channel.startsWith('osc_out_')) {
+            const deviceName = channel.replace('osc/out/', '').replace('osc_out_', '');
             const payload = data as { address: string, args: unknown };
             
             if (payload && payload.address) {
@@ -545,72 +548,108 @@ export class ServerManager {
                 }
                 this.plugin.oscManager.sendMessage(deviceName, message);
             }
-        } else if (channel.startsWith('midi_out_')) {
-            const deviceName = channel.replace('midi_out_', '');
+        } else if (channel.startsWith('midi/out/') || channel.startsWith('midi_out_')) {
+            const deviceName = channel.replace('midi/out/', '').replace('midi_out_', '');
             this.plugin.midiManager.sendMidiMessage(deviceName, this.plugin.settings.midiDevices, data as MidiPayload);
-        } else if (channel === 'mousePosition' || channel === 'mouseClick' || channel === 'mouseScroll' || 
+        } else if (channel === 'mouse/position' || channel === 'mouse/click' || channel === 'mouse/scroll' || 
+                   channel === 'keyboard/press' || channel === 'keyboard/release' || channel === 'uvc/response' || 
+                   channel === 'uvc/commands' || 
+                   // Legacy support
+                   channel === 'mousePosition' || channel === 'mouseClick' || channel === 'mouseScroll' || 
                    channel === 'keyboardPress' || channel === 'keyboardRelease' || channel === 'uvcResponse' || 
                    channel === 'uvcCommands') {
-            void this.scServer?.exchange.transmitPublish(channel, data);
-            if (channel === 'uvcResponse') {
+            
+            // Re-publish to the new hierarchical channel if it's a legacy one
+            let targetChannel = channel;
+            if (channel === 'mousePosition') targetChannel = 'mouse/position';
+            else if (channel === 'mouseClick') targetChannel = 'mouse/click';
+            else if (channel === 'mouseScroll') targetChannel = 'mouse/scroll';
+            else if (channel === 'keyboardPress') targetChannel = 'keyboard/press';
+            else if (channel === 'keyboardRelease') targetChannel = 'keyboard/release';
+            else if (channel === 'uvcResponse') targetChannel = 'uvc/response';
+            else if (channel === 'uvcCommands') targetChannel = 'uvc/commands';
+
+            void this.scServer?.exchange.transmitPublish(targetChannel, data);
+            if (targetChannel === 'uvc/response') {
                 this.plugin.handleUvcResponse(data);
             }
         }
     }
 
+    public broadcast(channel: string, data: unknown): void {
+        void this.scServer?.exchange.transmitPublish(channel, data);
+    }
+
     public broadcastObsEvent(eventName: string, eventData: unknown): void {
-        // Publish to event-specific channel
-        void this.scServer?.exchange.transmitPublish(`obs:${eventName}`, eventData);
+        // Publish to event-specific channel using hierarchical naming
+        this.broadcast(`obs/event/${eventName}`, eventData);
         // Also publish to a general events channel
-        void this.scServer?.exchange.transmitPublish('obsEvents', { eventName, eventData });
+        this.broadcast('obs/events', { eventName, eventData });
     }
 
     public broadcastOscMessage(name: string, message: unknown[]): void {
         const data = { deviceName: name, message };
-        void this.scServer?.exchange.transmitPublish(`osc_in_${name}`, data);
+        this.broadcast(`osc/in/${name}`, data);
     }
 
     public broadcastMidiMessage(name: string, message: MidiPayload): void {
         const data = { deviceName: name, message };
-        void this.scServer?.exchange.transmitPublish(`midi_in_${name}`, data);
+        this.broadcast(`midi/in/${name}`, data);
     }
 
     public broadcastMouseMessage(topic: string, data: unknown): void {
-        void this.scServer?.exchange.transmitPublish(topic, data);
+        // Map legacy topics to hierarchical ones
+        let channel = topic;
+        if (topic === 'mousePosition') channel = 'mouse/position';
+        else if (topic === 'mouseClick') channel = 'mouse/click';
+        else if (topic === 'mouseScroll') channel = 'mouse/scroll';
+        
+        this.broadcast(channel, data);
     }
 
     public broadcastKeyboardMessage(topic: string, data: unknown): void {
-        void this.scServer?.exchange.transmitPublish(topic, data);
+        let channel = topic;
+        if (topic === 'keyboardPress') channel = 'keyboard/press';
+        else if (topic === 'keyboardRelease') channel = 'keyboard/release';
+        
+        this.broadcast(channel, data);
     }
 
     public broadcastAudioMessage(topic: string, deviceName: string, data: unknown): void {
         const payload: Record<string, unknown> = { device: deviceName };
-        if (topic === 'audioFFT') payload.fft = data;
-        else if (topic === 'audioSTT') payload.stt = data;
-        else payload.data = data;
+        let channel = 'audio/data';
         
-        const channel = topic === 'audioFFT' ? 'audioFFT' : (topic === 'audioSTT' ? 'audioSTT' : 'audioData');
-        void this.scServer?.exchange.transmitPublish(channel, payload);
+        if (topic === 'audioFFT') {
+            payload.fft = data;
+            channel = 'audio/fft';
+        } else if (topic === 'audioSTT') {
+            payload.stt = data;
+            channel = 'audio/stt';
+        } else {
+            payload.data = data;
+        }
+        
+        this.broadcast(channel, payload);
     }
 
     public broadcastGamepadMessage(name: string, data: unknown): void {
-        void this.scServer?.exchange.transmitPublish(`gamepad_in_${name}`, data);
+        this.broadcast(`gamepad/in/${name}`, data);
     }
 
     public broadcastMediaPipeMessage(name: string, data: unknown): void {
-        void this.scServer?.exchange.transmitPublish(`mediapipe_in_${name}`, data);
+        this.broadcast(`mediapipe/in/${name}`, data);
     }
 
     public broadcastCustomMessage(name: string, data: Record<string, unknown>): void {
-        void this.scServer?.exchange.transmitPublish(`custom_${name}`, data);
+        this.broadcast(`custom/${name}`, data);
     }
 
     public broadcastUvcCommand(data: unknown): void {
-        void this.scServer?.exchange.transmitPublish('uvcCommands', data);
+        this.broadcast('uvc/commands', data);
     }
 
     public broadcastUvcMessage(data: unknown): void {
-        void this.scServer?.exchange.transmitPublish('uvcResponse', data);
+        this.broadcast('uvc/response', data);
     }
 
     // --- Python Monitors ---
