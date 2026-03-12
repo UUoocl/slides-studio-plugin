@@ -1,6 +1,6 @@
 # Track Implementation Plan: Migrate messaging system to SocketCluster
 
-## Phase 1: Server Setup & Core Integration
+## Phase 1: Server Setup & Core Integration [checkpoint: e31be5c]
 - [x] Task: Integrate SocketCluster into Fastify [7609e2b]
     - [x] Install/verify SocketCluster dependencies.
     - [x] Configure the SocketCluster server within `src/utils/serverLogic.ts`.
@@ -9,7 +9,7 @@
 - [x] Task: Define Core Channels [493fa65]
     - [x] Map existing SSE topics and WebSocket endpoints to SocketCluster channels.
     - [x] Implement a system-wide broadcasting utility for the new architecture.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Server Setup & Core Integration' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Server Setup & Core Integration' (Protocol in workflow.md) [e31be5c]
 
 ## Phase 2: Client Migration (HTML Apps)
 - [ ] Task: Update Slide Studio App
