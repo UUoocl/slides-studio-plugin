@@ -32,6 +32,7 @@ export default defineConfig([
 		"version-bump.mjs",
 		"versions.json",
 		"main.js",
+    "vitest.config.ts",
 	]),
   {
     files: ["src/**/*.ts"],

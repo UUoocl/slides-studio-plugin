@@ -388,12 +388,22 @@ export class ServerManager {
 
         for await (const { socket } of this.scServer.listener('connection')) {
             console.warn(`[SocketCluster] Client connected: ${socket.id}`);
+            
+            // Capture client name from authToken if provided during handshake
+            const authToken = socket.authToken as { name?: string } | null;
+            if (authToken?.name) {
+                const name = authToken.name;
+                console.warn(`[SocketCluster] Client ${socket.id} identified as: ${name}`);
+                this.clientMetadata.set(socket.id, { name });
+            }
+
             this.broadcastServerState();
 
             void (async () => {
                 for await (const request of socket.procedure('setInfo')) {
                     const scReq = request as unknown as ScRequest;
                     const data = scReq.data as { name: string };
+                    console.warn(`[SocketCluster] Client ${socket.id} updated name to: ${data.name}`);
                     this.clientMetadata.set(socket.id, { name: data.name || 'Unknown' });
                     this.broadcastServerState();
                     scReq.end();
