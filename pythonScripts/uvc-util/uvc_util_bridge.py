@@ -260,6 +260,8 @@ def on_connect(socket):
     global connected
     connected = True
     print("Connected to SocketCluster")
+    # Identify this client
+    socket.emit("setInfo", {"name": "Python-UVC-Bridge"})
     sc.emit("uvcResponse", {"status": "connected", "lib_loaded": uvc_lib.is_loaded()})
     
     # Subscribe to general commands

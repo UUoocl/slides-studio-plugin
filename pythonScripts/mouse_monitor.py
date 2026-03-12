@@ -28,6 +28,8 @@ def on_connect(socket):
     global connected
     connected = True
     logging.info(f"CONNECTED to SocketCluster: {target_url}")
+    # Identify this client
+    socket.emit("setInfo", {"name": "Python-Mouse-Monitor"})
     # Test publish immediately
     socket.publish("mousePosition", {"x": 0, "y": 0, "test": True})
 
