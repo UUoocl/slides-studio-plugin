@@ -90,45 +90,44 @@ describe('Core Channels Mapping', () => {
     });
 
     it('should have a unified broadcast method that publishes to SocketCluster', () => {
-        const channel = 'test/channel';
+        const channel = 'testChannel';
         const data = { foo: 'bar' };
         
-        // @ts-ignore - broadcast might not exist yet
         serverManager.broadcast(channel, data);
         
         expect(mockScServer.exchange.transmitPublish).toHaveBeenCalledWith(channel, data);
     });
 
-    it('should map OBS events to hierarchical channels', () => {
+    it('should map OBS events to flat channels', () => {
         const eventName = 'SceneChange';
         const eventData = { scene: 'test' };
         
         serverManager.broadcastObsEvent(eventName, eventData);
         
-        // Check for hierarchical channel naming
-        expect(mockScServer.exchange.transmitPublish).toHaveBeenCalledWith(`obs/event/${eventName}`, eventData);
-        expect(mockScServer.exchange.transmitPublish).toHaveBeenCalledWith('obs/events', { eventName, eventData });
+        // Check for flat channel naming
+        expect(mockScServer.exchange.transmitPublish).toHaveBeenCalledWith(`obs:${eventName}`, eventData);
+        expect(mockScServer.exchange.transmitPublish).toHaveBeenCalledWith('obsEvents', { eventName, eventData });
     });
 
-    it('should map hardware inputs to hierarchical channels', () => {
+    it('should map hardware inputs to flat channels', () => {
         // OSC
         serverManager.broadcastOscMessage('MyOsc', ['/test', 1.0]);
-        expect(mockScServer.exchange.transmitPublish).toHaveBeenCalledWith('osc/in/MyOsc', expect.any(Object));
+        expect(mockScServer.exchange.transmitPublish).toHaveBeenCalledWith('osc_in_MyOsc', expect.any(Object));
 
         // MIDI
         serverManager.broadcastMidiMessage('MyMidi', { type: 'noteon', note: 60, velocity: 100 });
-        expect(mockScServer.exchange.transmitPublish).toHaveBeenCalledWith('midi/in/MyMidi', expect.any(Object));
+        expect(mockScServer.exchange.transmitPublish).toHaveBeenCalledWith('midi_in_MyMidi', expect.any(Object));
 
         // Gamepad
         serverManager.broadcastGamepadMessage('MyPad', { buttons: [] });
-        expect(mockScServer.exchange.transmitPublish).toHaveBeenCalledWith('gamepad/in/MyPad', expect.any(Object));
+        expect(mockScServer.exchange.transmitPublish).toHaveBeenCalledWith('gamepad_in_MyPad', expect.any(Object));
     });
 
-    it('should map audio data to hierarchical channels', () => {
+    it('should map audio data to flat channels', () => {
         serverManager.broadcastAudioMessage('audioFFT', 'Mic', [1, 2, 3]);
-        expect(mockScServer.exchange.transmitPublish).toHaveBeenCalledWith('audio/fft', expect.objectContaining({ device: 'Mic' }));
+        expect(mockScServer.exchange.transmitPublish).toHaveBeenCalledWith('audio_fft', expect.objectContaining({ device: 'Mic' }));
 
         serverManager.broadcastAudioMessage('audioSTT', 'Mic', 'Hello');
-        expect(mockScServer.exchange.transmitPublish).toHaveBeenCalledWith('audio/stt', expect.objectContaining({ device: 'Mic' }));
+        expect(mockScServer.exchange.transmitPublish).toHaveBeenCalledWith('audio_stt', expect.objectContaining({ device: 'Mic' }));
     });
 });

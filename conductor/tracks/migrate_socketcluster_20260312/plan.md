@@ -7,23 +7,23 @@
     - [x] Implement initial connection handling (minimal/no authentication for localhost).
     - [x] Implement client identification mechanism (clients provide a name on connection).
 - [x] Task: Define Core Channels [493fa65]
-    - [x] Map existing SSE topics and WebSocket endpoints to SocketCluster channels.
+    - [x] Map existing SSE topics and WebSocket endpoints to namespaced flat SocketCluster channels (e.g., `mousePosition`, `osc_in_Device`).
     - [x] Implement a system-wide broadcasting utility for the new architecture.
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Server Setup & Core Integration' (Protocol in workflow.md) [e31be5c]
 
 ## Phase 2: Client Migration (HTML Apps)
 - [x] Task: Update Slide Studio App [77df18e]
     - [x] Update `slide-studio-app/lib/sc-connection.js` (or equivalent) to the new protocol with client naming.
-    - [x] Verify slide state synchronization via SocketCluster.
-- [ ] Task: Update Overlays and Monitors
-    - [ ] Migrate `apps/audio_monitor/`, `apps/mouse_monitor/`, and other critical tools, providing unique client names.
+    - [x] Verify slide state synchronization via SocketCluster using flat naming.
+- [~] Task: Update Overlays and Monitors
+    - [ ] Migrate `apps/audio_monitor/`, `apps/mouse_monitor/`, and other critical tools, providing unique client names and using namespaced flat channels.
     - [ ] Ensure `p5.js` and `cables.gl` integrations are updated to the new client with unique names.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Client Migration (HTML Apps)' (Protocol in workflow.md)
 
 ## Phase 3: Device Bridge Migration (Python)
 - [ ] Task: Update Python SocketCluster Integration
     - [ ] Implement or update a SocketCluster client in the Python bridge system with client naming.
-    - [ ] Modify `mouse_monitor.py` and `keyboard_monitor.py` to publish events to their respective channels with unique client names.
+    - [ ] Modify `mouse_monitor.py` and `keyboard_monitor.py` to publish events to their respective flat channels with unique client names.
     - [ ] Update `uvc_util_bridge.py` for bidirectional camera control with client naming.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Device Bridge Migration (Python)' (Protocol in workflow.md)
 

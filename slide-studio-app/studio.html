@@ -80,8 +80,6 @@
 
                 try {
                     // Default to navigation channel for broadcast consistency
-                    await obsWss.publish('slides/navigation', eventName, msgParam);
-                    // Legacy support
                     await obsWss.publish('slides_navigation', eventName, msgParam);
                 } catch (e) {
                     console.error("[Studio] Failed to broadcast command", e);

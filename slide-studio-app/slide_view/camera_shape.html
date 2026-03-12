@@ -65,26 +65,23 @@
                 }
             })();
 
-            // Subscribe to the broadcast navigation channels (both new and legacy)
-            const channels = ['slides/navigation', 'slides_navigation'];
+            // Subscribe to the broadcast channel for overrides
+            const channel = window.scSocket.subscribe('slides_navigation');
             
-            channels.forEach(chanName => {
-                (async () => {
-                    const channel = window.scSocket.subscribe(chanName);
-                    for await (let data of channel) {
-                        try {
-                            const payload = data.msgParam || {};
-                            const shape = payload.cameraShape || (payload.attributes ? payload.attributes.cameraShape : null);
-                            
-                            if (shape !== null && shape !== undefined) {
-                                applyShape(shape);
-                            }
-                        } catch (err) {
-                            console.error("[CameraShape] Error parsing SC message:", err);
+            (async () => {
+                for await (let data of channel) {
+                    try {
+                        const payload = data.msgParam || {};
+                        const shape = payload.cameraShape || (payload.attributes ? payload.attributes.cameraShape : null);
+                        
+                        if (shape !== null && shape !== undefined) {
+                            applyShape(shape);
                         }
+                    } catch (err) {
+                        console.error("[CameraShape] Error parsing SC message:", err);
                     }
-                })();
-            });
+                }
+            })();
         })
     </script>
 </body>

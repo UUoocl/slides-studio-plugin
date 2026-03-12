@@ -23,7 +23,8 @@ export function initGamepadMonitor(containerId, statusId) {
     const socket = create({
         hostname: window.location.hostname,
         port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-        path: '/socketcluster/'
+        path: '/socketcluster/',
+        authToken: { name: `Gamepad-Monitor: ${namesParam}` }
     });
 
     (async () => {

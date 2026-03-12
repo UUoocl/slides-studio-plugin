@@ -93,40 +93,7 @@ class ObsApiProxy {
     async subscribeToChannels() {
         if (!this.socket) return;
 
-        // Map of new channel names to legacy handler logic
-        const channelMappings = {
-            'custom/slidesCommands': 'slidesCommands',
-            'obs/events': 'obsEvents',
-            'keyboard/press': 'keyboard/press',
-            'slides/current_to_studio': 'slides/current_to_studio',
-            'slides/navigation': 'slides/navigation',
-            'slides/studio_to_current': 'slides/studio_to_current'
-        };
-
-        Object.keys(channelMappings).forEach(chanName => {
-            (async () => {
-                const channel = this.socket.subscribe(chanName);
-                for await (let data of channel) {
-                    const legacyName = channelMappings[chanName];
-                    
-                    if (chanName === 'custom/slidesCommands') {
-                        this.emit('slidesCommands', { eventName: data.eventName, msgParam: data.msgParam });
-                    } else if (chanName === 'obs/events') {
-                        this.emit(data.eventName, data.eventData);
-                    } else {
-                        // Generic emission
-                        this.emit(chanName, data);
-                        // Also emit legacy name if different
-                        if (legacyName !== chanName) {
-                            this.emit(legacyName, data);
-                        }
-                    }
-                }
-            })();
-        });
-
-        // Also subscribe to legacy channels for backward compatibility during transition
-        const legacyChannels = [
+        const appChannels = [
             'custom_slidesCommands',
             'obsEvents',
             'keyboardPress',
@@ -135,15 +102,17 @@ class ObsApiProxy {
             'studio_to_currentSlide'
         ];
 
-        legacyChannels.forEach(chanName => {
+        appChannels.forEach(chanName => {
             (async () => {
                 const channel = this.socket.subscribe(chanName);
                 for await (let data of channel) {
+                    // Normalize events: custom_slidesCommands is emitted as 'slidesCommands' for legacy compat
                     if (chanName === 'custom_slidesCommands') {
                         this.emit('slidesCommands', { eventName: data.eventName, msgParam: data.msgParam });
                     } else if (chanName === 'obsEvents') {
                         this.emit(data.eventName, data.eventData);
                     } else {
+                        // Generic emission for channels
                         this.emit(chanName, data);
                     }
                 }
@@ -200,19 +169,11 @@ class ObsApiProxy {
     
     async publish(channel, eventName, msgParam) {
         if (this.socket && this.socket.state === 'open') {
-            // Support both new and old names when publishing
-            const targetChannel = channel === 'custom_slidesCommands' ? 'custom/slidesCommands' : channel;
-            this.socket.transmitPublish(targetChannel, { eventName, msgParam });
-            // Also publish to legacy if needed? No, let server handle it if we want, but better to just use new.
-            if (targetChannel !== channel) {
-                this.socket.transmitPublish(channel, { eventName, msgParam });
-            }
+            this.socket.transmitPublish(channel, { eventName, msgParam });
         }
     }
 
     async broadcastSlidesCommand(eventName, msgParam) {
-        // Now uses hierarchical channel but supports legacy too
-        this.publish('custom/slidesCommands', eventName, msgParam);
         this.publish('custom_slidesCommands', eventName, msgParam);
     }
 

@@ -197,7 +197,8 @@
             socket = create({
                 hostname: window.location.hostname,
                 port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-                path: '/socketcluster/'
+                path: '/socketcluster/',
+                authToken: { name: `UVC-Poller: ${deviceName}` }
             });
             
             (async () => {
@@ -205,6 +206,12 @@
                     elements.scStatus.textContent = "Connected";
                     elements.scStatus.className = "status connected";
                     addLog("SocketCluster Connected");
+                    
+                    // Identify this client for the SC Monitor
+                    try {
+                        await socket.invoke('setInfo', { name: `UVC Poller (${deviceName})` });
+                    } catch (e) {}
+
                     subscribeToInChannel();
                     // Fetch hardware ranges to ensure mapping is correct
                     sendCommand({ action: "get_controls" });

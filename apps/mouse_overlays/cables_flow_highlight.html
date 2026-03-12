@@ -108,7 +108,8 @@
             socket = window.socketClusterClient.create({
                 hostname: window.location.hostname,
                 port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-                path: '/socketcluster/'
+                path: '/socketcluster/',
+                authToken: { name: 'Cables-Flow-Highlight' }
             });
 
             (async () => {
@@ -120,6 +121,11 @@
             (async () => {
                 for await (let event of socket.listener('connect')) {
                     console.log('Connected to SocketCluster');
+                    
+                    try {
+                        await socket.invoke('setInfo', { name: 'Cables Flow Highlight' });
+                    } catch (e) {}
+
                     // Request bounds from other apps first
                     desktopBoundsChannel.postMessage('request_bounds');
                     // Fetch from OBS as fallback after a short delay if no one responded

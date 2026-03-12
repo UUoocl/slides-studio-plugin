@@ -290,7 +290,8 @@
         socket = create({
             hostname: hostname,
             port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-            path: '/socketcluster/'
+            path: '/socketcluster/',
+            authToken: { name: 'Rule-Engine' }
         });
 
         (async () => {

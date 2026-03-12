@@ -84,7 +84,8 @@
         const socket = create({
             hostname: window.location.hostname,
             port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-            path: '/socketcluster/'
+            path: '/socketcluster/',
+            authToken: { name: 'Audio-FFT-Viz' }
         });
 
         (async () => {
@@ -114,7 +115,7 @@
 
         // Listen for audio FFT events
         (async () => {
-            const channel = socket.subscribe('audioFFT');
+            const channel = socket.subscribe('audio_fft');
             for await (let data of channel) {
                 const { device, fft } = data;
 

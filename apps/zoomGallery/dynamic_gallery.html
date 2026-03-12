@@ -47,22 +47,22 @@
             activeSpeakerName: 'Scene zoom active speaker',
             participantPrefix: 'Participant', // e.g. "Participant 1"
             maxParticipants: 25,
-            
+
             // Geometry
             canvasW: 1920,
             canvasH: 1080,
-            
+
             // Active Speaker Target (Right side)
             targetRect: { x: 1000, y: 315, w: 800, h: 450 }, // Centered vertically in 1080p roughly
-            
+
             // Participant Sizes
             sizeNear: { w: 200, h: 112 },
             sizeFar: { w: 160, h: 90 }, // Slightly smaller when far? Or prompt says "incrementally smaller further away"
-            
+
             // Animation
             lerpSpeed: 0.05,
             attractionStep: 0.25, // How much to move per emoji
-            
+
             // OBS Throttling
             obsUpdateInterval: 5 // Frames between OBS updates (5 = ~12fps updates)
         };
@@ -76,7 +76,7 @@
         // --- OBS Proxy Helper ---
         async function callObs(requestType, requestData = {}) {
             if (!socket) throw new Error('Socket not connected');
-            
+
             return await socket.invoke('obsRequest', {
                 requestType,
                 requestData
@@ -88,7 +88,7 @@
             constructor(id) {
                 this.id = id;
                 this.sceneItemName = `${CONFIG.participantPrefix} ${id}`;
-                
+
                 // Calculate "Home" Grid Position (Left side of screen)
                 const cols = 5;
                 const col = (id - 1) % cols;
@@ -101,15 +101,15 @@
 
                 this.homePos = createVector(startX + col * (cellW + pad), startY + row * (cellH + pad));
                 this.pos = this.homePos.copy();
-                
+
                 // Attraction state (0.0 = Home, 1.0 = Active Speaker)
                 this.attraction = 0.0;
                 this.targetAttraction = 0.0;
-                
+
                 // Current visual state
                 this.w = CONFIG.sizeFar.w;
                 this.h = CONFIG.sizeFar.h;
-                
+
                 // OBS Sync state
                 this.lastSentPos = createVector(-1, -1);
                 this.lastSentScale = -1;
@@ -131,10 +131,10 @@
                 this.attraction = lerp(this.attraction, this.targetAttraction, CONFIG.lerpSpeed);
 
                 const magnetPos = createVector(CONFIG.targetRect.x - 50, CONFIG.targetRect.y + CONFIG.targetRect.h/2);
-                
+
                 const destX = lerp(this.homePos.x, magnetPos.x, this.attraction);
                 const destY = lerp(this.homePos.y, magnetPos.y, this.attraction);
-                
+
                 const stackOffsetX = (this.attraction * 20) * ((this.id % 3) - 1);
                 const stackOffsetY = (this.attraction * 20) * (Math.floor(this.id / 3) % 3 - 1);
 
@@ -154,7 +154,7 @@
                 noStroke();
                 fill(lerpColor(color(100), color(0, 255, 0), this.attraction));
                 rect(this.pos.x, this.pos.y, this.w, this.h);
-                
+
                 fill(255);
                 textAlign(CENTER, CENTER);
                 text(this.id, this.pos.x + this.w/2, this.pos.y + this.h/2);
@@ -207,7 +207,7 @@
         // --- P5.js Setup & Draw ---
         function setup() {
             createCanvas(CONFIG.canvasW, CONFIG.canvasH);
-            
+
             for (let i = 1; i <= CONFIG.maxParticipants; i++) {
                 participants.push(new Participant(i));
             }
@@ -246,7 +246,8 @@
             socket = window.socketClusterClient.create({
                 hostname: window.location.hostname,
                 port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-                path: '/socketcluster/'
+                path: '/socketcluster/',
+                authToken: { name: 'Dynamic-Zoom-Gallery' }
             });
 
             (async () => {

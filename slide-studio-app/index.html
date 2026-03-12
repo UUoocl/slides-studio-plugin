@@ -398,14 +398,10 @@
                     // Request notes for the teleprompter
                     window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes' }), "*");
                 } else if (['overviewhidden', 'overviewshown'].includes(data.eventName)) {
-                    window.obsWss.publish('slides/studio_to_current', 'overview-toggled', data.state);
-                    // Legacy support
                     window.obsWss.publish('studio_to_currentSlide', 'overview-toggled', data.state);
                 }
                 
                 // Publish reveal events specifically to the Studio "brain" to prevent loops
-                obsWss.publish('slides/current_to_studio', 'reveal-event', data);
-                // Legacy support
                 obsWss.publish('currentSlide_to_studio', 'reveal-event', data);
             }
           }

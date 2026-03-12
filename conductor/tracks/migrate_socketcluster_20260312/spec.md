@@ -7,7 +7,27 @@ The primary goal of this track is to consolidate and modernize the project's rea
 - **Server-side**: Integrate SocketCluster into the existing Fastify server within the Obsidian plugin.
 - **Client-side (HTML Apps)**: Update `slide-studio-app` and various overlays/monitors in `apps/` to use the SocketCluster client.
 - **Python Bridges**: Modify the Python-based input monitors (Mouse, Keyboard, UVC) to communicate with the system via SocketCluster channels.
-- **Protocol Consolidation**: Replace legacy SSE topics and individual WebSocket endpoints with organized SocketCluster channels (e.g., `audio`, `input`, `obs`).
+- **Protocol Consolidation**: Replace legacy SSE topics and individual WebSocket endpoints with namespaced flat string SocketCluster channels (e.g., `mousePosition`, `osc_in_Device`).
+
+## Technical Design
+
+### Channel Naming Convention
+To maximize performance and maintain simplicity in a system with a relatively low number of channels, the project uses **Namespaced Flat Strings**.
+
+- **Pattern**: `categoryTopic` or `category_direction_id`
+- **Examples**:
+    - `mousePosition`, `mouseClick` (Global UI events)
+    - `keyboardPress`, `keyboardRelease`
+    - `audioFFT`, `audioSTT`
+    - `osc_in_DeviceName`, `osc_out_DeviceName` (Hardware directionality)
+    - `midi_in_DeviceName`, `midi_out_DeviceName`
+    - `slides_navigation` (App-specific)
+    - `currentSlide_to_studio`, `studio_to_currentSlide`
+
+### Client Identification
+Every client MUST provide a unique name during the connection handshake or immediately after connecting.
+- **Handshake**: Clients provide `{ name: "My-App-Name" }` in the `authToken`.
+- **Server Tracking**: The server maintains a mapping of `socket.id` to client metadata for monitoring.
 
 ## Architecture Changes
 - **Unified Hub**: SocketCluster will serve as the central message bus for all high-frequency data.
