@@ -6,9 +6,9 @@
     - [x] Configure the SocketCluster server within `src/utils/serverLogic.ts`.
     - [x] Implement initial connection handling (minimal/no authentication for localhost).
     - [x] Implement client identification mechanism (clients provide a name on connection).
-- [ ] Task: Define Core Channels
-    - [ ] Map existing SSE topics and WebSocket endpoints to SocketCluster channels.
-    - [ ] Implement a system-wide broadcasting utility for the new architecture.
+- [x] Task: Define Core Channels [493fa65]
+    - [x] Map existing SSE topics and WebSocket endpoints to SocketCluster channels.
+    - [x] Implement a system-wide broadcasting utility for the new architecture.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Server Setup & Core Integration' (Protocol in workflow.md)
 
 ## Phase 2: Client Migration (HTML Apps)
