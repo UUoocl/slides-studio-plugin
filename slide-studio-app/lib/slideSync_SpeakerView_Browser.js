@@ -8,35 +8,40 @@
         await new Promise(r => setTimeout(r, 100));
     }
 
-    // Subscribe to commands specifically for this viewer instance
-    const channel = window.scSocket.subscribe('studio_to_currentSlide');
+    // Subscribe to commands specifically for this viewer instance (both new and legacy)
+    const channels = ['slides/studio_to_current', 'studio_to_currentSlide'];
     
-    for await (let data of channel) {
-        try {
-            if (data.eventName === "slide-changed" || data.eventName === "navigate") {
-                const msgParam = data.msgParam;
-                let slidesState;
-                
-                if (msgParam.slideState) {
-                    slidesState = msgParam.slideState.split(",").map(value => Number(value));
-                } else if (msgParam.args) {
-                    slidesState = msgParam.args;
-                } else if (typeof msgParam.indexh !== 'undefined') {
-                    slidesState = [msgParam.indexh, msgParam.indexv, msgParam.indexf || 0];
-                }
+    channels.forEach(chanName => {
+        (async () => {
+            const channel = window.scSocket.subscribe(chanName);
+            for await (let data of channel) {
+                try {
+                    if (data.eventName === "slide-changed" || data.eventName === "navigate") {
+                        const msgParam = data.msgParam;
+                        let slidesState;
+                        
+                        if (msgParam.slideState) {
+                            slidesState = msgParam.slideState.split(",").map(value => Number(value));
+                        } else if (msgParam.args) {
+                            slidesState = msgParam.args;
+                        } else if (typeof msgParam.indexh !== 'undefined') {
+                            slidesState = [msgParam.indexh, msgParam.indexv, msgParam.indexf || 0];
+                        }
 
-                if (slidesState && window.currentSlide && window.currentSlide.contentWindow) {
-                    window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: slidesState }), "*");
-                    window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes' }), "*");
-                }
-            } else if (data.eventName === "overview-toggled") {
-                const msgParam = data.msgParam;
-                if (window.currentSlide && window.currentSlide.contentWindow) {
-                    window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'toggleOverview', args: [msgParam.overview] }), "*");
+                        if (slidesState && window.currentSlide && window.currentSlide.contentWindow) {
+                            window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: slidesState }), "*");
+                            window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes' }), "*");
+                        }
+                    } else if (data.eventName === "overview-toggled") {
+                        const msgParam = data.msgParam;
+                        if (window.currentSlide && window.currentSlide.contentWindow) {
+                            window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'toggleOverview', args: [msgParam.overview] }), "*");
+                        }
+                    }
+                } catch (err) {
+                    console.error("[SpeakerViewerSync] Error processing SC message:", err);
                 }
             }
-        } catch (err) {
-            console.error("[SpeakerViewerSync] Error processing SC message:", err);
-        }
-    }
+        })();
+    });
 })();

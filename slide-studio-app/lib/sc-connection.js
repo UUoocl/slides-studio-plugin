@@ -6,7 +6,8 @@ import { create } from './socketcluster-client.min.js';
 window.scSocket = create({
     hostname: window.location.hostname,
     port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-    path: '/socketcluster/'
+    path: '/socketcluster/',
+    authToken: { name: 'Slide-Studio-App' }
 });
 
 (async () => {
@@ -18,5 +19,9 @@ window.scSocket = create({
 (async () => {
     for await (let event of window.scSocket.listener('connect')) {
         // Connection log removed for cleaner console
+        // Explicitly update name just in case authToken wasn't used in handshake
+        try {
+            await window.scSocket.invoke('setInfo', { name: 'Slide-Studio-App' });
+        } catch (e) {}
     }
 })();

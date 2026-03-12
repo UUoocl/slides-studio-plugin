@@ -68,40 +68,45 @@
             await new Promise(r => setTimeout(r, 100));
         }
 
-        console.log("[Teleprompter] Subscribing to custom_slidesCommands via SocketCluster...");
-        const channel = window.scSocket.subscribe('custom_slidesCommands');
+        console.log("[Teleprompter] Subscribing to slides commands via SocketCluster...");
+        const channels = ['custom/slidesCommands', 'custom_slidesCommands'];
         
-        for await (let data of channel) {
-            try {
-                const eventName = data.eventName;
-                const payload = data.msgParam;
+        channels.forEach(chanName => {
+            (async () => {
+                const channel = window.scSocket.subscribe(chanName);
+                for await (let data of channel) {
+                    try {
+                        const eventName = data.eventName;
+                        const payload = data.msgParam;
 
-                if (eventName === 'reveal-event') {
-                    if (payload.eventName === 'callback' && payload.method === 'getSlideNotes') {
-                        console.log("[Teleprompter] Received notes via SC callback");
-                        document.getElementById("teleprompter").innerHTML = payload.result;
-                        TelePrompter.resetPageScroll();
+                        if (eventName === 'reveal-event') {
+                            if (payload.eventName === 'callback' && payload.method === 'getSlideNotes') {
+                                console.log("[Teleprompter] Received notes via SC callback");
+                                document.getElementById("teleprompter").innerHTML = payload.result;
+                                TelePrompter.resetPageScroll();
+                            }
+                        }
+
+                        // Handle remote control requests
+                        if (eventName === 'teleprompterChangeRequest') {
+                            console.log("[Teleprompter] Change request via SC:", payload.functionName);
+                            if (typeof TelePrompter[payload.functionName] === 'function') {
+                                TelePrompter[payload.functionName](payload.value);
+                            }
+                        }
+
+                        if (eventName === 'togglePlay') {
+                            console.log("[Teleprompter] Toggle play via SC");
+                            if (typeof TelePrompter[payload.functionName] === 'function') {
+                                TelePrompter[payload.functionName]();
+                            }
+                        }
+                    } catch (err) {
+                        console.error("[Teleprompter] Error processing SC message:", err);
                     }
                 }
-
-                // Handle remote control requests
-                if (eventName === 'teleprompterChangeRequest') {
-                    console.log("[Teleprompter] Change request via SC:", payload.functionName);
-                    if (typeof TelePrompter[payload.functionName] === 'function') {
-                        TelePrompter[payload.functionName](payload.value);
-                    }
-                }
-
-                if (eventName === 'togglePlay') {
-                    console.log("[Teleprompter] Toggle play via SC");
-                    if (typeof TelePrompter[payload.functionName] === 'function') {
-                        TelePrompter[payload.functionName]();
-                    }
-                }
-            } catch (err) {
-                console.error("[Teleprompter] Error processing SC message:", err);
-            }
-        }
+            })();
+        });
       })();
     </script>
   </body>

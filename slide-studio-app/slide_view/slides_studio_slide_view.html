@@ -68,35 +68,41 @@
                 }
             })();
 
-            // Subscribe specifically to the broadcast navigation channel
-            const channel = window.scSocket.subscribe('slides_navigation');
-            for await (let data of channel) {
-                try {
-                    const { eventName, msgParam } = data;
-                    
-                    // CSS Updates
-                    let slidePosClass = msgParam ? msgParam.slidePosition : null;
-                    if (!slidePosClass && msgParam && msgParam.scene) {
-                        const sceneName = msgParam.scene;
-                        if (sceneName.includes("slides ")) {
-                            slidePosClass = sceneName.split("slides ")[1];
+            // Subscribe specifically to the broadcast navigation channel (both new and legacy)
+            const channels = ['slides/navigation', 'slides_navigation'];
+            
+            channels.forEach(chanName => {
+                (async () => {
+                    const channel = window.scSocket.subscribe(chanName);
+                    for await (let data of channel) {
+                        try {
+                            const { eventName, msgParam } = data;
+                            
+                            // CSS Updates
+                            let slidePosClass = msgParam ? msgParam.slidePosition : null;
+                            if (!slidePosClass && msgParam && msgParam.scene) {
+                                const sceneName = msgParam.scene;
+                                if (sceneName.includes("slides ")) {
+                                    slidePosClass = sceneName.split("slides ")[1];
+                                }
+                            }
+                            if (slidePosClass) setSlidePositionCSS(slidePosClass);
+
+                            // Camera Shape
+                            if (msgParam && msgParam.cameraShape && broadcastChannels.cameraShapes) {
+                                broadcastChannels.cameraShapes.postMessage(msgParam.cameraShape);
+                            }
+                
+                            // Dispatch for slideSync_OBS.js internal listeners (if any still use CustomEvents)
+                            window.dispatchEvent(new CustomEvent(eventName, { 
+                                detail: { webSocketMessage: JSON.stringify(msgParam) } 
+                            }));
+                        } catch (err) {
+                            console.error("[SlideView] Error processing SC message:", err);
                         }
                     }
-                    if (slidePosClass) setSlidePositionCSS(slidePosClass);
-
-                    // Camera Shape
-                    if (msgParam && msgParam.cameraShape && broadcastChannels.cameraShapes) {
-                        broadcastChannels.cameraShapes.postMessage(msgParam.cameraShape);
-                    }
-        
-                    // Dispatch for slideSync_OBS.js internal listeners (if any still use CustomEvents)
-                    window.dispatchEvent(new CustomEvent(eventName, { 
-                        detail: { webSocketMessage: JSON.stringify(msgParam) } 
-                    }));
-                } catch (err) {
-                    console.error("[SlideView] Error processing SC message:", err);
-                }
-            }
+                })();
+            });
         })();
 
         window.addEventListener('DOMContentLoaded', () => {
