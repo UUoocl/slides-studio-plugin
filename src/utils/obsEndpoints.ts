@@ -2,42 +2,14 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type slidesStudioPlugin from '../main';
 import { OBSRequestTypes, RequestBatchRequest, RequestBatchOptions } from 'obs-websocket-js';
 
-// Interface to allow dynamic event handling where specific types are not known at compile time
-interface DynamicObsEmitter {
-    on(event: string, handler: (data?: unknown) => void): void;
-    off(event: string, handler: (data?: unknown) => void): void;
-}
-
 export class ObsServer {
     private plugin: slidesStudioPlugin;
-    private sseConnections: Set<FastifyReply> = new Set();
-    private boundHandlers: Map<string, (...args: unknown[]) => void> = new Map();
 
     constructor(plugin: slidesStudioPlugin) {
         this.plugin = plugin;
     }
 
     public registerRoutes(server: FastifyInstance) {
-        // SSE Endpoint
-        server.get('/api/v1/obs/events', (request: FastifyRequest, reply: FastifyReply) => {
-            reply.raw.setHeader('Content-Type', 'text/event-stream');
-            reply.raw.setHeader('Cache-Control', 'no-cache');
-            reply.raw.setHeader('Connection', 'keep-alive');
-            reply.raw.flushHeaders();
-
-            this.sseConnections.add(reply);
-
-            // Send initial status if connected
-            if (this.plugin.isObsConnected) {
-                this.sendEvent(reply, 'ConnectionOpened', {});
-                this.sendEvent(reply, 'Identified', {});
-            }
-
-            request.raw.on('close', () => {
-                this.sseConnections.delete(reply);
-            });
-        });
-
         // Check connection status
         server.get('/api/v1/obs/isconnected', async (_request, _reply) => {
             return { connected: this.plugin.isObsConnected };
@@ -66,7 +38,7 @@ export class ObsServer {
         server.post<{ Params: { name: string }, Body: Record<string, unknown> }>('/api/v1/obs/:name', async (request, reply) => {
             const { name } = request.params;
             const data = request.body || {};
-            
+
             if (!this.plugin.isObsConnected) {
                 console.warn(`[ObsServer] Call to ${name} failed: OBS not connected`);
                 return reply.code(503).send({ error: 'OBS not connected' });
@@ -76,12 +48,12 @@ export class ObsServer {
                 // request.body should be the arguments object for the call
                 const requestType = name as keyof OBSRequestTypes;
                 const requestData = data as OBSRequestTypes[typeof requestType];
-                
+
                 const result = await this.plugin.obs.call(requestType, requestData);
                 return result || {};
             } catch (error) {
                 const msg = error instanceof Error ? error.message : String(error);
-                
+
                 // Graceful handling for optional metadata fetches
                 if (name === "GetSceneItemList") {
                     console.warn(`[ObsServer] Optional call to ${name} failed (Item likely missing):`, msg);
@@ -96,49 +68,10 @@ export class ObsServer {
                 return reply.code(500).send({ error: msg });
             }
         });
-
-        this.setupEventListeners();
-    }
-
-    private setupEventListeners() {
-        if (this.boundHandlers.size > 0) return; // Already setup
-
-        const events = ['CustomEvent', 'ConnectionOpened', 'ConnectionClosed', 'Identified'];
-        
-        events.forEach(event => {
-            const handler = (data?: unknown) => this.broadcast(event, data);
-            this.boundHandlers.set(event, handler as (...args: unknown[]) => void);
-            (this.plugin.obs as unknown as DynamicObsEmitter).on(event, handler);
-        });
     }
 
     public cleanup() {
-        // Remove listeners
-        for (const [event, handler] of this.boundHandlers) {
-            (this.plugin.obs as unknown as DynamicObsEmitter).off(event, handler);
-        }
-        this.boundHandlers.clear();
-        
-        // Close SSE connections
-        for (const reply of this.sseConnections) {
-            reply.raw.end();
-        }
-        this.sseConnections.clear();
-    }
-
-    private broadcast(event: string, data: unknown) {
-        for (const reply of this.sseConnections) {
-            this.sendEvent(reply, event, data);
-        }
-        // SocketCluster broadcasting is now handled in main.ts
-    }
-
-    private sendEvent(reply: FastifyReply, event: string, data: unknown) {
-        try {
-            const payload = JSON.stringify(data || {});
-            reply.raw.write(`event: ${event}\ndata: ${payload}\n\n`);
-        } catch {
-            this.sseConnections.delete(reply);
-        }
+        // No longer needed since SSE is removed, 
+        // but kept for interface consistency
     }
 }
