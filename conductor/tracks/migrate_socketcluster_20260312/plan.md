@@ -27,12 +27,12 @@
     - [x] Update `uvc_util_bridge.py` for bidirectional camera control with client naming.
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Device Bridge Migration (Python)' (Protocol in workflow.md) [66c2d4c]
 
-## Phase 4: Cleanup & Final Verification
+## Phase 4: Cleanup & Final Verification [checkpoint: 7a19df4]
 - [x] Task: Decommission Legacy Protocols [72495ed]
     - [x] Remove SSE routes from the Fastify server.
     - [x] Close and remove legacy WebSocket server implementations.
-- [~] Task: End-to-End Integration Testing
-    - [ ] Verify complete data flow from hardware (MIDI/OSC) through the server to reactive overlays.
-    - [ ] Verify all clients are correctly identified and monitored via their names in the server logs.
-    - [ ] Perform performance benchmarking for low-latency events.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Cleanup & Final Verification' (Protocol in workflow.md)
+- [x] Task: End-to-End Integration Testing [7a19df4]
+    - [x] Verify complete data flow from hardware (MIDI/OSC) through the server to reactive overlays.
+    - [x] Verify all clients are correctly identified and monitored via their names in the server logs.
+    - [x] Perform performance benchmarking for low-latency events.
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Cleanup & Final Verification' (Protocol in workflow.md) [7a19df4]
