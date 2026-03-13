@@ -28,10 +28,10 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Device Bridge Migration (Python)' (Protocol in workflow.md) [66c2d4c]
 
 ## Phase 4: Cleanup & Final Verification
-- [ ] Task: Decommission Legacy Protocols
-    - [ ] Remove SSE routes from the Fastify server.
-    - [ ] Close and remove legacy WebSocket server implementations.
-- [ ] Task: End-to-End Integration Testing
+- [x] Task: Decommission Legacy Protocols [72495ed]
+    - [x] Remove SSE routes from the Fastify server.
+    - [x] Close and remove legacy WebSocket server implementations.
+- [~] Task: End-to-End Integration Testing
     - [ ] Verify complete data flow from hardware (MIDI/OSC) through the server to reactive overlays.
     - [ ] Verify all clients are correctly identified and monitored via their names in the server logs.
     - [ ] Perform performance benchmarking for low-latency events.
