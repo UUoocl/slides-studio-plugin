@@ -411,6 +411,15 @@ export class ServerManager {
             })();
 
             void (async () => {
+                for await (const data of socket.receiver('setInfo')) {
+                    const nameData = data as { name: string };
+                    console.warn(`[SocketCluster] Client ${socket.id} updated name (via emit) to: ${nameData.name}`);
+                    this.clientMetadata.set(socket.id, { name: nameData.name || 'Unknown' });
+                    this.broadcastServerState();
+                }
+            })();
+
+            void (async () => {
                 for await (const request of socket.procedure('isObsConnected')) {
                     const scReq = request as unknown as ScRequest;
                     scReq.end({ connected: this.plugin.isObsConnected });
