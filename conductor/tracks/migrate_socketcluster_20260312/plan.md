@@ -20,12 +20,12 @@
     - [x] Ensure `p5.js` and `cables.gl` integrations are updated to the new client with unique names.
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Client Migration (HTML Apps)' (Protocol in workflow.md) [96b0b68]
 
-## Phase 3: Device Bridge Migration (Python)
+## Phase 3: Device Bridge Migration (Python) [checkpoint: 66c2d4c]
 - [x] Task: Update Python SocketCluster Integration [6dbe7ae]
     - [x] Implement or update a SocketCluster client in the Python bridge system with client naming.
     - [x] Modify `mouse_monitor.py` and `keyboard_monitor.py` to publish events to their respective flat channels with unique client names.
     - [x] Update `uvc_util_bridge.py` for bidirectional camera control with client naming.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Device Bridge Migration (Python)' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Device Bridge Migration (Python)' (Protocol in workflow.md) [66c2d4c]
 
 ## Phase 4: Cleanup & Final Verification
 - [ ] Task: Decommission Legacy Protocols
