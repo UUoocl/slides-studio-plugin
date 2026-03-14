@@ -11,11 +11,11 @@ Create a standalone HTML application in `apps/midi_controller_demo/` to demonstr
 
 ## Implementation Steps
 
-### Phase 1: Foundation & Logic (TDD)
+### Phase 1: Foundation & Logic (TDD) [checkpoint: 3ad7471]
 - [x] **Task: Setup Test Environment** [0f65e52]
 - [x] **Task: MIDI Message Helpers (TDD)** [d104285]
 - [x] **Task: Pattern Generation Logic (TDD)** [ade9a94]
-- [ ] **Task: Conductor - User Manual Verification 'Foundation & Logic' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'Foundation & Logic' (Protocol in workflow.md)** [3ad7471]
 
 ### Phase 2: UI & SocketCluster Integration
 - [ ] **Task: Basic HTML Structure**
