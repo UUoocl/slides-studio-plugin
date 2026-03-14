@@ -269,6 +269,7 @@
 
     <script type="module">
         import { create } from '../lib/socketcluster-client.min.js';
+        import { matchRule, processRuleTrigger } from './ruleEngineCore.js';
 
         const statusEl = document.getElementById('sc-status');
         const countEl = document.getElementById('rule-count');
@@ -477,50 +478,9 @@
                 if (stopFlag.stop) break;
                 
                 if (matchRule(rule, data)) {
-                    processRuleTrigger(rule, data);
+                    processRuleTrigger(rule, data, triggerRule);
                 }
             }
-        }
-
-        function matchRule(rule, incomingData) {
-            if (!rule.ifPayload || rule.ifPayload.trim() === '') return true;
-
-            try {
-                const target = JSON.parse(rule.ifPayload);
-                return partialMatch(target, incomingData);
-            } catch (e) {
-                const incomingStr = typeof incomingData === 'string' ? incomingData : JSON.stringify(incomingData);
-                return incomingStr.includes(rule.ifPayload);
-            }
-        }
-
-        function partialMatch(target, data) {
-            if (target === data) return true;
-            if (typeof target !== 'object' || target === null || typeof data !== 'object' || data === null) {
-                return target == data;
-            }
-            
-            for (const key in target) {
-                if (!(key in data) || !partialMatch(target[key], data[key])) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        function processRuleTrigger(rule, data) {
-            const now = Date.now();
-            
-            if (rule.throttleMode === 'change') {
-                const currentPayloadStr = JSON.stringify(data);
-                if (rule._lastPayload === currentPayloadStr) return;
-                rule._lastPayload = currentPayloadStr;
-            } else if (rule.throttleMode === 'interval') {
-                if (now - rule._lastTriggerTime < rule.throttleValue) return;
-            }
-
-            rule._lastTriggerTime = now;
-            triggerRule(rule, data);
         }
 
         async function triggerRule(rule, incomingData) {
