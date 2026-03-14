@@ -366,7 +366,9 @@
                     const opt = document.createElement('option');
                     opt.value = ch;
                     opt.textContent = ch;
-                    if (ch === currentValue) opt.selected = true;
+                    if (ch === currentValue) {
+                      opt.selected = true;
+                    }
                     select.appendChild(opt);
                 });
             });
@@ -542,8 +544,9 @@
                 if (field === 'active') {
                     rule.active = value;
                     updateActiveCount();
-                    if (value) startRuleListener(rule);
-                    else {
+                    if (value) {
+                      startRuleListener(rule);
+                    } else {
                         if (activeListeners.has(id)) {
                             activeListeners.get(id).stop = true;
                             activeListeners.delete(id);
@@ -566,8 +569,12 @@
                     rule.thenPayload = value;
                 } else if (field === 'throttleMode') {
                     rule.throttleMode = value;
-                    const intervalGroup = document.getElementById(`interval-group-${id}`);
-                    if (intervalGroup) intervalGroup.style.display = (value === 'interval' ? 'flex' : 'none');
+                    const intervalGroup =
+                        document.getElementById(`interval-group-${id}`);
+                    if (intervalGroup) {
+                      intervalGroup.style.display =
+                          (value === 'interval' ? 'flex' : 'none');
+                    }
                 } else if (field === 'throttleValue') {
                     rule.throttleValue = value;
                 }
@@ -577,7 +584,9 @@
         window.removeRule = function(id) {
             rules = rules.filter(r => r.id !== id);
             const el = document.getElementById(`rule-${id}`);
-            if (el) el.remove();
+            if (el) {
+              el.remove();
+            }
             updateActiveCount();
             if (activeListeners.has(id)) {
                 activeListeners.get(id).stop = true;
@@ -589,7 +598,9 @@
 
         async function startRuleListener(rule) {
             const ifChannel = rule.if?.channel || rule.ifChannel;
-            if (!ifChannel || !rule.active) return;
+            if (!ifChannel || !rule.active) {
+              return;
+            }
             
             // Cleanup existing listener for this rule
             if (activeListeners.has(rule.id)) {
@@ -602,7 +613,9 @@
             const scChannel = socket.subscribe(ifChannel);
             
             for await (let data of scChannel) {
-                if (stopFlag.stop) break;
+                if (stopFlag.stop) {
+                  break;
+                }
                 
                 checkRule(rule, data, triggerRule);
             }
@@ -650,17 +663,26 @@
             
             (async () => {
                 for await (let data of scChannel) {
-                    if (stopFlag.stop) break;
+                    if (stopFlag.stop) {
+                      break;
+                    }
 
                     const payloadStr = JSON.stringify(data, null, 2);
                     
                     if (side === 'if') {
-                        const textarea = document.querySelector(`#rule-${ruleId} .rule-side:first-child textarea`);
-                        if (textarea) textarea.value = payloadStr;
+                        const textarea = document.querySelector(
+                            `#rule-${ruleId} .rule-side:first-child textarea`);
+                        if (textarea) {
+                          textarea.value = payloadStr;
+                        }
                         updateRule(ruleId, 'ifPayload', payloadStr);
                     } else {
-                        const textarea = document.querySelectorAll(`#then-actions-${ruleId} .action-item`)[actionIndex].querySelector('textarea');
-                        if (textarea) textarea.value = payloadStr;
+                        const textarea = document.querySelectorAll(
+                            `#then-actions-${ruleId} .action-item`
+                        )[actionIndex].querySelector('textarea');
+                        if (textarea) {
+                          textarea.value = payloadStr;
+                        }
                         updateAction(ruleId, actionIndex, 'payload', payloadStr);
                     }
                     
@@ -718,7 +740,9 @@
         async function fetchSavedFiles() {
             try {
                 const response = await fetch('/api/file/list?folder=rules');
-                if (!response.ok) return;
+                if (!response.ok) {
+                  return;
+                }
                 const files = await response.json();
                 fileListSelect.innerHTML = '';
                 files.forEach(f => {
@@ -745,7 +769,9 @@
         async function loadRules(filename) {
             try {
                 const response = await fetch(`/api/file/get?folder=rules&filename=${filename}`);
-                if (!response.ok) throw new Error("File not found");
+                if (!response.ok) {
+                  throw new Error("File not found");
+                }
                 const loadedRules = await response.json();
                 
                 rulesList.innerHTML = '';
