@@ -24,10 +24,10 @@ Create a standalone HTML application in `apps/midi_controller_demo/` to demonstr
 - [x] **Task: Pattern Controls Implementation** [54d87eb]
 - [x] **Task: Conductor - User Manual Verification 'UI & SocketCluster Integration' (Protocol in workflow.md)** [47d3b66]
 
-### Phase 3: Final Polishing & Verification
+### Phase 3: Final Polishing & Verification [checkpoint: 26925a1]
 - [x] **Task: UI/UX Refinement** [298a418]
-- [ ] **Task: Final Hardware Verification**
-- [ ] **Task: Conductor - User Manual Verification 'Final Polishing & Verification' (Protocol in workflow.md)**
+- [x] **Task: Final Hardware Verification** [1c6f7a6]
+- [x] **Task: Conductor - User Manual Verification 'Final Polishing & Verification' (Protocol in workflow.md)** [26925a1]
 
 ## Verification & Testing
 - **Automated Tests**: Run `npm test src/tests/launchpadDemo.test.ts`.
