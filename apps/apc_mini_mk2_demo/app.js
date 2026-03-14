@@ -191,7 +191,29 @@ class APCMiniApp {
       this.updateVirtualFader(faderIndex, data2);
     }
 
+    // Pad Matrix Messages (0x90-0x9F / 0x80, Note 0x00-0x3F)
+    if (data1 >= 0x00 && data1 <= 0x3F) {
+      if (type === 0x90 || type === 0x80) {
+        const isPress = type === 0x90 && data2 > 0;
+        this.updateVirtualPad(data1, isPress, data2);
+      }
+    }
+
     console.log(`Incoming MIDI: Status=${status.toString(16)}, Data1=${data1.toString(16)}, Data2=${data2}`);
+  }
+
+  updateVirtualPad(note, isPressed, velocity) {
+    const pad = document.getElementById(`pad-${note}`);
+    if (pad) {
+      if (isPressed) {
+        pad.classList.add('active');
+        // Simple visualization: use the velocity to guess a color for UI feedback
+        pad.style.backgroundColor = `rgba(255, 82, 82, ${velocity / 127})`;
+      } else {
+        pad.classList.remove('active');
+        pad.style.backgroundColor = '';
+      }
+    }
   }
 
   updateVirtualFader(index, value) {
@@ -266,13 +288,39 @@ class APCMiniApp {
     this.padMatrix.addEventListener('mousedown', (e) => {
       if (e.target.classList.contains('pad')) {
         const note = parseInt(e.target.dataset.note);
-        const behavior = document.getElementById('led-behavior').value;
-        const color = parseInt(document.getElementById('palette-color').value);
+        const behaviorVal = document.getElementById('led-behavior').value;
+        const behavior = behaviorVal.startsWith('9') ? 'blink' : (behaviorVal === '97' || behaviorVal === '9A' ? 'pulse' : 'solid');
         
-        // Example: Solid 100% 
-        const msg = APCMiniCore.encodePadMessage(note, color, 'solid', 100);
+        // Map UI select values to speeds/behaviors correctly
+        let b = 'solid';
+        let s = 100;
+        
+        const val = parseInt(behaviorVal, 16);
+        if (val >= 0x90 && val <= 0x96) {
+          b = 'solid';
+          s = [10, 25, 50, 65, 75, 90, 100][val - 0x90];
+        } else if (val >= 0x97 && val <= 0x9A) {
+          b = 'pulse';
+          s = ['1/16', '1/8', '1/4', '1/2'][val - 0x97];
+        } else if (val >= 0x9B && val <= 0x9F) {
+          b = 'blink';
+          s = ['1/24', '1/16', '1/8', '1/4', '1/2'][val - 0x9B];
+        }
+
+        const color = parseInt(document.getElementById('palette-color').value);
+        const msg = APCMiniCore.encodePadMessage(note, color, b, s);
         this.sendMidi(msg);
+        
+        // Local UI feedback (will be overwritten by hardware echo if connected and supported)
+        this.updateVirtualPad(note, true, 127);
       }
+    });
+
+    window.addEventListener('mouseup', () => {
+      // Clear active UI states on global mouseup for simplicity in this demo
+      document.querySelectorAll('.pad.active').forEach(p => {
+        this.updateVirtualPad(parseInt(p.dataset.note), false, 0);
+      });
     });
 
     this.btnConnect.addEventListener('click', () => this.toggleConnection());
