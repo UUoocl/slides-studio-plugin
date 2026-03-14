@@ -1,0 +1,48 @@
+export class FireMidiLogic {
+  static getButtonCC(name) {
+    const mapping = {
+      'solo-1': 0x24,
+      'solo-2': 0x25,
+      'solo-3': 0x26,
+      'solo-4': 0x27,
+      'pattern-up': 0x1F,
+      'pattern-down': 0x20,
+      'browser': 0x21,
+      'grid-left': 0x22,
+      'grid-right': 0x23,
+      // ... expand as needed
+    };
+    return mapping[name];
+  }
+
+  static getPadNote(row, col) {
+    // Row 1 (Top): 0x36 to 0x45 (54 to 69)
+    // Row 2: 0x46 to 0x55 (70 to 85)
+    // Row 3: 0x56 to 0x65 (86 to 101)
+    // Row 4: 0x66 to 0x75 (102 to 117)
+    const baseNotes = [0x36, 0x46, 0x56, 0x66];
+    return baseNotes[row] + col;
+  }
+
+  static createButtonMessage(cc, colorValue) {
+    // B0 [Controller] [Color Value]
+    return new Uint8Array([0xB0, cc, colorValue]);
+  }
+
+  static parseInput(data) {
+    if (data.length < 3) return null;
+    const status = data[0];
+    const note = data[1];
+    const velocity = data[2];
+
+    if (status === 0x90 || status === 0x80) {
+      // Pad or Button Note
+      const isPress = status === 0x90 && velocity > 0;
+      return { type: 'note', note, velocity, isPress };
+    } else if (status === 0xB0) {
+      // CC (Knob or Button)
+      return { type: 'cc', cc: note, value: velocity };
+    }
+    return null;
+  }
+}
