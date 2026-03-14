@@ -41,4 +41,25 @@ export class APCMiniCore {
 
     return new Uint8Array([0x90, note, velocity]);
   }
+
+  /**
+   * Encodes the Introduction Message (SysEx ID 0x60).
+   * @param {number} verH - App Version High
+   * @param {number} verL - App Version Low
+   * @param {number} bugfix - Bugfix Level
+   * @returns {Uint8Array}
+   */
+  static encodeIntroMessage(verH = 1, verL = 0, bugfix = 0) {
+    return new Uint8Array([
+      0xF0, 0x47, 0x7F, 0x4F, 0x60, 0x00, 0x04, 0x00, verH, verL, bugfix, 0xF7
+    ]);
+  }
+
+  /**
+   * Encodes the standard Device Enquiry message.
+   * @returns {Uint8Array}
+   */
+  static encodeEnquiryMessage() {
+    return new Uint8Array([0xF0, 0x7E, 0x00, 0x06, 0x01, 0xF7]);
+  }
 }
