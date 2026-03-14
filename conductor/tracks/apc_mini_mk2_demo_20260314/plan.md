@@ -1,7 +1,7 @@
 # Implementation Plan: AKAI Professional APC mini mk2 Demo App
 
 ## Phase 1: Project Setup & UI Skeleton
-- [ ] Task: Create directory structure in `apps/apc_mini_mk2_demo/`.
+- [x] Task: Create directory structure in `apps/apc_mini_mk2_demo/`. [da095eb]
 - [ ] Task: Implement HTML/CSS for the virtual APC mini mk2 (8x8 grid, 9 faders, 17 buttons).
 - [ ] Task: Setup connectivity UI (Communication mode selector and connection status indicator).
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Project Setup & UI Skeleton' (Protocol in workflow.md)
