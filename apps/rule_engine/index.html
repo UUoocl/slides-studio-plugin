@@ -402,8 +402,9 @@
             ruleDiv.id = `rule-${rule.id}`;
             
             const channelsArr = Array.from(availableChannels).sort();
+            const ifChannel = rule.if?.channel || rule.ifChannel;
             const ifOptions = channelsArr.map(ch => 
-                `<option value="${ch}" ${ch === rule.ifChannel ? 'selected' : ''}>${ch}</option>`
+                `<option value="${ch}" ${ch === ifChannel ? 'selected' : ''}>${ch}</option>`
             ).join('');
             const thenOptions = channelsArr.map(ch => 
                 `<option value="${ch}" ${ch === rule.thenChannel ? 'selected' : ''}>${ch}</option>`
@@ -469,7 +470,7 @@
             }
             renderActions(rule.id);
 
-            if (rule.ifChannel && rule.active) {
+            if (ifChannel && rule.active) {
                 startRuleListener(rule);
             }
         };
@@ -587,7 +588,8 @@
         let activeListeners = new Map(); // ruleId -> stopFlag object
 
         async function startRuleListener(rule) {
-            if (!rule.ifChannel || !rule.active) return;
+            const ifChannel = rule.if?.channel || rule.ifChannel;
+            if (!ifChannel || !rule.active) return;
             
             // Cleanup existing listener for this rule
             if (activeListeners.has(rule.id)) {
@@ -597,7 +599,7 @@
             const stopFlag = { stop: false };
             activeListeners.set(rule.id, stopFlag);
 
-            const scChannel = socket.subscribe(rule.ifChannel);
+            const scChannel = socket.subscribe(ifChannel);
             
             for await (let data of scChannel) {
                 if (stopFlag.stop) break;
