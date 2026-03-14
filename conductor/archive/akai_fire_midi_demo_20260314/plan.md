@@ -1,0 +1,36 @@
+# Implementation Plan: AKAI Fire MIDI Demo App
+
+## Phase 1: Project Setup & Basic UI [checkpoint: f6d9289]
+- [x] Task: Create directory structure in `apps/akai_fire_demo/` and initialize `index.html`. [3b376bf]
+- [x] Task: Implement the HTML/CSS skeleton for the virtual AKAI Fire device (4x16 grid, knobs, and buttons). [802101e]
+- [x] Task: Implement basic connectivity manager for switching between WebMIDI and SocketCluster. [4fffd35]
+- [x] Task: Implement MIDI device selection in the UI (dropdown for available WebMIDI ports). [4e8fe6b]
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Project Setup & Basic UI' (Protocol in workflow.md) [f6d9289]
+
+## Phase 2: MIDI Core & RGB/CC Implementation [checkpoint: 833a15a]
+- [x] Task: Write TDD tests for MIDI message generation (CC for buttons, Note-On for pads). [3613735]
+- [x] Task: Implement core MIDI output logic for standard buttons using CC messages. [25f5537]
+- [x] Task: Write TDD tests for Akai Fire RGB SysEx encoding. [94b338b]
+- [x] Task: Implement `sendRGBPad(index, r, g, b)` using the specific Fire SysEx protocol. [48a8085]
+- [x] Task: Implement input listener to reflect physical hardware state in the UI (Detailed Visuals). [2019c22]
+- [x] Task: Conductor - User Manual Verification 'Phase 2: MIDI Core & RGB/CC Implementation' (Protocol in workflow.md) [833a15a]
+
+## Phase 3: Interactive Features (Paint & Sequencer) [checkpoint: f755b78]
+- [x] Task: Write TDD tests for 'Paint Mode' state management. [bcb964b]
+- [x] Task: Implement 'Paint Mode' (UI color picker -> Pad RGB update). [00b3ccb]
+- [x] Task: Write TDD tests for 16-step sequencer logic (timing and pad highlighting). [efd1c01]
+- [x] Task: Implement 'Sequencer Demo' with basic animations. [9f9c9e3]
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Interactive Features (Paint & Sequencer)' (Protocol in workflow.md) [f755b78]
+
+## Phase 4: OLED Integration [checkpoint: 1ef9d3a]
+- [x] Task: Write TDD tests for OLED bitmap encoding (monochrome 128x64). [824f720]
+- [x] Task: Implement OLED text rendering logic (font to bitmap). [800d2b0]
+- [x] Task: Implement `sendOLEDData()` SysEx transmission. [312659c]
+- [x] Task: Conductor - User Manual Verification 'Phase 4: OLED Integration' (Protocol in workflow.md) [1ef9d3a]
+
+## Phase 5: Refinement & Verification [checkpoint: 34129e6]
+- [x] Task: Final UI polish and responsive adjustments for the virtual device. [4619198]
+- [x] Task: Verify seamless switching between Direct WebMIDI and SocketCluster modes. [36af1ec]
+- [x] Task: Implement SocketCluster MIDI alias selection (text input + plugin settings fetch). [5755b54]
+- [x] Task: Document the MIDI/SysEx implementation in a `README.md` within the app folder. [92ccf68]
+- [x] Task: Conductor - User Manual Verification 'Phase 5: Refinement & Verification' (Protocol in workflow.md) [34129e6]
