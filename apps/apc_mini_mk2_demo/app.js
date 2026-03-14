@@ -35,22 +35,31 @@ class APCMiniApp {
     this.setupEventListeners();
     this.updateStatus('Disconnected', false);
     
-    await this.requestMidiAccess();
+    // We request MIDI access, but it shouldn't block SC from working
+    this.requestMidiAccess();
+    
+    // Set initial display states
+    this.updateCommModeDisplay();
+  }
+
+  updateCommModeDisplay() {
+    const isDirect = this.commModeSelect.value === 'direct';
+    document.getElementById('midi-select-container').style.display = isDirect ? 'block' : 'none';
+    document.getElementById('sc-select-container').style.display = isDirect ? 'none' : 'block';
   }
 
   async requestMidiAccess() {
     if (!navigator.requestMIDIAccess) {
-      this.updateStatus('WebMIDI not supported', false);
+      console.warn('WebMIDI not supported in this browser.');
       return;
     }
 
     try {
       this.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
       this.scanDevices();
-      
       this.midiAccess.onstatechange = () => this.scanDevices();
     } catch (err) {
-      this.updateStatus(`MIDI Access Error: ${err.message}`, false);
+      console.warn(`MIDI Access Error: ${err.message}`);
     }
   }
 
@@ -346,6 +355,10 @@ class APCMiniApp {
 
     this.btnConnect.addEventListener('click', () => this.toggleConnection());
     this.btnScan.addEventListener('click', () => this.midiAccess ? this.scanDevices() : this.requestMidiAccess());
+
+    this.commModeSelect.addEventListener('change', () => {
+      this.updateCommModeDisplay();
+    });
 
     // Custom RGB UI Handlers
     const useCustomRgb = document.getElementById('use-custom-rgb');
