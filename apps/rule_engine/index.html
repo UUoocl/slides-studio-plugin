@@ -348,6 +348,11 @@
             });
         }
 
+        function updateActiveCount() {
+            const activeCount = rules.filter(r => r.active).length;
+            countEl.textContent = activeCount;
+        }
+
         window.addRule = function(initialData = null) {
             const ruleId = Date.now() + Math.random().toString(36).substr(2, 9);
             const rule = initialData || {
@@ -435,7 +440,7 @@
             `;
             
             rulesList.appendChild(ruleDiv);
-            countEl.textContent = rules.length;
+            updateActiveCount();
             
             if (rule.ifChannel && rule.active) {
                 startRuleListener(rule);
@@ -456,6 +461,7 @@
 
                 if (field === 'active') {
                     rule.active = value;
+                    updateActiveCount();
                     if (value) startRuleListener(rule);
                     else {
                         if (activeListeners.has(id)) {
@@ -492,7 +498,7 @@
             rules = rules.filter(r => r.id !== id);
             const el = document.getElementById(`rule-${id}`);
             if (el) el.remove();
-            countEl.textContent = rules.length;
+            updateActiveCount();
             if (activeListeners.has(id)) {
                 activeListeners.get(id).stop = true;
                 activeListeners.delete(id);
