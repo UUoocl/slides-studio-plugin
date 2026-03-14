@@ -68,6 +68,18 @@ function renderMatrix() {
       pad.id = `pad-${row}-${col}`;
       pad.dataset.row = row;
       pad.dataset.col = col;
+      
+      pad.addEventListener('click', () => {
+        // Default to Blue for Phase 2 test
+        const index = row * 16 + col;
+        const msg = FireMidiLogic.createRGBMessage(index, 0, 0, 127);
+        connection.send(msg);
+        
+        // Update UI
+        pad.style.backgroundColor = '#0000ff';
+        pad.style.boxShadow = '0 0 10px #0000ff';
+      });
+
       rowEl.appendChild(pad);
     }
     padMatrix.appendChild(rowEl);
