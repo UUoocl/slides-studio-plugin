@@ -11,7 +11,7 @@
 - [x] Task: Implement `apcMiniCore.js` for standard LED message encoding. [57bd45a]
 - [x] Task: Write TDD tests for "Introduction Message" and "Version Enquiry" SysEx. [3afbeb6]
 - [x] Task: Implement SysEx initialization logic in `apcMiniCore.js`. [7a9b547]
-- [ ] Task: Write TDD tests for 24-bit Custom RGB SysEx encoding.
+- [x] Task: Write TDD tests for 24-bit Custom RGB SysEx encoding. [876f8e1]
 - [ ] Task: Implement Custom RGB encoding in `apcMiniCore.js`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Core MIDI Logic (TDD)' (Protocol in workflow.md)
 
