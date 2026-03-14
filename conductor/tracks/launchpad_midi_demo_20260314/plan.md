@@ -20,8 +20,8 @@ Create a standalone HTML application in `apps/midi_controller_demo/` to demonstr
 ### Phase 2: UI & SocketCluster Integration
 - [x] **Task: Basic HTML Structure** [b498886]
 - [x] **Task: Virtual 9x9 Grid UI** [4227c2d]
-- [ ] **Task: SocketCluster Client Integration**
-- [ ] **Task: Pattern Controls Implementation**
+- [x] **Task: SocketCluster Client Integration** [54d87eb]
+- [x] **Task: Pattern Controls Implementation** [54d87eb]
 - [ ] **Task: Conductor - User Manual Verification 'UI & SocketCluster Integration' (Protocol in workflow.md)**
 
 ### Phase 3: Final Polishing & Verification
