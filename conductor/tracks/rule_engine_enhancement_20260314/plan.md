@@ -52,8 +52,9 @@ Update the HTML app to use the new core module and redesign the editor UI.
 - [x] Task: Add UI controls for `active` toggle and fix loading bug. 620631c
 - [x] Task: Add UI controls for `matchMode` selector and action `delay` inputs. ffc8676, 55949f7
 - [x] Task: Update Save/Load logic to handle the new hierarchical JSON schema. 8114b23
-- [x] Task: Final end-to-end manual verification in OBS/Obsidian. 9b48846
-- [x] Task: Conductor - User Manual Verification 'Phase 5' (Protocol in workflow.md) 9b48846
+- [x] Task: Fix bug where rules fail to trigger after loading from vault. 8f85d13
+- [ ] Task: Final end-to-end manual verification in OBS/Obsidian.
+- [ ] Task: Conductor - User Manual Verification 'Phase 5' (Protocol in workflow.md)
 
 ## Verification & Testing
 - **Automated**: Vitest suite for `ruleEngineCore.js` covering all matching modes, throttling, and sequential actions.
@@ -62,3 +63,6 @@ Update the HTML app to use the new core module and redesign the editor UI.
     2. Create a rule with multiple `then` actions and delays, and verify the order and timing of published messages.
     3. Verify that `index.html?autostart=true&file=test.json` loads and starts automatically.
     4. Verify that "Once per Change" rules reset correctly after a different message arrives.
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions ce70d51
