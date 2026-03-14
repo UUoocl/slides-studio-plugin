@@ -31,5 +31,5 @@
 
 ## Phase 5: Refinement & Verification
 - [x] Task: Final UI polish, responsiveness check, and mobile-friendly touch targets. [7789adc]
-- [ ] Task: Create `README.md` with technical implementation details and MIDI mapping tables.
+- [x] Task: Create `README.md` with technical implementation details and MIDI mapping tables. [aefc65b]
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Refinement & Verification' (Protocol in workflow.md)
