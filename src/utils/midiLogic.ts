@@ -159,6 +159,12 @@ export class MidiManager {
                         output.sendControlChange(messageData.controller, messageData.value, { channels: channel });
                     }
                     break;
+                case "sysex":
+                case "raw":
+                    if (messageData.data) {
+                        output.send(messageData.data);
+                    }
+                    break;
                 default:
                     console.warn("Unknown MIDI message type requested:", type);
             }
