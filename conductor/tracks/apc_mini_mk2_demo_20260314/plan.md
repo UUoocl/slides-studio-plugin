@@ -7,7 +7,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Project Setup & UI Skeleton' (Protocol in workflow.md) [f484016]
 
 ## Phase 2: Core MIDI Logic (TDD)
-- [ ] Task: Write TDD tests for standard LED behavior messages (Solid, Pulse, Blink).
+- [x] Task: Write TDD tests for standard LED behavior messages (Solid, Pulse, Blink). [a91f1b3]
 - [ ] Task: Implement `apcMiniCore.js` for standard LED message encoding.
 - [ ] Task: Write TDD tests for "Introduction Message" and "Version Enquiry" SysEx.
 - [ ] Task: Implement SysEx initialization logic in `apcMiniCore.js`.
