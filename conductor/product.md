@@ -10,7 +10,7 @@ Slides Studio is a powerful, unified OBS control hub integrated directly into Ob
 The product centers on three key pillars:
 - **Slide Syncing**: Seamless, real-time synchronization between Obsidian slide changes and OBS scene transitions.
 - **Hardware Control**: Low-latency, bidirectional communication with external devices via MIDI and OSC.
-- **Smart Automation**: A robust automation engine driven by custom slide tags to trigger complex OBS behaviors and layout changes.
+- **Smart Automation**: A robust, multi-protocol automation engine. Beyond custom slide tags, it features a dynamic **Rule Engine** that monitors any system channel (MIDI, OSC, OBS, Inputs) and triggers sequences of delayed actions to orchestrate complex production workflows.
 
 ## Target Audience
 - **Live Streamers & Educators**: Presenters who need to manage complex OBS layouts, camera angles, and live content without leaving their presentation environment.
