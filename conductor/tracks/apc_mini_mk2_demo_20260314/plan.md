@@ -16,7 +16,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Core MIDI Logic (TDD)' (Protocol in workflow.md) [1d54ed9]
 
 ## Phase 3: Hardware Interaction & Sync
-- [ ] Task: Implement MIDI device scanning and dropdown selection for Direct WebMIDI.
+- [x] Task: Implement MIDI device scanning and dropdown selection for Direct WebMIDI. [d4f3566]
 - [ ] Task: Implement WebMIDI and SocketCluster connection lifecycle management.
 - [ ] Task: Map physical fader CC (0x30-0x38) to UI animated bars.
 - [ ] Task: Implement bidirectional pad matrix synchronization (Click-to-Device / Press-to-UI).
