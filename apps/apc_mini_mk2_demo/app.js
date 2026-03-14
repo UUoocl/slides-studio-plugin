@@ -179,8 +179,30 @@ class APCMiniApp {
   }
 
   handleMidiMessage(msg) {
-    console.log('Incoming MIDI:', msg.data);
-    // Logic for updating UI based on input will be in Task 3/4
+    if (!msg || !msg.data || msg.data.length < 3) return;
+    
+    const [status, data1, data2] = msg.data;
+    const channel = status & 0x0F;
+    const type = status & 0xF0;
+
+    // Fader CC Messages (0xB0, 0x30-0x38)
+    if (type === 0xB0 && data1 >= 0x30 && data1 <= 0x38) {
+      const faderIndex = data1 - 0x30;
+      this.updateVirtualFader(faderIndex, data2);
+    }
+
+    console.log(`Incoming MIDI: Status=${status.toString(16)}, Data1=${data1.toString(16)}, Data2=${data2}`);
+  }
+
+  updateVirtualFader(index, value) {
+    const percent = (value / 127) * 100;
+    const fill = document.getElementById(`fader-fill-${index}`);
+    const cap = document.getElementById(`fader-cap-${index}`);
+    
+    if (fill && cap) {
+      fill.style.height = `${percent}%`;
+      cap.style.bottom = `${percent}%`;
+    }
   }
 
   generatePads() {
