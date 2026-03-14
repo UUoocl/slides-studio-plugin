@@ -25,7 +25,7 @@ Implement the 4 matching modes and fix the "Once per Change" throttle state clea
 - [x] Task: Implement `matchMode` logic in `ruleEngineCore.js`. 315f72c
 - [x] Task: Write failing tests for "Once per Change" state clearing. 2300823
 - [x] Task: Implement state clearing logic (updating `_lastPayload` for all messages on a channel). 2300823
-- [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md) ee9cbd2
 
 
 ### Phase 3: Sequential & Delayed Actions (TDD)
