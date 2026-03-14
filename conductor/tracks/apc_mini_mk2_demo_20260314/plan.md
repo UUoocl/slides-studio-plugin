@@ -18,7 +18,7 @@
 ## Phase 3: Hardware Interaction & Sync
 - [x] Task: Implement MIDI device scanning and dropdown selection for Direct WebMIDI. [d4f3566]
 - [x] Task: Implement WebMIDI and SocketCluster connection lifecycle management. [dbff2a1]
-- [ ] Task: Map physical fader CC (0x30-0x38) to UI animated bars.
+- [x] Task: Map physical fader CC (0x30-0x38) to UI animated bars. [0887bf6]
 - [ ] Task: Implement bidirectional pad matrix synchronization (Click-to-Device / Press-to-UI).
 - [ ] Task: Implement peripheral button sync (Track 1-8 / Scene 1-8).
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Hardware Interaction & Sync' (Protocol in workflow.md)
