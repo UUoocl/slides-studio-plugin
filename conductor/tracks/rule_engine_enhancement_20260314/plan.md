@@ -14,7 +14,7 @@ Complete and enhance the `rule_engine` HTML app with a modernized JSON rule stru
 ### Phase 1: Core Logic Refactoring & Test Setup
 The goal is to move rule matching and trigger logic into a testable JavaScript module.
 
-- [ ] Task: Create `apps/rule_engine/ruleEngineCore.js` with the basic rule structure and export it.
+- [~] Task: Create `apps/rule_engine/ruleEngineCore.js` with the basic rule structure and export it.
 - [ ] Task: Move `matchRule`, `partialMatch`, and `processRuleTrigger` logic from `index.html` to `ruleEngineCore.js`.
 - [ ] Task: Set up `src/tests/ruleEngine.test.ts` to test the logic in `ruleEngineCore.js` using Vitest and JSDOM (if needed).
 - [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
