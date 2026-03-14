@@ -11,14 +11,13 @@ Complete and enhance the `rule_engine` HTML app with a modernized JSON rule stru
 
 ## Implementation Plan
 
-### Phase 1: Core Logic Refactoring & Test Setup [checkpoint: b4106b2]
+### Phase 1: Core Logic Refactoring & Test Setup [checkpoint: ef4784d]
 The goal is to move rule matching and trigger logic into a testable JavaScript module.
 
 - [x] Task: Create `apps/rule_engine/ruleEngineCore.js` with the basic rule structure and export it. 7706878
 - [x] Task: Move `matchRule`, `partialMatch`, and `processRuleTrigger` logic from `index.html` to `ruleEngineCore.js`. 7706878
 - [x] Task: Set up `src/tests/ruleEngine.test.ts` to test the logic in `ruleEngineCore.js` using Vitest and JSDOM (if needed). 7706878
-- [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md) b4106b2
-
+- [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md) 620631c
 ### Phase 2: Advanced Matching (TDD)
 Implement the 4 matching modes and fix the "Once per Change" throttle state clearing bug.
 
@@ -50,7 +49,7 @@ Update the HTML app to use the new core module and redesign the editor UI.
 
 - [ ] Task: Update `index.html` to import and use `ruleEngineCore.js`. 
 - [ ] Task: Redesign the rule editor to support multiple `then` blocks (dynamic list).
-- [ ] Task: Add UI controls for `active` toggle and fix loading bug. 
+- [x] Task: Add UI controls for `active` toggle and fix loading bug. 620631c
 - [ ] Task: Add UI controls for `matchMode` selector and action `delay` inputs.
 - [ ] Task: Update Save/Load logic to handle the new hierarchical JSON schema.
 - [ ] Task: Final end-to-end manual verification in OBS/Obsidian.
