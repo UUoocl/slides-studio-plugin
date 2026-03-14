@@ -1,14 +1,18 @@
 import { LaunchpadMk1Core } from './launchpadMk1Core.js';
+import { create } from '../lib/socketcluster-client.min.js';
 
 class LaunchpadApp {
   constructor() {
     this.launchpadGrid = document.getElementById('virtual-launchpad');
     this.statusText = document.getElementById('status-text');
     this.statusIndicator = document.getElementById('status-indicator');
+    this.commModeSelect = document.getElementById('comm-mode');
     
     this.midiAccess = null;
     this.output = null;
     this.input = null;
+    
+    this.socket = null;
     
     this.pads = new Map(); // Key: 'row,col' or 'top,col'
     
@@ -22,6 +26,7 @@ class LaunchpadApp {
     this.generateGrid();
     this.setupEventListeners();
     this.connectMidi();
+    this.connectSocket();
   }
 
   generateGrid() {
@@ -82,6 +87,69 @@ class LaunchpadApp {
     document.getElementById('btn-apply-manual').addEventListener('click', () => this.applyManualColor());
     document.getElementById('btn-wave').addEventListener('click', () => this.startWaveAnimation());
     document.getElementById('btn-sparkle').addEventListener('click', () => this.startSparkleAnimation());
+    
+    this.commModeSelect.addEventListener('change', () => this.handleCommModeChange());
+  }
+
+  async connectSocket() {
+    try {
+      this.socket = create({
+        hostname: window.location.hostname,
+        port: window.location.port,
+        path: '/socketcluster/'
+      });
+
+      for await (const {error} of this.socket.listener('error')) {
+        console.error('Socket error:', error);
+      }
+
+      for await (const {socket: s} of this.socket.listener('connect')) {
+        console.log('Socket connected:', s.id);
+        if (this.commModeSelect.value === 'socket') {
+          this.updateStatus('Connected to Server', true);
+          this.subscribeToDeviceEvents();
+        }
+      }
+
+      for await (const {code, reason} of this.socket.listener('close')) {
+        console.log('Socket closed:', code, reason);
+        if (this.commModeSelect.value === 'socket') {
+          this.updateStatus('Server Disconnected', false);
+        }
+      }
+    } catch (err) {
+      console.error('Socket initialization failed:', err);
+    }
+  }
+
+  async subscribeToDeviceEvents() {
+    const deviceName = document.getElementById('device-name').value;
+    const channelName = `midi_in_${deviceName}`;
+    const channel = this.socket.subscribe(channelName);
+    
+    for await (const data of channel) {
+      if (this.commModeSelect.value === 'socket') {
+        this.handleMidiMessage({ data });
+      }
+    }
+  }
+
+  handleCommModeChange() {
+    const mode = this.commModeSelect.value;
+    if (mode === 'direct') {
+      if (this.output) {
+        this.updateStatus(`Connected to ${this.output.name}`, true);
+      } else {
+        this.updateStatus('Device not found', false);
+      }
+    } else {
+      if (this.socket && this.socket.state === 'open') {
+        this.updateStatus('Connected to Server', true);
+        this.subscribeToDeviceEvents();
+      } else {
+        this.updateStatus('Server Disconnected', false);
+      }
+    }
   }
 
   async connectMidi() {
@@ -124,10 +192,19 @@ class LaunchpadApp {
       this.input = foundInput;
       this.output = foundOutput;
       
-      this.input.onmidimessage = (msg) => this.handleMidiMessage(msg);
-      this.updateStatus(`Connected to ${this.output.name}`, true);
+      this.input.onmidimessage = (msg) => {
+        if (this.commModeSelect.value === 'direct') {
+          this.handleMidiMessage(msg);
+        }
+      };
+      
+      if (this.commModeSelect.value === 'direct') {
+        this.updateStatus(`Connected to ${this.output.name}`, true);
+      }
     } else {
-      this.updateStatus('Device not found', false);
+      if (this.commModeSelect.value === 'direct') {
+        this.updateStatus('Device not found', false);
+      }
     }
   }
 
@@ -137,24 +214,42 @@ class LaunchpadApp {
   }
 
   handlePadClick(pad) {
-    if (!this.output) return;
-
     const red = parseInt(document.getElementById('manual-red').value);
     const green = parseInt(document.getElementById('manual-green').value);
     const velocity = LaunchpadMk1Core.calculateColorVelocity(red, green);
 
     const type = pad.dataset.type;
+    let payload = null;
+
     if (type === 'grid' || type === 'scene') {
       const row = parseInt(pad.dataset.row);
       const col = parseInt(pad.dataset.col);
       const note = LaunchpadMk1Core.xyToNote(row, col);
-      this.output.send([0x90, note, velocity]);
-      this.updateVirtualPad(pad, red, green);
+      payload = [0x90, note, velocity];
     } else if (type === 'top') {
       const col = parseInt(pad.dataset.col);
       const cc = LaunchpadMk1Core.getTopRowCC(col);
-      this.output.send([0xB0, cc, velocity]);
+      payload = [0xB0, cc, velocity];
+    }
+
+    if (payload) {
+      this.sendMidi(payload);
       this.updateVirtualPad(pad, red, green);
+    }
+  }
+
+  sendMidi(data) {
+    const mode = this.commModeSelect.value;
+    if (mode === 'direct') {
+      if (this.output) {
+        this.output.send(data);
+      }
+    } else {
+      if (this.socket && this.socket.state === 'open') {
+        const deviceName = document.getElementById('device-name').value;
+        const channel = `midi_out_${deviceName}`;
+        this.socket.transmitPublish(channel, { type: 'raw', data: Array.from(data) });
+      }
     }
   }
 
@@ -197,24 +292,20 @@ class LaunchpadApp {
   }
 
   resetDevice() {
-    if (!this.output) return;
-    this.output.send([0xB0, 0x00, 0x00]); // Reset command
+    this.sendMidi([0xB0, 0x00, 0x00]); // Reset command
     this.clearVirtualGrid();
   }
 
   clearLeds() {
-    if (!this.output) return;
     this.resetDevice();
   }
 
   testLeds() {
-    if (!this.output) return;
-    this.output.send([0xB0, 0x00, 0x7F]); // All LEDs on (Full)
+    this.sendMidi([0xB0, 0x00, 0x7F]); // All LEDs on (Full)
     this.pads.forEach(pad => this.updateVirtualPad(pad, 3, 3));
   }
 
   applyManualColor() {
-    if (!this.output) return;
     const red = parseInt(document.getElementById('manual-red').value);
     const green = parseInt(document.getElementById('manual-green').value);
     const velocity = LaunchpadMk1Core.calculateColorVelocity(red, green);
@@ -223,27 +314,26 @@ class LaunchpadApp {
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 9; c++) {
         const note = LaunchpadMk1Core.xyToNote(r, c);
-        this.output.send([0x90, note, velocity]);
+        this.sendMidi([0x90, note, velocity]);
         this.updateVirtualPad(this.pads.get(`${r},${c}`), red, green);
       }
     }
     // Apply to top row
     for (let c = 0; c < 8; c++) {
       const cc = LaunchpadMk1Core.getTopRowCC(c);
-      this.output.send([0xB0, cc, velocity]);
+      this.sendMidi([0xB0, cc, velocity]);
       this.updateVirtualPad(this.pads.get(`top,${c}`), red, green);
     }
   }
 
   async startWaveAnimation() {
-    if (!this.output) return;
     this.clearLeds();
     
     for (let c = 0; c < 9; c++) {
       for (let r = 0; r < 8; r++) {
         const note = LaunchpadMk1Core.xyToNote(r, c);
         const velocity = LaunchpadMk1Core.calculateColorVelocity(3, 3); // Amber
-        this.output.send([0x90, note, velocity]);
+        this.sendMidi([0x90, note, velocity]);
         this.updateVirtualPad(this.pads.get(`${r},${c}`), 3, 3);
       }
       await new Promise(r => setTimeout(r, 80));
@@ -266,7 +356,7 @@ class LaunchpadApp {
       
       const note = LaunchpadMk1Core.xyToNote(r, c);
       const velocity = LaunchpadMk1Core.calculateColorVelocity(red, green);
-      this.output.send([0x90, note, velocity]);
+      this.sendMidi([0x90, note, velocity]);
       this.updateVirtualPad(this.pads.get(`${r},${c}`), red, green);
     }, 50);
   }

@@ -221,6 +221,13 @@
         <h3>System</h3>
         <label for="device-name">MIDI Device Alias:</label>
         <input type="text" id="device-name" value="Launchpad">
+        
+        <label for="comm-mode">Communication Mode:</label>
+        <select id="comm-mode">
+          <option value="direct">Direct WebMIDI</option>
+          <option value="socket">SocketCluster Bridge</option>
+        </select>
+        
         <button id="btn-reset">Reset Device</button>
         <button id="btn-clear">Clear All LEDs</button>
         <button id="btn-test">Test All LEDs</button>
