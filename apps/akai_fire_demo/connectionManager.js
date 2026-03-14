@@ -11,6 +11,34 @@ export class FireConnectionManager {
     this.deviceName = options.deviceName || 'Akai Fire';
   }
 
+  async listDevices() {
+    try {
+      this.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+      const devices = [];
+      for (const output of this.midiAccess.outputs.values()) {
+        devices.push({ id: output.id, name: output.name });
+      }
+      return devices;
+    } catch (err) {
+      this.onStatusChange('error', `MIDI Access Denied: ${err.message}`);
+      return [];
+    }
+  }
+
+  setDevice(deviceId) {
+    if (!this.midiAccess) return;
+    this.input = null;
+    this.output = null;
+
+    // Fire usually has same name/ID for in/out
+    for (const input of this.midiAccess.inputs.values()) {
+      if (input.id === deviceId || input.name.includes(deviceId)) this.input = input;
+    }
+    for (const output of this.midiAccess.outputs.values()) {
+      if (output.id === deviceId || output.name.includes(deviceId)) this.output = output;
+    }
+  }
+
   async connect() {
     if (this.mode === 'direct') {
       return this.connectWebMIDI();
@@ -20,34 +48,23 @@ export class FireConnectionManager {
   }
 
   async connectWebMIDI() {
+    if (!this.input || !this.output) {
+      this.onStatusChange('error', 'Please select a device first');
+      return false;
+    }
+
     try {
-      this.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
-      this.findDevice();
-      if (this.input && this.output) {
-        this.input.onmidimessage = (msg) => this.onMidiMessage(msg.data);
-        this.isConnected = true;
-        this.onStatusChange('connected', 'WebMIDI Connected');
-        return true;
-      } else {
-        throw new Error('Device not found');
-      }
+      this.input.onmidimessage = (msg) => this.onMidiMessage(msg.data);
+      this.isConnected = true;
+      this.onStatusChange('connected', `Connected to ${this.output.name}`);
+      return true;
     } catch (err) {
-      this.onStatusChange('error', `WebMIDI Error: ${err.message}`);
+      this.onStatusChange('error', `WebMIDI Connection Error: ${err.message}`);
       return false;
     }
   }
 
-  findDevice() {
-    for (const input of this.midiAccess.inputs.values()) {
-      if (input.name.includes(this.deviceName)) this.input = input;
-    }
-    for (const output of this.midiAccess.outputs.values()) {
-      if (output.name.includes(this.deviceName)) this.output = output;
-    }
-  }
-
   async connectSocketCluster() {
-    // Placeholder for SC integration - will be expanded in Phase 2
     this.onStatusChange('error', 'SocketCluster integration pending Phase 2');
     return false;
   }
@@ -55,8 +72,6 @@ export class FireConnectionManager {
   send(data) {
     if (this.mode === 'direct' && this.output) {
       this.output.send(data);
-    } else if (this.mode === 'socket' && this.socket) {
-      // SC send logic here
     }
   }
 }

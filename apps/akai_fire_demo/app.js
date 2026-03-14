@@ -5,8 +5,29 @@ const statusText = document.getElementById('status-text');
 const statusIndicator = document.getElementById('status-indicator');
 const btnConnect = document.getElementById('btn-connect');
 const commMode = document.getElementById('comm-mode');
+const midiDeviceSelect = document.getElementById('midi-device');
 
-let connection;
+let connection = new FireConnectionManager({
+  onStatusChange: handleStatusChange,
+  onMidiMessage: (data) => console.log('MIDI Input:', data)
+});
+
+async function init() {
+  renderMatrix();
+  const devices = await connection.listDevices();
+  midiDeviceSelect.innerHTML = '<option value="">Select a device...</option>';
+  devices.forEach(device => {
+    const option = document.createElement('option');
+    option.value = device.id;
+    option.textContent = device.name;
+    // Auto-select if it looks like a Fire
+    if (device.name.toLowerCase().includes('fire')) {
+      option.selected = true;
+      connection.setDevice(device.id);
+    }
+    midiDeviceSelect.appendChild(option);
+  });
+}
 
 function renderMatrix() {
   for (let row = 0; row < 4; row++) {
@@ -29,14 +50,14 @@ function handleStatusChange(status, message) {
   statusIndicator.className = 'status-indicator ' + (status === 'connected' ? 'connected' : 'error');
 }
 
+midiDeviceSelect.addEventListener('change', (e) => {
+  connection.setDevice(e.target.value);
+});
+
 btnConnect.addEventListener('click', async () => {
-  connection = new FireConnectionManager({
-    mode: commMode.value,
-    onStatusChange: handleStatusChange,
-    onMidiMessage: (data) => console.log('MIDI Input:', data)
-  });
+  connection.mode = commMode.value;
   await connection.connect();
 });
 
-renderMatrix();
+init();
 console.log('AKAI Fire Demo Ready');
