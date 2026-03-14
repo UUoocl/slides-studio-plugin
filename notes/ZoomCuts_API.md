@@ -1,0 +1,3 @@
+### **ZoomCuts**
+**Requests (Actions)**
+*   **Actions List**: Find Application Windows, Find Cameras, Find Displays, Find Microphones, Find Participants, Find Speakers, Find Webinar Attendees, Configure Audio and Video, Set Original Sound, Get Meeting Information, Is Meeting Active, Is Meeting Host, Join Meeting, Leave Meeting, Set Meeting View, Show Meeting Component, Start Meeting, Send In-Meeting Chat, Spotlight, Lower Hands, Raise My Hand, Send Reaction, Cloud Recording, Local Recording, Share Screen, and Stop Sharing.

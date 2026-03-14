@@ -33,6 +33,7 @@ export default defineConfig([
 		"versions.json",
 		"main.js",
     "vitest.config.ts",
+    "notes",
 	]),
   {
     files: ["src/**/*.ts"],

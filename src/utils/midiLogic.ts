@@ -29,7 +29,7 @@ export class MidiManager {
         if (this.isEnabled) return;
         
         try {
-            await WebMidi.enable();
+            await WebMidi.enable({ sysex: true });
             this.isEnabled = true;
             new Notice("Web midi enabled");
         } catch (err) {
