@@ -133,10 +133,18 @@
             color: #666;
             cursor: pointer;
             transition: all 0.1s;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-sizing: border-box;
         }
 
         .pad:hover {
             background-color: var(--pad-active);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .pad.active-glow {
+            border-color: rgba(255, 255, 255, 0.5);
+            color: rgba(255, 255, 255, 0.8);
         }
 
         .pad.round {
@@ -205,7 +213,6 @@
         </div>
     </div>
 
-    <script src="../lib/socketcluster-client.min.js"></script>
     <script type="module" src="app.js"></script>
 </body>
 </html>
