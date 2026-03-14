@@ -20,23 +20,21 @@ const appLogic = new FireAppLogic();
 
 // State for toggling button LEDs
 const buttonStates = {};
+let sequencerInterval = null;
 
 async function init() {
   renderMatrix();
   setupButtonListeners();
   setupPaintControls();
+  setupModeListener();
   const devices = await connection.listDevices();
-  // ... rest of init
-
   
   devices.forEach(device => {
     const option = document.createElement('option');
     option.value = device.id;
     option.textContent = device.name;
-    // Auto-select if it looks like a Fire
     if (device.name.toLowerCase().includes('fire')) {
       option.selected = true;
-      // Also manually set the connection's device
       connection.setDevice(device.id);
     }
     midiDeviceSelect.appendChild(option);
@@ -51,13 +49,10 @@ function setupButtonListeners() {
       const cc = FireMidiLogic.getButtonCC(id);
       if (!cc) return;
 
-      // Toggle state: 0x00 (Off) <-> 0x02 (High Green/Red)
       buttonStates[id] = buttonStates[id] === 0x02 ? 0x00 : 0x02;
-      
       const msg = FireMidiLogic.createButtonMessage(cc, buttonStates[id]);
       connection.send(msg);
 
-      // Update UI
       btn.style.backgroundColor = buttonStates[id] > 0 ? '#ff5252' : '#2a2a2a';
       btn.style.color = buttonStates[id] > 0 ? '#fff' : '#ccc';
     });
@@ -67,17 +62,65 @@ function setupButtonListeners() {
 function setupPaintControls() {
   colorSwatches.forEach(swatch => {
     swatch.addEventListener('click', () => {
-      // Clear borders
       colorSwatches.forEach(s => s.style.border = '1px solid #444');
-      // Set active border
       swatch.style.border = '2px solid #fff';
-      
       const r = parseInt(swatch.dataset.r);
       const g = parseInt(swatch.dataset.g);
       const b = parseInt(swatch.dataset.b);
       appLogic.setSelectedColor(r, g, b);
     });
   });
+}
+
+function setupModeListener() {
+  appModeSelect.addEventListener('change', () => {
+    if (appModeSelect.value === 'sequencer') {
+      appLogic.startSequencer();
+      sequencerInterval = setInterval(tickSequencer, 125); // 120 BPM 16th notes
+    } else {
+      appLogic.stopSequencer();
+      if (sequencerInterval) clearInterval(sequencerInterval);
+      sequencerInterval = null;
+      clearGridUI();
+    }
+  });
+}
+
+function tickSequencer() {
+  const updates = appLogic.tick();
+  if (!updates) return;
+
+  // Clear previous column
+  updates.clearIndices.forEach(index => {
+    const pad = document.getElementById(`pad-${Math.floor(index / 16)}-${index % 16}`);
+    const color = appLogic.getPadColor(index);
+    if (pad) {
+      pad.style.backgroundColor = (color.r || color.g || color.b) ? `rgb(${color.r * 2}, ${color.g * 2}, ${color.b * 2})` : '';
+      pad.style.boxShadow = 'none';
+    }
+    connection.send(FireMidiLogic.createRGBMessage(index, color.r, color.g, color.b));
+  });
+
+  // Highlight current column
+  updates.highlightIndices.forEach(index => {
+    const pad = document.getElementById(`pad-${Math.floor(index / 16)}-${index % 16}`);
+    if (pad) {
+      pad.style.backgroundColor = '#ffffff';
+      pad.style.boxShadow = '0 0 15px #ffffff';
+    }
+    connection.send(FireMidiLogic.createRGBMessage(index, 127, 127, 127));
+  });
+}
+
+function clearGridUI() {
+  for (let i = 0; i < 64; i++) {
+    const pad = document.getElementById(`pad-${Math.floor(i / 16)}-${i % 16}`);
+    const color = appLogic.getPadColor(i);
+    if (pad) {
+      pad.style.backgroundColor = (color.r || color.g || color.b) ? `rgb(${color.r * 2}, ${color.g * 2}, ${color.b * 2})` : '';
+      pad.style.boxShadow = 'none';
+    }
+  }
 }
 
 function renderMatrix() {
@@ -97,13 +140,10 @@ function renderMatrix() {
           const { r, g, b } = appLogic.paintPad(index);
           const msg = FireMidiLogic.createRGBMessage(index, r, g, b);
           connection.send(msg);
-          
-          // Update UI
           pad.style.backgroundColor = `rgb(${r * 2}, ${g * 2}, ${b * 2})`;
           pad.style.boxShadow = (r+g+b > 0) ? `0 0 10px rgb(${r * 2}, ${g * 2}, ${b * 2})` : 'none';
         }
       });
-
       rowEl.appendChild(pad);
     }
     padMatrix.appendChild(rowEl);
@@ -138,7 +178,6 @@ function handleMidiInput(data) {
     if (knobName) {
       const knobEl = document.getElementById(`knob-${knobName}`);
       if (knobEl) {
-        // Simple rotation visualization
         const rotation = (input.value <= 0x3F) ? input.value * 5 : (input.value - 0x80) * 5;
         const currentRotation = parseInt(knobEl.dataset.rotation || 0);
         const newRotation = currentRotation + rotation;
@@ -150,16 +189,13 @@ function handleMidiInput(data) {
 }
 
 midiDeviceSelect.addEventListener('change', (e) => {
-  console.log('User manually selected MIDI device:', e.target.value);
   connection.setDevice(e.target.value);
 });
 
 btnConnect.addEventListener('click', async () => {
-  // If no device is set, try to use the selected value from the dropdown
   if (!connection.output && midiDeviceSelect.value) {
     connection.setDevice(midiDeviceSelect.value);
   }
-  
   connection.mode = commMode.value;
   await connection.connect();
 });
