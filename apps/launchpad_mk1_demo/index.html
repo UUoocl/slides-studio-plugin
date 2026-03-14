@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Launchpad mk1 LED Controller Demo</title>
+  <style>
+    :root {
+      --bg-color: #121212;
+      --text-color: #e0e0e0;
+      --accent-color: #ff9800; /* Amber for mk1 */
+      --pad-bg: #333;
+      --pad-active: #555;
+      --color-red: #ff5252;
+      --color-green: #00e676;
+      --color-amber: #ffc107;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      margin: 0;
+    }
+
+    h1 {
+      color: var(--accent-color);
+      margin-bottom: 20px;
+    }
+
+    .container {
+      display: flex;
+      gap: 40px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-width: 300px;
+    }
+
+    .control-group {
+      background: #1e1e1e;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #333;
+    }
+
+    .control-group h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 1.1em;
+      border-bottom: 1px solid #444;
+      padding-bottom: 5px;
+    }
+
+    button {
+      background-color: #333;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      width: 100%;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background-color: #444;
+    }
+
+    button.active {
+      background-color: var(--accent-color);
+      color: black;
+    }
+
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      background: #222;
+      border: 1px solid #444;
+      color: white;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    .status {
+      margin-bottom: 20px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: #ff5252; /* Red initially */
+    }
+
+    .status-indicator.connected {
+      background-color: #00e676; /* Green */
+    }
+
+    #virtual-launchpad {
+      display: grid;
+      grid-template-columns: repeat(9, 60px);
+      grid-template-rows: repeat(9, 60px);
+      gap: 10px;
+      background: #222;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 0 20px rgba(255,255,255,0.05);
+      border: 2px solid #111;
+    }
+
+    .pad {
+      width: 60px;
+      height: 60px;
+      background-color: #111;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: #444;
+      cursor: pointer;
+      transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid #000;
+      box-shadow: inset 0 2px 4px rgba(255,255,255,0.05), 0 2px 4px rgba(0,0,0,0.5);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pad::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+
+    .pad:hover::after {
+      opacity: 1;
+    }
+
+    .pad:active {
+      transform: translateY(2px);
+      box-shadow: inset 0 4px 8px rgba(0,0,0,0.8);
+    }
+
+    .pad.round {
+      border-radius: 50%;
+    }
+
+    .pad.top-row {
+      background-color: #1a1a1a;
+      height: 50px;
+      width: 50px;
+      margin: 5px;
+    }
+
+    .pad.right-col {
+      background-color: #1a1a1a;
+      height: 50px;
+      width: 50px;
+      margin: 5px;
+    }
+
+    .pad.logo {
+      background: transparent;
+      color: var(--accent-color);
+      font-weight: bold;
+      font-size: 16px;
+      cursor: default;
+      box-shadow: none;
+      border: none;
+    }
+
+    /* Bicolor LED Glows - mk1 specific */
+    .pad.led-red-full { background-color: #330000; border-color: #ff1744; box-shadow: 0 0 20px #ff1744, inset 0 0 10px #ff1744; color: #fff; }
+    .pad.led-red-low { background-color: #220000; border-color: #880e4f; box-shadow: 0 0 10px #880e4f; }
+    
+    .pad.led-green-full { background-color: #003300; border-color: #00e676; box-shadow: 0 0 20px #00e676, inset 0 0 10px #00e676; color: #fff; }
+    .pad.led-green-low { background-color: #002200; border-color: #1b5e20; box-shadow: 0 0 10px #1b5e20; }
+    
+    .pad.led-amber-full { background-color: #333300; border-color: #ffea00; box-shadow: 0 0 25px #ffea00, inset 0 0 12px #ffea00; color: #fff; }
+    .pad.led-amber-low { background-color: #222200; border-color: #f57f17; box-shadow: 0 0 12px #f57f17; }
+    
+    .pad.led-off { background-color: #111; box-shadow: inset 0 2px 4px rgba(255,255,255,0.05); color: #444; }
+  </style>
+</head>
+<body>
+  <h1>Launchpad mk1 Demo</h1>
+
+  <div class="status">
+    <div id="status-indicator" class="status-indicator"></div>
+    <span id="status-text">Disconnected</span>
+  </div>
+
+  <div class="container">
+    <div id="virtual-launchpad">
+      <!-- Grid will be generated via JavaScript -->
+    </div>
+
+    <div class="controls">
+      <div class="control-group">
+        <h3>System</h3>
+        <label for="device-name">MIDI Device Alias:</label>
+        <input type="text" id="device-name" value="Launchpad">
+        <button id="btn-reset">Reset Device</button>
+        <button id="btn-clear">Clear All LEDs</button>
+        <button id="btn-test">Test All LEDs</button>
+      </div>
+
+      <div class="control-group">
+        <h3>Manual Control</h3>
+        <label for="manual-red">Red (0-3):</label>
+        <input type="number" id="manual-red" value="3" min="0" max="3">
+        <label for="manual-green">Green (0-3):</label>
+        <input type="number" id="manual-green" value="0" min="0" max="3">
+        <button id="btn-apply-manual">Apply to Grid</button>
+      </div>
+
+      <div class="control-group">
+        <h3>Dynamic Patterns</h3>
+        <button id="btn-wave">Amber Wave</button>
+        <button id="btn-sparkle">Random Sparkle</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
