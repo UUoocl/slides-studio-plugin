@@ -396,7 +396,16 @@
                             </select>
                             <button id="listen-if-${rule.id}" class="listen-btn" onclick="listenToChannel('${rule.id}', 'if')">LISTEN</button>
                         </div>
-                        <textarea placeholder='{"type": "noteon", "note": 60}' oninput="updateRule('${rule.id}', 'ifPayload', this.value)">${rule.ifPayload}</textarea>
+                        <div class="control-group">
+                            <label style="font-size: 0.8em;">Mode:</label>
+                            <select onchange="updateRule('${rule.id}', 'ifMatchMode', this.value)" style="flex-grow: 0; width: 100px;">
+                                <option value="partial" ${rule.if?.matchMode === 'partial' ? 'selected' : ''}>Partial</option>
+                                <option value="exact" ${rule.if?.matchMode === 'exact' ? 'selected' : ''}>Exact</option>
+                                <option value="regex" ${rule.if?.matchMode === 'regex' ? 'selected' : ''}>Regex</option>
+                                <option value="wildcard" ${rule.if?.matchMode === 'wildcard' ? 'selected' : ''}>Wildcard</option>
+                            </select>
+                        </div>
+                        <textarea placeholder='{"type": "noteon", "note": 60}' oninput="updateRule('${rule.id}', 'ifPayload', this.value)">${rule.if?.payload || rule.ifPayload || ''}</textarea>
                     </div>
                     <div class="rule-side">
                         <h3>THEN</h3>
@@ -436,18 +445,45 @@
         window.updateRule = function(id, field, value) {
             const rule = rules.find(r => r.id === id);
             if (rule) {
-                rule[field] = value;
-                if (field === 'ifChannel' || (field === 'active' && value === true)) {
-                    if (rule.active) startRuleListener(rule);
-                } else if (field === 'active' && value === false) {
-                    if (activeListeners.has(id)) {
-                        activeListeners.get(id).stop = true;
-                        activeListeners.delete(id);
-                    }
+                // Migrate to new structure if needed
+                if (!rule.if) {
+                    rule.if = { 
+                        channel: rule.ifChannel || '', 
+                        payload: rule.ifPayload || '', 
+                        matchMode: 'partial' 
+                    };
                 }
-                if (field === 'throttleMode') {
+
+                if (field === 'active') {
+                    rule.active = value;
+                    if (value) startRuleListener(rule);
+                    else {
+                        if (activeListeners.has(id)) {
+                            activeListeners.get(id).stop = true;
+                            activeListeners.delete(id);
+                        }
+                    }
+                } else if (field === 'ifChannel') {
+                    rule.if.channel = value;
+                    rule.ifChannel = value; // Keep for some internal compat
+                    startRuleListener(rule);
+                } else if (field === 'ifPayload') {
+                    rule.if.payload = value;
+                    rule.ifPayload = value;
+                } else if (field === 'ifMatchMode') {
+                    rule.if.matchMode = value;
+                } else if (field === 'name') {
+                    rule.name = value;
+                } else if (field === 'thenChannel') {
+                    rule.thenChannel = value;
+                } else if (field === 'thenPayload') {
+                    rule.thenPayload = value;
+                } else if (field === 'throttleMode') {
+                    rule.throttleMode = value;
                     const intervalGroup = document.getElementById(`interval-group-${id}`);
                     if (intervalGroup) intervalGroup.style.display = (value === 'interval' ? 'flex' : 'none');
+                } else if (field === 'throttleValue') {
+                    rule.throttleValue = value;
                 }
             }
         };
