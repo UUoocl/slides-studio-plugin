@@ -106,11 +106,9 @@ class APCMiniApp {
   }
 
   async connectDirect(deviceId) {
-    console.log(`Attempting Direct WebMIDI connection to ID: ${deviceId}`);
-    
     this.output = this.midiAccess.outputs.get(deviceId);
-    
     this.input = this.midiAccess.inputs.get(deviceId);
+    
     if (!this.input && this.output) {
       for (const input of this.midiAccess.inputs.values()) {
         if (input.name === this.output.name) {
@@ -132,16 +130,11 @@ class APCMiniApp {
   async connectSocket(deviceId) {
     try {
       const deviceName = this.midiDeviceSelect.options[this.midiDeviceSelect.selectedIndex].text;
-      
       this.socket = create({
         hostname: window.location.hostname,
         port: window.location.port || 8080,
         path: '/socketcluster/'
       });
-
-      for await (const {error} of this.socket.listener('error')) {
-        console.error('Socket error:', error);
-      }
 
       for await (const {socket: s} of this.socket.listener('connect')) {
         this.updateStatus(`Connected to Server (Remote: ${deviceName})`, true);
@@ -188,18 +181,11 @@ class APCMiniApp {
 
   handleMidiMessage(msg) {
     if (!msg || !msg.data || msg.data.length < 3) return;
-    
     const [status, data1, data2] = msg.data;
-    const channel = status & 0x0F;
     const type = status & 0xF0;
-    const currentMode = this.deviceModeSelect.value;
 
-    // Handle SysEx (0xF0)
     if (status === 0xF0) {
-      // Check if it's the Fader Position Response (ID 0x61)
-      // Format: F0 47 7F 4F 61 00 04 <F1> <F2> <F3> <F4> <F5> <F6> <F7> <F8> <F9> F7
       if (msg.data[1] === 0x47 && msg.data[4] === 0x61) {
-        console.log('Received initial fader positions from hardware.');
         for (let i = 0; i < 9; i++) {
           const val = msg.data[7 + i];
           if (val !== undefined) this.updateVirtualFader(i, val);
@@ -208,28 +194,11 @@ class APCMiniApp {
       return;
     }
 
-    // Handle Note-On/Off for Pads and Buttons
     if (type === 0x90 || type === 0x80) {
       const isPress = type === 0x90 && data2 > 0;
-
-      // Pad Matrix (0x00-0x3F)
-      if (data1 >= 0x00 && data1 <= 0x3F) {
-        // In Drum Mode, pad layout might differ but device still sends these notes.
-        // We'll visualize standard mapping for now.
-        this.updateVirtualPad(data1, isPress, data2);
-      }
-
-      // Track Buttons (0x64-0x6B)
-      if (data1 >= 0x64 && data1 <= 0x6B) {
-        this.updateVirtualButton(data1, isPress);
-      }
-
-      // Scene Buttons (0x70-0x77)
-      if (data1 >= 0x70 && data1 <= 0x77) {
-        this.updateVirtualButton(data1, isPress);
-      }
-      
-      // Shift Button (0x7A)
+      if (data1 >= 0x00 && data1 <= 0x3F) this.updateVirtualPad(data1, isPress, data2);
+      if (data1 >= 0x64 && data1 <= 0x6B) this.updateVirtualButton(data1, isPress);
+      if (data1 >= 0x70 && data1 <= 0x77) this.updateVirtualButton(data1, isPress);
       if (data1 === 0x7A) {
         const shiftBtn = document.getElementById('btn-shift');
         if (isPress) shiftBtn.classList.add('active');
@@ -237,14 +206,9 @@ class APCMiniApp {
       }
     }
 
-    // Fader CC Messages (0xB0, 0x30-0x38)
     if (type === 0xB0 && data1 >= 0x30 && data1 <= 0x38) {
-      const faderIndex = data1 - 0x30;
-      this.updateVirtualFader(faderIndex, data2);
+      this.updateVirtualFader(data1 - 0x30, data2);
     }
-
-    // Handle Drum/Note mode specifics if any (Note mode uses Port 1)
-    // If the browser provides a specific Port 1, Direct WebMIDI will handle it via device selection.
   }
 
   updateVirtualPad(note, isPressed, velocity) {
@@ -262,11 +226,8 @@ class APCMiniApp {
 
   updateVirtualButton(note, isPressed) {
     let btn = null;
-    if (note >= 0x64 && note <= 0x6B) {
-      btn = document.getElementById(`track-${note - 0x64}`);
-    } else if (note >= 0x70 && note <= 0x77) {
-      btn = document.getElementById(`scene-${note - 0x70}`);
-    }
+    if (note >= 0x64 && note <= 0x6B) btn = document.getElementById(`track-${note - 0x64}`);
+    else if (note >= 0x70 && note <= 0x77) btn = document.getElementById(`scene-${note - 0x70}`);
 
     if (btn) {
       if (isPressed) {
@@ -285,7 +246,6 @@ class APCMiniApp {
     const percent = (value / 127) * 100;
     const fill = document.getElementById(`fader-fill-${index}`);
     const cap = document.getElementById(`fader-cap-${index}`);
-    
     if (fill && cap) {
       fill.style.height = `${percent}%`;
       cap.style.bottom = `${percent}%`;
@@ -327,7 +287,6 @@ class APCMiniApp {
       btn.innerText = `T${i+1}`;
       this.trackButtons.appendChild(btn);
     }
-
     const shiftBtn = document.createElement('div');
     shiftBtn.className = 'btn-shift';
     shiftBtn.id = 'btn-shift';
@@ -356,27 +315,7 @@ class APCMiniApp {
     this.padMatrix.addEventListener('mousedown', (e) => {
       if (e.target.classList.contains('pad')) {
         const note = parseInt(e.target.dataset.note);
-        const behaviorVal = document.getElementById('led-behavior').value;
-        
-        let b = 'solid';
-        let s = 100;
-        
-        const val = parseInt(behaviorVal, 16);
-        if (val >= 0x90 && val <= 0x96) {
-          b = 'solid';
-          s = [10, 25, 50, 65, 75, 90, 100][val - 0x90];
-        } else if (val >= 0x97 && val <= 0x9A) {
-          b = 'pulse';
-          s = ['1/16', '1/8', '1/4', '1/2'][val - 0x97];
-        } else if (val >= 0x9B && val <= 0x9F) {
-          b = 'blink';
-          s = ['1/24', '1/16', '1/8', '1/4', '1/2'][val - 0x9B];
-        }
-
-        const color = parseInt(document.getElementById('palette-color').value);
-        const msg = APCMiniCore.encodePadMessage(note, color, b, s);
-        this.sendMidi(msg);
-        this.updateVirtualPad(note, true, 127);
+        this.sendPadLED(note);
       }
     });
 
@@ -386,22 +325,55 @@ class APCMiniApp {
       });
     });
 
-    this.btnConnect.addEventListener('click', () => this.toggleConnection());
-
-    this.btnScan.addEventListener('click', () => {
-      if (this.midiAccess) this.scanDevices();
-      else this.requestMidiAccess();
+    document.getElementById('btn-apply-all').addEventListener('click', () => {
+      for (let i = 0; i < 64; i++) this.sendPadLED(i);
     });
 
-    this.deviceModeSelect.addEventListener('change', () => {
-      this.clearUI();
-      console.log(`Switched to mode: ${this.deviceModeSelect.value}`);
+    document.getElementById('btn-clear-all').addEventListener('click', () => {
+      for (let i = 0; i < 64; i++) this.sendMidi(APCMiniCore.encodePadMessage(i, 0, 'solid', 100));
+      for (let i = 0x64; i <= 0x6B; i++) this.sendMidi(APCMiniCore.encodeButtonMessage(i, 'off'));
+      for (let i = 0x70; i <= 0x77; i++) this.sendMidi(APCMiniCore.encodeButtonMessage(i, 'off'));
+    });
+
+    this.btnConnect.addEventListener('click', () => this.toggleConnection());
+    this.btnScan.addEventListener('click', () => this.midiAccess ? this.scanDevices() : this.requestMidiAccess());
+
+    // Custom RGB UI Handlers
+    const useCustomRgb = document.getElementById('use-custom-rgb');
+    const rgbControls = document.getElementById('custom-rgb-controls');
+    useCustomRgb.addEventListener('change', () => {
+      rgbControls.style.opacity = useCustomRgb.checked ? '1' : '0.5';
+      rgbControls.style.pointerEvents = useCustomRgb.checked ? 'all' : 'none';
+    });
+
+    ['r', 'g', 'b'].forEach(c => {
+      const slider = document.getElementById(`rgb-${c}`);
+      const valDisplay = document.getElementById(`val-${c}`);
+      slider.addEventListener('input', () => {
+        valDisplay.innerText = slider.value;
+      });
     });
   }
 
-  clearUI() {
-    document.querySelectorAll('.pad').forEach(p => this.updateVirtualPad(parseInt(p.dataset.note), false, 0));
-    document.querySelectorAll('.btn-track, .btn-scene').forEach(b => this.updateVirtualButton(parseInt(b.dataset.note), false));
+  sendPadLED(note) {
+    const useCustom = document.getElementById('use-custom-rgb').checked;
+    if (useCustom) {
+      const r = parseInt(document.getElementById('rgb-r').value);
+      const g = parseInt(document.getElementById('rgb-g').value);
+      const b = parseInt(document.getElementById('rgb-b').value);
+      this.sendMidi(APCMiniCore.encodeCustomRGB(note, note, r, g, b));
+    } else {
+      const behaviorVal = document.getElementById('led-behavior').value;
+      let b = 'solid';
+      let s = 100;
+      const val = parseInt(behaviorVal, 16);
+      if (val >= 0x90 && val <= 0x96) { b = 'solid'; s = [10, 25, 50, 65, 75, 90, 100][val - 0x90]; }
+      else if (val >= 0x97 && val <= 0x9A) { b = 'pulse'; s = ['1/16', '1/8', '1/4', '1/2'][val - 0x97]; }
+      else if (val >= 0x9B && val <= 0x9F) { b = 'blink'; s = ['1/24', '1/16', '1/8', '1/4', '1/2'][val - 0x9B]; }
+      const color = parseInt(document.getElementById('palette-color').value);
+      this.sendMidi(APCMiniCore.encodePadMessage(note, color, b, s));
+    }
+    this.updateVirtualPad(note, true, 127);
   }
 }
 
