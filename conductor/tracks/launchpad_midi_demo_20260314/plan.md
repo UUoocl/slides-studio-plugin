@@ -36,3 +36,6 @@ Create a standalone HTML application in `apps/midi_controller_demo/` to demonstr
     2. Ensure the Slides Studio plugin is running and OBS/MIDI is connected.
     3. Verify the Launchpad enters Programmer Mode.
     4. Test each pattern and verify the LEDs on the device.
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions [319fb45]
