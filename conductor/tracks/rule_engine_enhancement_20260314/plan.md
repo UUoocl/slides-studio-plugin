@@ -22,11 +22,12 @@ The goal is to move rule matching and trigger logic into a testable JavaScript m
 ### Phase 2: Advanced Matching (TDD)
 Implement the 4 matching modes and fix the "Once per Change" throttle state clearing bug.
 
-- [~] Task: Write failing tests for `matchMode` (exact, regex, wildcard).
-- [ ] Task: Implement `matchMode` logic in `ruleEngineCore.js`.
-- [ ] Task: Write failing tests for "Once per Change" state clearing.
-- [ ] Task: Implement state clearing logic (updating `_lastPayload` for all messages on a channel).
+- [x] Task: Write failing tests for `matchMode` (exact, regex, wildcard). 315f72c
+- [x] Task: Implement `matchMode` logic in `ruleEngineCore.js`. 315f72c
+- [x] Task: Write failing tests for "Once per Change" state clearing. 2300823
+- [x] Task: Implement state clearing logic (updating `_lastPayload` for all messages on a channel). 2300823
 - [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
+
 
 ### Phase 3: Sequential & Delayed Actions (TDD)
 Implement support for multiple `then` blocks with optional delays.
@@ -47,9 +48,9 @@ Implement autostart and file loading via URL parameters.
 ### Phase 5: UI Redesign & Integration
 Update the HTML app to use the new core module and redesign the editor UI.
 
-- [x] Task: Update `index.html` to import and use `ruleEngineCore.js`. cf34e57
+- [ ] Task: Update `index.html` to import and use `ruleEngineCore.js`. 
 - [ ] Task: Redesign the rule editor to support multiple `then` blocks (dynamic list).
-- [x] Task: Add UI controls for `active` toggle and fix loading bug. cf34e57
+- [ ] Task: Add UI controls for `active` toggle and fix loading bug. 
 - [ ] Task: Add UI controls for `matchMode` selector and action `delay` inputs.
 - [ ] Task: Update Save/Load logic to handle the new hierarchical JSON schema.
 - [ ] Task: Final end-to-end manual verification in OBS/Obsidian.
