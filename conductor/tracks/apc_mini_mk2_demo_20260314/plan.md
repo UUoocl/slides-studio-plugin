@@ -3,7 +3,7 @@
 ## Phase 1: Project Setup & UI Skeleton
 - [x] Task: Create directory structure in `apps/apc_mini_mk2_demo/`. [da095eb]
 - [x] Task: Implement HTML/CSS for the virtual APC mini mk2 (8x8 grid, 9 faders, 17 buttons). [8ddff8a]
-- [ ] Task: Setup connectivity UI (Communication mode selector and connection status indicator).
+- [x] Task: Setup connectivity UI (Communication mode selector and connection status indicator). [546146a]
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Project Setup & UI Skeleton' (Protocol in workflow.md)
 
 ## Phase 2: Core MIDI Logic (TDD)
