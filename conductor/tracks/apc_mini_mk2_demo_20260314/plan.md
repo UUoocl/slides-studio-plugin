@@ -25,8 +25,8 @@
 
 ## Phase 4: Mode Handling & Advanced Features
 - [x] Task: Implement multi-mode support (Session View, Drum Mode, Note Mode). [8cd95d1]
-- [x] Task: Implement the "Intro Message" trigger on connection to fetch initial hardware fader states. [0421d81]
-- [ ] Task: Implement a "Custom RGB Mode" UI toggle to demonstrate 24-bit SysEx control.
+- [x] Task: Implement the "Intro Message" trigger on connection to fetch initial hardware fader states. [d3c248d]
+- [x] Task: Implement a "Custom RGB Mode" UI toggle to demonstrate 24-bit SysEx control. [d3c248d]
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Mode Handling & Advanced Features' (Protocol in workflow.md)
 
 ## Phase 5: Refinement & Documentation
