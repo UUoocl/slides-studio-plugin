@@ -1,10 +1,11 @@
 # Implementation Plan: AKAI Fire MIDI Demo App
 
-## Phase 1: Project Setup & Basic UI
-- [ ] Task: Create directory structure in `apps/akai_fire_demo/` and initialize `index.html`.
-- [ ] Task: Implement the HTML/CSS skeleton for the virtual AKAI Fire device (4x16 grid, knobs, and buttons).
-- [ ] Task: Implement basic connectivity manager for switching between WebMIDI and SocketCluster.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Project Setup & Basic UI' (Protocol in workflow.md)
+## Phase 1: Project Setup & Basic UI [checkpoint: f6d9289]
+- [x] Task: Create directory structure in `apps/akai_fire_demo/` and initialize `index.html`. [3b376bf]
+- [x] Task: Implement the HTML/CSS skeleton for the virtual AKAI Fire device (4x16 grid, knobs, and buttons). [802101e]
+- [x] Task: Implement basic connectivity manager for switching between WebMIDI and SocketCluster. [4fffd35]
+- [x] Task: Implement MIDI device selection in the UI (dropdown for available WebMIDI ports). [4e8fe6b]
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Project Setup & Basic UI' (Protocol in workflow.md) [f6d9289]
 
 ## Phase 2: MIDI Core & RGB/CC Implementation
 - [ ] Task: Write TDD tests for MIDI message generation (CC for buttons, Note-On for pads).
