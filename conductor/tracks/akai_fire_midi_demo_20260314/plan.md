@@ -7,13 +7,13 @@
 - [x] Task: Implement MIDI device selection in the UI (dropdown for available WebMIDI ports). [4e8fe6b]
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Project Setup & Basic UI' (Protocol in workflow.md) [f6d9289]
 
-## Phase 2: MIDI Core & RGB/CC Implementation
-- [ ] Task: Write TDD tests for MIDI message generation (CC for buttons, Note-On for pads).
-- [ ] Task: Implement core MIDI output logic for standard buttons using CC messages.
-- [ ] Task: Write TDD tests for Akai Fire RGB SysEx encoding.
-- [ ] Task: Implement `sendRGBPad(index, r, g, b)` using the specific Fire SysEx protocol.
-- [ ] Task: Implement input listener to reflect physical hardware state in the UI (Detailed Visuals).
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: MIDI Core & RGB/CC Implementation' (Protocol in workflow.md)
+## Phase 2: MIDI Core & RGB/CC Implementation [checkpoint: 833a15a]
+- [x] Task: Write TDD tests for MIDI message generation (CC for buttons, Note-On for pads). [3613735]
+- [x] Task: Implement core MIDI output logic for standard buttons using CC messages. [25f5537]
+- [x] Task: Write TDD tests for Akai Fire RGB SysEx encoding. [94b338b]
+- [x] Task: Implement `sendRGBPad(index, r, g, b)` using the specific Fire SysEx protocol. [48a8085]
+- [x] Task: Implement input listener to reflect physical hardware state in the UI (Detailed Visuals). [2019c22]
+- [x] Task: Conductor - User Manual Verification 'Phase 2: MIDI Core & RGB/CC Implementation' (Protocol in workflow.md) [833a15a]
 
 ## Phase 3: Interactive Features (Paint & Sequencer)
 - [ ] Task: Write TDD tests for 'Paint Mode' state management.
