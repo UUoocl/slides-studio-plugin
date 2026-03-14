@@ -194,6 +194,20 @@ class APCMiniApp {
     const type = status & 0xF0;
     const currentMode = this.deviceModeSelect.value;
 
+    // Handle SysEx (0xF0)
+    if (status === 0xF0) {
+      // Check if it's the Fader Position Response (ID 0x61)
+      // Format: F0 47 7F 4F 61 00 04 <F1> <F2> <F3> <F4> <F5> <F6> <F7> <F8> <F9> F7
+      if (msg.data[1] === 0x47 && msg.data[4] === 0x61) {
+        console.log('Received initial fader positions from hardware.');
+        for (let i = 0; i < 9; i++) {
+          const val = msg.data[7 + i];
+          if (val !== undefined) this.updateVirtualFader(i, val);
+        }
+      }
+      return;
+    }
+
     // Handle Note-On/Off for Pads and Buttons
     if (type === 0x90 || type === 0x80) {
       const isPress = type === 0x90 && data2 > 0;
