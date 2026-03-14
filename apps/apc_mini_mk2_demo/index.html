@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AKAI APC mini mk2 Demo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>AKAI APC mini mk2 Demo</h1>
+
+  <div class="status-bar">
+    <div class="status">
+      <div id="status-indicator" class="status-indicator"></div>
+      <span id="status-text">Disconnected</span>
+    </div>
+    <div class="midi-info">
+      <label for="midi-device-alias">Device Alias:</label>
+      <input type="text" id="midi-device-alias" value="APC mini mk2">
+    </div>
+  </div>
+
+  <div class="main-container">
+    <div class="device-area">
+      <div id="virtual-apc" class="apc-mini">
+        <div class="grid-section">
+          <div id="pad-matrix" class="pad-matrix"></div>
+          <div id="scene-buttons" class="scene-buttons"></div>
+        </div>
+        <div id="track-buttons" class="track-buttons"></div>
+        <div class="fader-section">
+          <div id="fader-container" class="fader-container"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls-area">
+      <div class="control-group">
+        <h3>Connectivity</h3>
+        <label for="comm-mode">Mode:</label>
+        <select id="comm-mode">
+          <option value="direct">Direct WebMIDI</option>
+          <option value="socket">SocketCluster Bridge</option>
+        </select>
+        <button id="btn-connect">Connect</button>
+      </div>
+
+      <div class="control-group">
+        <h3>LED Control</h3>
+        <label for="palette-color">Color Index (0-127):</label>
+        <input type="number" id="palette-color" value="5" min="0" max="127">
+        
+        <label for="led-behavior">Behavior:</label>
+        <select id="led-behavior">
+          <option value="90">Solid (10%)</option>
+          <option value="96" selected>Solid (100%)</option>
+          <option value="97">Pulsing (1/16)</option>
+          <option value="9A">Pulsing (1/2)</option>
+          <option value="9B">Blinking (1/24)</option>
+          <option value="9F">Blinking (1/2)</option>
+        </select>
+        <button id="btn-apply-all">Apply to All Pads</button>
+        <button id="btn-clear-all">Clear All</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

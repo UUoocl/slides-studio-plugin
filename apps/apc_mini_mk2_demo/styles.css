@@ -1,0 +1,249 @@
+:root {
+  --bg-color: #121212;
+  --panel-bg: #1e1e1e;
+  --text-color: #e0e0e0;
+  --accent-color: #ff5252; /* AKAI Red */
+  --pad-bg: #333;
+  --button-bg: #2a2a2a;
+  --fader-track: #111;
+  --fader-cap: #444;
+  --status-red: #ff5252;
+  --status-green: #00e676;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+h1 {
+  color: var(--accent-color);
+  margin-bottom: 20px;
+}
+
+.status-bar {
+  background: var(--panel-bg);
+  padding: 10px 20px;
+  border-radius: 8px;
+  display: flex;
+  gap: 30px;
+  margin-bottom: 30px;
+  align-items: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: bold;
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--status-red);
+}
+
+.status-indicator.connected {
+  background-color: var(--status-green);
+  box-shadow: 0 0 8px var(--status-green);
+}
+
+.main-container {
+  display: flex;
+  gap: 40px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.device-area {
+  background: #000;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+  border: 2px solid #222;
+}
+
+.apc-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.grid-section {
+  display: flex;
+  gap: 15px;
+}
+
+.pad-matrix {
+  display: grid;
+  grid-template-columns: repeat(8, 50px);
+  grid-template-rows: repeat(8, 40px);
+  gap: 8px;
+}
+
+.pad {
+  width: 50px;
+  height: 40px;
+  background-color: var(--pad-bg);
+  border-radius: 4px;
+  border: 1px solid #000;
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+.pad:hover {
+  filter: brightness(1.2);
+}
+
+.scene-buttons {
+  display: grid;
+  grid-template-rows: repeat(8, 40px);
+  gap: 8px;
+}
+
+.btn-scene {
+  width: 40px;
+  height: 40px;
+  background-color: var(--button-bg);
+  border-radius: 50%;
+  border: 1px solid #000;
+  cursor: pointer;
+  color: #666;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.track-buttons {
+  display: flex;
+  gap: 8px;
+  padding-left: 0;
+}
+
+.btn-track {
+  width: 50px;
+  height: 30px;
+  background-color: var(--button-bg);
+  border-radius: 4px;
+  border: 1px solid #000;
+  cursor: pointer;
+  color: #666;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fader-section {
+  display: flex;
+  gap: 8px;
+  padding-top: 20px;
+  border-top: 1px solid #333;
+}
+
+.fader-container {
+  display: flex;
+  gap: 8px;
+}
+
+.fader-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.fader-track {
+  width: 50px;
+  height: 150px;
+  background: var(--fader-track);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #222;
+}
+
+.fader-fill {
+  width: 100%;
+  background: #333;
+  position: absolute;
+  bottom: 0;
+  transition: height 0.05s linear;
+}
+
+.fader-cap {
+  width: 100%;
+  height: 20px;
+  background: var(--fader-cap);
+  position: absolute;
+  left: 0;
+  border-top: 2px solid #666;
+  border-bottom: 2px solid #222;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  z-index: 2;
+}
+
+.fader-label {
+  font-size: 10px;
+  color: #888;
+}
+
+.controls-area {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 300px;
+}
+
+.control-group {
+  background: var(--panel-bg);
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+
+.control-group h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: var(--accent-color);
+  font-size: 1.1em;
+  border-bottom: 1px solid #444;
+  padding-bottom: 5px;
+}
+
+input, select, button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  background: #222;
+  border: 1px solid #444;
+  color: white;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+button {
+  background-color: var(--accent-color);
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+
+button:hover {
+  filter: brightness(1.1);
+}
+
+button#btn-clear-all {
+  background-color: #444;
+}
