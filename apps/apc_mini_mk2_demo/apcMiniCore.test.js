@@ -16,9 +16,9 @@ describe('APCMiniCore - Standard LED Behaviors', () => {
     });
 
     it('should encode a Blinking Blue (1/2) message for Pad 63', () => {
-      // Channel 0x9F (Blink 1/2), Note 0x3F, Color 0x2D (Blue)
+      // Channel 0x9F (Blink 1/2), Note 0x3F, Color 45 (Blue)
       const result = APCMiniCore.encodePadMessage(63, 45, 'blink', '1/2');
-      expect(result).toEqual(new Uint8Array([0x9F, 0x3F, 0x45]));
+      expect(result).toEqual(new Uint8Array([0x9F, 0x3F, 45]));
     });
   });
 
