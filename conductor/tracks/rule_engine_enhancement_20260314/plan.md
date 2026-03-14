@@ -22,7 +22,7 @@ The goal is to move rule matching and trigger logic into a testable JavaScript m
 ### Phase 2: Advanced Matching (TDD)
 Implement the 4 matching modes and fix the "Once per Change" throttle state clearing bug.
 
-- [ ] Task: Write failing tests for `matchMode` (exact, regex, wildcard).
+- [~] Task: Write failing tests for `matchMode` (exact, regex, wildcard).
 - [ ] Task: Implement `matchMode` logic in `ruleEngineCore.js`.
 - [ ] Task: Write failing tests for "Once per Change" state clearing.
 - [ ] Task: Implement state clearing logic (updating `_lastPayload` for all messages on a channel).

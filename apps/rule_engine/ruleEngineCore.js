@@ -23,20 +23,76 @@ export function partialMatch(target, data) {
 }
 
 /**
+ * Checks if target object is exactly matched by data object.
+ * @param {any} target The pattern to match against.
+ * @param {any} data The incoming data.
+ * @returns {boolean} True if data matches the target pattern exactly.
+ */
+export function exactMatch(target, data) {
+    if (target === data) return true;
+    if (typeof target !== 'object' || target === null || typeof data !== 'object' || data === null) {
+        return target == data;
+    }
+    
+    const targetKeys = Object.keys(target);
+    const dataKeys = Object.keys(data);
+    
+    if (targetKeys.length !== dataKeys.length) return false;
+    
+    for (const key of targetKeys) {
+        if (!exactMatch(target[key], data[key])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * Converts a wildcard string (* and ?) to a Regular Expression.
+ * @param {string} wildcard The wildcard string.
+ * @returns {RegExp} The equivalent RegExp.
+ */
+function wildcardToRegex(wildcard) {
+    const escaped = wildcard.replace(/[.+^${}()|[\]\\]/g, '\\$&'); // Escape regex special chars
+    const pattern = escaped.replace(/\*/g, '.*').replace(/\?/g, '.');
+    return new RegExp(`^${pattern}$`);
+}
+
+/**
  * Determines if a rule triggers based on incoming data.
  * @param {object} rule The rule configuration.
  * @param {any} data The incoming data from the channel.
  * @returns {boolean} True if the rule matches.
  */
 export function matchRule(rule, data) {
-    if (!rule.ifPayload || rule.ifPayload.trim() === '') return true;
+    // Support new structure { if: { payload, matchMode } }
+    const ifConfig = rule.if || { payload: rule.ifPayload, matchMode: 'partial' };
+    const { payload, matchMode = 'partial' } = ifConfig;
+
+    if (!payload || (typeof payload === 'string' && payload.trim() === '')) return true;
+
+    // Handle string matching modes (regex, wildcard)
+    if (matchMode === 'regex' || matchMode === 'wildcard') {
+        const incomingStr = typeof data === 'string' ? data : JSON.stringify(data);
+        const regex = matchMode === 'regex' ? new RegExp(payload) : wildcardToRegex(payload);
+        return regex.test(incomingStr);
+    }
 
     try {
-        const target = JSON.parse(rule.ifPayload);
-        return partialMatch(target, data);
+        const target = typeof payload === 'string' ? JSON.parse(payload) : payload;
+        
+        if (matchMode === 'exact') {
+            return exactMatch(target, data);
+        } else {
+            // Default to 'partial'
+            return partialMatch(target, data);
+        }
     } catch (e) {
         const incomingStr = typeof data === 'string' ? data : JSON.stringify(data);
-        return incomingStr.includes(rule.ifPayload);
+        if (matchMode === 'exact') {
+            return incomingStr === payload;
+        }
+        return incomingStr.includes(payload);
     }
 }
 

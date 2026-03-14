@@ -21,26 +21,36 @@ describe('Rule Engine Core Logic', () => {
         });
     });
 
-    describe('matchRule', () => {
-        it('should match when ifPayload is empty', () => {
-            const rule = { ifPayload: '' };
-            expect(matchRule(rule, { some: 'data' })).toBe(true);
-        });
-
-        it('should match when ifPayload matches incoming data', () => {
-            const rule = { ifPayload: JSON.stringify({ note: 60 }) };
+    describe('matchRule (New Structure)', () => {
+        it('should match using partial mode (default)', () => {
+            const rule = { 
+                if: { payload: JSON.stringify({ note: 60 }), matchMode: 'partial' } 
+            };
             expect(matchRule(rule, { note: 60, velocity: 100 })).toBe(true);
         });
 
-        it('should fail when ifPayload does not match', () => {
-            const rule = { ifPayload: JSON.stringify({ note: 64 }) };
-            expect(matchRule(rule, { note: 60 })).toBe(false);
+        it('should match using exact mode', () => {
+            const rule = { 
+                if: { payload: JSON.stringify({ note: 60 }), matchMode: 'exact' } 
+            };
+            expect(matchRule(rule, { note: 60 })).toBe(true);
+            expect(matchRule(rule, { note: 60, velocity: 100 })).toBe(false);
         });
 
-        it('should match using string inclusion when ifPayload is not valid JSON', () => {
-            const rule = { ifPayload: 'hello' };
-            expect(matchRule(rule, 'hello world')).toBe(true);
+        it('should match using regex mode', () => {
+            const rule = { 
+                if: { payload: '^hello.*world$', matchMode: 'regex' } 
+            };
+            expect(matchRule(rule, 'hello brave new world')).toBe(true);
             expect(matchRule(rule, 'bye world')).toBe(false);
+        });
+
+        it('should match using wildcard mode', () => {
+            const rule = { 
+                if: { payload: 'obs_*_changed', matchMode: 'wildcard' } 
+            };
+            expect(matchRule(rule, 'obs_scene_changed')).toBe(true);
+            expect(matchRule(rule, 'obs_source_added')).toBe(false);
         });
     });
 
