@@ -10,7 +10,7 @@ const midiDeviceSelect = document.getElementById('midi-device');
 
 let connection = new FireConnectionManager({
   onStatusChange: handleStatusChange,
-  onMidiMessage: (data) => console.log('MIDI Input:', data)
+  onMidiMessage: (data) => handleMidiInput(data)
 });
 
 // State for toggling button LEDs
@@ -89,6 +89,40 @@ function renderMatrix() {
 function handleStatusChange(status, message) {
   statusText.textContent = message;
   statusIndicator.className = 'status-indicator ' + (status === 'connected' ? 'connected' : 'error');
+}
+
+function handleMidiInput(data) {
+  const input = FireMidiLogic.parseInput(data);
+  if (!input) return;
+
+  if (input.type === 'note') {
+    const padCoords = FireMidiLogic.getPadFromNote(input.note);
+    if (padCoords) {
+      const pad = document.getElementById(`pad-${padCoords.row}-${padCoords.col}`);
+      if (pad) {
+        if (input.isPress) {
+          pad.classList.add('active');
+          pad.style.backgroundColor = '#ff5252';
+        } else {
+          pad.classList.remove('active');
+          pad.style.backgroundColor = '';
+        }
+      }
+    }
+  } else if (input.type === 'cc') {
+    const knobName = FireMidiLogic.getKnobFromCC(input.cc);
+    if (knobName) {
+      const knobEl = document.getElementById(`knob-${knobName}`);
+      if (knobEl) {
+        // Simple rotation visualization
+        const rotation = (input.value <= 0x3F) ? input.value * 5 : (input.value - 0x80) * 5;
+        const currentRotation = parseInt(knobEl.dataset.rotation || 0);
+        const newRotation = currentRotation + rotation;
+        knobEl.style.transform = `rotate(${newRotation}deg)`;
+        knobEl.dataset.rotation = newRotation;
+      }
+    }
+  }
 }
 
 midiDeviceSelect.addEventListener('change', (e) => {

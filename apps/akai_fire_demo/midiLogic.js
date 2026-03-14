@@ -16,12 +16,29 @@ export class FireMidiLogic {
   }
 
   static getPadNote(row, col) {
-    // Row 1 (Top): 0x36 to 0x45 (54 to 69)
-    // Row 2: 0x46 to 0x55 (70 to 85)
-    // Row 3: 0x56 to 0x65 (86 to 101)
-    // Row 4: 0x66 to 0x75 (102 to 117)
     const baseNotes = [0x36, 0x46, 0x56, 0x66];
     return baseNotes[row] + col;
+  }
+
+  static getPadFromNote(note) {
+    const baseNotes = [0x36, 0x46, 0x56, 0x66];
+    for (let r = 0; r < 4; r++) {
+      if (note >= baseNotes[r] && note < baseNotes[r] + 16) {
+        return { row: r, col: note - baseNotes[r] };
+      }
+    }
+    return null;
+  }
+
+  static getKnobFromCC(cc) {
+    const mapping = {
+      0x10: 'vol',
+      0x11: 'pan',
+      0x12: 'filter',
+      0x13: 'res',
+      0x76: 'select'
+    };
+    return mapping[cc];
   }
 
   static createButtonMessage(cc, colorValue) {
