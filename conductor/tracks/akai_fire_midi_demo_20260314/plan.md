@@ -22,11 +22,11 @@
 - [x] Task: Implement 'Sequencer Demo' with basic animations. [9f9c9e3]
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Interactive Features (Paint & Sequencer)' (Protocol in workflow.md) [f755b78]
 
-## Phase 4: OLED Integration
-- [ ] Task: Write TDD tests for OLED bitmap encoding (monochrome 128x64).
-- [ ] Task: Implement OLED text rendering logic (font to bitmap).
-- [ ] Task: Implement `sendOLEDData()` SysEx transmission.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: OLED Integration' (Protocol in workflow.md)
+## Phase 4: OLED Integration [checkpoint: 1ef9d3a]
+- [x] Task: Write TDD tests for OLED bitmap encoding (monochrome 128x64). [824f720]
+- [x] Task: Implement OLED text rendering logic (font to bitmap). [800d2b0]
+- [x] Task: Implement `sendOLEDData()` SysEx transmission. [312659c]
+- [x] Task: Conductor - User Manual Verification 'Phase 4: OLED Integration' (Protocol in workflow.md) [1ef9d3a]
 
 ## Phase 5: Refinement & Verification
 - [ ] Task: Final UI polish and responsive adjustments for the virtual device.
