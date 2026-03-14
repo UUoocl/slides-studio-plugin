@@ -17,12 +17,12 @@ Create a standalone HTML application in `apps/midi_controller_demo/` to demonstr
 - [x] **Task: Pattern Generation Logic (TDD)** [ade9a94]
 - [x] **Task: Conductor - User Manual Verification 'Foundation & Logic' (Protocol in workflow.md)** [3ad7471]
 
-### Phase 2: UI & SocketCluster Integration
+### Phase 2: UI & SocketCluster Integration [checkpoint: 47d3b66]
 - [x] **Task: Basic HTML Structure** [b498886]
 - [x] **Task: Virtual 9x9 Grid UI** [4227c2d]
 - [x] **Task: SocketCluster Client Integration** [54d87eb]
 - [x] **Task: Pattern Controls Implementation** [54d87eb]
-- [ ] **Task: Conductor - User Manual Verification 'UI & SocketCluster Integration' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'UI & SocketCluster Integration' (Protocol in workflow.md)** [47d3b66]
 
 ### Phase 3: Final Polishing & Verification
 - [ ] **Task: UI/UX Refinement**
