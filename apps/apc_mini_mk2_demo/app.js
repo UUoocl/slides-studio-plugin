@@ -71,6 +71,14 @@ class APCMiniApp {
       btn.innerText = `T${i+1}`;
       this.trackButtons.appendChild(btn);
     }
+
+    // Add Shift button (Note 122 / 0x7A) at the end of the row
+    const shiftBtn = document.createElement('div');
+    shiftBtn.className = 'btn-shift';
+    shiftBtn.id = 'btn-shift';
+    shiftBtn.dataset.note = 122;
+    shiftBtn.innerText = 'SHIFT';
+    this.trackButtons.appendChild(shiftBtn);
   }
 
   generateFaders() {
