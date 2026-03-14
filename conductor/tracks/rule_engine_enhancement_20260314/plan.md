@@ -31,9 +31,9 @@ Implement the 4 matching modes and fix the "Once per Change" throttle state clea
 ### Phase 3: Sequential & Delayed Actions (TDD)
 Implement support for multiple `then` blocks with optional delays.
 
-- [x] Task: Write failing tests for sequential actions in the `then` array. (Done in previous turn)
-- [x] Task: Write failing tests for action delays using Vitest's fake timers. (Done in previous turn)
-- [x] Task: Implement `executeActions` logic in `ruleEngineCore.js`. (Done in previous turn)
+- [x] Task: Write failing tests for sequential actions in the `then` array. 02bb52f
+- [x] Task: Write failing tests for action delays using Vitest's fake timers. 02bb52f
+- [x] Task: Implement `executeActions` logic in `ruleEngineCore.js`. 02bb52f
 - [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
 ### Phase 4: Automation & Lifecycle

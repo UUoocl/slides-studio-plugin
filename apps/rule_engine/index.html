@@ -141,6 +141,28 @@
             border-color: #777;
         }
         
+        .then-actions-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .action-item {
+            background: #2d2d2d;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .action-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8em;
+            color: #888;
+        }
+        
         .throttle-settings {
             grid-column: span 2;
             margin-top: 15px;
@@ -414,14 +436,10 @@
                     </div>
                     <div class="rule-side">
                         <h3>THEN</h3>
-                        <div class="control-group">
-                            <select class="channel-select" onchange="updateRule('${rule.id}', 'thenChannel', this.value)">
-                                <option value="">-- Select Channel --</option>
-                                ${thenOptions}
-                            </select>
-                            <button id="listen-then-${rule.id}" class="listen-btn" onclick="listenToChannel('${rule.id}', 'then')">LISTEN</button>
+                        <div id="then-actions-${rule.id}" class="then-actions-container">
+                            <!-- Actions will be injected here -->
                         </div>
-                        <textarea placeholder='{"type": "noteon", "note": 64}' oninput="updateRule('${rule.id}', 'thenPayload', this.value)">${rule.thenPayload}</textarea>
+                        <button class="add-action-btn" onclick="addThenAction('${rule.id}')" style="background-color: #333; border: 1px dashed #555; width: 100%; margin-top: 5px;">+ ADD ACTION</button>
                     </div>
                     <div class="throttle-settings">
                         <label>Trigger:</label>
@@ -442,10 +460,69 @@
             rulesList.appendChild(ruleDiv);
             updateActiveCount();
             
+            // Render initial actions
+            const ruleObj = rules.find(r => r.id === rule.id);
+            if (!ruleObj.then) {
+                ruleObj.then = [{ channel: rule.thenChannel || '', payload: rule.thenPayload || '', delay: 0 }];
+            }
+            renderActions(rule.id);
+
             if (rule.ifChannel && rule.active) {
                 startRuleListener(rule);
             }
         };
+
+        window.addThenAction = function(ruleId) {
+            const rule = rules.find(r => r.id === ruleId);
+            if (rule) {
+                rule.then.push({ channel: '', payload: '', delay: 0 });
+                renderActions(ruleId);
+            }
+        };
+
+        window.removeThenAction = function(ruleId, actionIndex) {
+            const rule = rules.find(r => r.id === ruleId);
+            if (rule && rule.then.length > 1) {
+                rule.then.splice(actionIndex, 1);
+                renderActions(ruleId);
+            }
+        };
+
+        window.updateAction = function(ruleId, index, field, value) {
+            const rule = rules.find(r => r.id === ruleId);
+            if (rule && rule.then[index]) {
+                rule.then[index][field] = value;
+            }
+        };
+
+        function renderActions(ruleId) {
+            const rule = rules.find(r => r.id === ruleId);
+            const container = document.getElementById(`then-actions-${ruleId}`);
+            if (!rule || !container) return;
+
+            const channelsArr = Array.from(availableChannels).sort();
+            
+            container.innerHTML = rule.then.map((action, index) => `
+                <div class="action-item">
+                    <div class="action-header">
+                        <span>Action ${index + 1}</span>
+                        ${rule.then.length > 1 ? `<button class="remove-btn" onclick="removeThenAction('${ruleId}', ${index})" style="padding: 2px 6px; font-size: 0.8em;">X</button>` : ''}
+                    </div>
+                    <div class="control-group">
+                        <select class="channel-select" onchange="updateAction('${ruleId}', ${index}, 'channel', this.value)">
+                            <option value="">-- Select Channel --</option>
+                            ${channelsArr.map(ch => `<option value="${ch}" ${ch === action.channel ? 'selected' : ''}>${ch}</option>`).join('')}
+                        </select>
+                        <button id="listen-then-${ruleId}-${index}" class="listen-btn" onclick="listenToChannel('${ruleId}', 'then', ${index})">LISTEN</button>
+                    </div>
+                    <div class="control-group" style="align-items: center;">
+                        <label style="font-size: 0.8em;">Delay (ms):</label>
+                        <input type="number" style="width: 70px;" value="${action.delay || 0}" oninput="updateAction('${ruleId}', ${index}, 'delay', parseInt(this.value))">
+                    </div>
+                    <textarea placeholder='{"type": "noteon", "note": 64}' oninput="updateAction('${ruleId}', ${index}, 'payload', this.value)">${typeof action.payload === 'string' ? action.payload : JSON.stringify(action.payload, null, 2)}</textarea>
+                </div>
+            `).join('');
+        }
 
         window.updateRule = function(id, field, value) {
             const rule = rules.find(r => r.id === id);
@@ -538,16 +615,21 @@
 
         let activeCaptureFlags = new Map(); // ruleId-side -> stopFlag
 
-        window.listenToChannel = async function(ruleId, side) {
+        window.listenToChannel = async function(ruleId, side, actionIndex = null) {
             const rule = rules.find(r => r.id === ruleId);
-            const channelName = side === 'if' ? rule.ifChannel : rule.thenChannel;
+            let channelName;
+            if (side === 'if') {
+                channelName = rule.if?.channel || rule.ifChannel;
+            } else {
+                channelName = rule.then[actionIndex].channel;
+            }
             
             if (!channelName) {
                 alert("Please select a channel first.");
                 return;
             }
 
-            const flagKey = `${ruleId}-${side}`;
+            const flagKey = side === 'if' ? `${ruleId}-if` : `${ruleId}-then-${actionIndex}`;
             if (activeCaptureFlags.has(flagKey)) {
                 activeCaptureFlags.get(flagKey).stop = true;
             }
@@ -555,7 +637,8 @@
             const stopFlag = { stop: false };
             activeCaptureFlags.set(flagKey, stopFlag);
 
-            const btn = document.getElementById(`listen-${side}-${ruleId}`);
+            const btnId = side === 'if' ? `listen-if-${ruleId}` : `listen-then-${ruleId}-${actionIndex}`;
+            const btn = document.getElementById(btnId);
             btn.classList.add('listening');
             btn.textContent = "LISTENING...";
 
@@ -566,10 +649,15 @@
                     if (stopFlag.stop) break;
 
                     const payloadStr = JSON.stringify(data, null, 2);
-                    const textarea = document.querySelector(`#rule-${ruleId} .rule-side:${side === 'if' ? 'first-child' : 'nth-of-type(2)'} textarea`);
-                    if (textarea) {
-                        textarea.value = payloadStr;
-                        updateRule(ruleId, side === 'if' ? 'ifPayload' : 'thenPayload', payloadStr);
+                    
+                    if (side === 'if') {
+                        const textarea = document.querySelector(`#rule-${ruleId} .rule-side:first-child textarea`);
+                        if (textarea) textarea.value = payloadStr;
+                        updateRule(ruleId, 'ifPayload', payloadStr);
+                    } else {
+                        const textarea = document.querySelectorAll(`#then-actions-${ruleId} .action-item`)[actionIndex].querySelector('textarea');
+                        if (textarea) textarea.value = payloadStr;
+                        updateAction(ruleId, actionIndex, 'payload', payloadStr);
                     }
                     
                     btn.classList.remove('listening');
