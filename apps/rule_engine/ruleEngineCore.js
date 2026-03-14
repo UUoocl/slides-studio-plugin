@@ -131,6 +131,38 @@ export function checkRule(rule, data, triggerCallback) {
 }
 
 /**
+ * Executes the actions defined in a rule.
+ * @param {object} rule The rule configuration.
+ * @param {any} incomingData Data that triggered the rule.
+ * @param {function} publishCallback Callback to publish messages (channel, payload).
+ */
+export function executeActions(rule, incomingData, publishCallback) {
+    const actions = rule.then || [
+        { channel: rule.thenChannel, payload: rule.thenPayload, delay: 0 }
+    ];
+
+    actions.forEach(action => {
+        const { channel, payload: rawPayload, delay = 0 } = action;
+        if (!channel) return;
+
+        let payload;
+        try {
+            payload = typeof rawPayload === 'string' ? JSON.parse(rawPayload) : rawPayload;
+        } catch (e) {
+            payload = rawPayload;
+        }
+
+        if (delay > 0) {
+            setTimeout(() => {
+                publishCallback(channel, payload);
+            }, delay);
+        } else {
+            publishCallback(channel, payload);
+        }
+    });
+}
+
+/**
  * Processes a rule trigger with throttling logic.
  * @deprecated Use checkRule instead for better throttle clearing.
  * @param {object} rule The rule configuration.

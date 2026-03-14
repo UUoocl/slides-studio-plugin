@@ -269,7 +269,7 @@
 
     <script type="module">
         import { create } from '../lib/socketcluster-client.min.js';
-        import { checkRule } from './ruleEngineCore.js';
+        import { checkRule, executeActions } from './ruleEngineCore.js';
 
         const statusEl = document.getElementById('sc-status');
         const countEl = document.getElementById('rule-count');
@@ -527,23 +527,13 @@
             }
         }
 
-        async function triggerRule(rule, incomingData) {
-            if (!rule.thenChannel) return;
-
-            log(`Triggered: "${rule.name}" (${rule.ifChannel} -> ${rule.thenChannel})`, 'trigger');
-            
-            let payload;
-            try {
-                payload = JSON.parse(rule.thenPayload);
-            } catch (e) {
-                payload = rule.thenPayload;
-            }
-
-            try {
-                await socket.invokePublish(rule.thenChannel, payload);
-            } catch (e) {
-                log(`Publish Error: ${e.message}`, 'error');
-            }
+        function triggerRule(rule, incomingData) {
+            log(`Triggered: "${rule.name}"`, 'trigger');
+            executeActions(rule, incomingData, (channel, payload) => {
+                socket.invokePublish(channel, payload).catch(e => {
+                    log(`Publish Error (${channel}): ${e.message}`, 'error');
+                });
+            });
         }
 
         let activeCaptureFlags = new Map(); // ruleId-side -> stopFlag

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { matchRule, partialMatch, processRuleTrigger, checkRule } from '../../apps/rule_engine/ruleEngineCore.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { matchRule, partialMatch, processRuleTrigger, checkRule, executeActions } from '../../apps/rule_engine/ruleEngineCore.js';
 
 describe('Rule Engine Core Logic', () => {
     describe('partialMatch', () => {
@@ -35,6 +35,7 @@ describe('Rule Engine Core Logic', () => {
             };
             expect(matchRule(rule, { note: 60 })).toBe(true);
             expect(matchRule(rule, { note: 60, velocity: 100 })).toBe(false);
+            expect(matchRule(rule, { note: 64 })).toBe(false);
         });
 
         it('should match using regex mode', () => {
@@ -47,10 +48,21 @@ describe('Rule Engine Core Logic', () => {
 
         it('should match using wildcard mode', () => {
             const rule = { 
-                if: { payload: 'obs_*_changed', matchMode: 'wildcard' } 
+                if: { payload: 'obs_?_changed', matchMode: 'wildcard' } 
             };
-            expect(matchRule(rule, 'obs_scene_changed')).toBe(true);
-            expect(matchRule(rule, 'obs_source_added')).toBe(false);
+            expect(matchRule(rule, 'obs_1_changed')).toBe(true);
+            expect(matchRule(rule, 'obs_12_changed')).toBe(false);
+        });
+
+        it('should fallback to string matching if JSON parsing fails in matchRule', () => {
+            const rule = { 
+                if: { payload: 'exact_string', matchMode: 'exact' } 
+            };
+            expect(matchRule(rule, 'exact_string')).toBe(true);
+            expect(matchRule(rule, 'other')).toBe(false);
+
+            const rule2 = { if: { payload: 'partial', matchMode: 'partial' } };
+            expect(matchRule(rule2, 'partial_match')).toBe(true);
         });
     });
 
@@ -115,6 +127,53 @@ describe('Rule Engine Core Logic', () => {
             // 4. Same matching message as step 1 -> SHOULD trigger again because state was cleared
             checkRule(rule, { active: true }, callback);
             expect(callback).toHaveBeenCalledTimes(2);
+        });
+    });
+
+    describe('executeActions', () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+        });
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        it('should execute multiple sequential actions immediately if no delay', async () => {
+            const rule = {
+                then: [
+                    { channel: 'ch1', payload: 'p1' },
+                    { channel: 'ch2', payload: 'p2' }
+                ]
+            };
+            const publishFn = vi.fn();
+            
+            executeActions(rule, {}, publishFn);
+            
+            expect(publishFn).toHaveBeenCalledTimes(2);
+            expect(publishFn).toHaveBeenNthCalledWith(1, 'ch1', 'p1');
+            expect(publishFn).toHaveBeenNthCalledWith(2, 'ch2', 'p2');
+        });
+
+        it('should respect delays for actions', async () => {
+            const rule = {
+                then: [
+                    { channel: 'immediate', payload: 'now' },
+                    { channel: 'delayed', payload: 'later', delay: 1000 }
+                ]
+            };
+            const publishFn = vi.fn();
+            
+            executeActions(rule, {}, publishFn);
+            
+            expect(publishFn).toHaveBeenCalledTimes(1);
+            expect(publishFn).toHaveBeenCalledWith('immediate', 'now');
+            
+            vi.advanceTimersByTime(500);
+            expect(publishFn).toHaveBeenCalledTimes(1);
+            
+            vi.advanceTimersByTime(500);
+            expect(publishFn).toHaveBeenCalledTimes(2);
+            expect(publishFn).toHaveBeenLastCalledWith('delayed', 'later');
         });
     });
 });
