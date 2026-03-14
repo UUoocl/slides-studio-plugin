@@ -19,7 +19,7 @@
 ## Core Libraries
 - **obs-websocket-js**: For direct, reliable communication with the OBS WebSocket server.
 - **node-osc**: For bidirectional Open Sound Control (OSC) communication.
-- **webmidi**: For hardware-level MIDI device integration.
+- **webmidi**: For hardware-level MIDI device integration, supporting full SysEx and raw messaging for advanced controller features (LEDs, modes).
 - **tabulator-tables**: For interactive, high-performance table UI in the slide management views.
 - **@mediapipe/tasks-vision**: For high-performance computer vision tasks (pose and hand tracking) within the slide overlays.
 
