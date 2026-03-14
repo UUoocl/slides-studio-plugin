@@ -21,4 +21,32 @@ export class FireAppLogic {
     this.setPadColor(index, r, g, b);
     return { index, r, g, b };
   }
+
+  // Sequencer Logic
+  startSequencer() {
+    this.isSequencing = true;
+    this.currentStep = 0;
+  }
+
+  stopSequencer() {
+    this.isSequencing = false;
+  }
+
+  tick() {
+    if (!this.isSequencing) return null;
+    
+    const prevStep = (this.currentStep + 15) % 16;
+    const activeStep = this.currentStep;
+    
+    // Advance
+    this.currentStep = (this.currentStep + 1) % 16;
+
+    // Return what needs updating: 
+    // - Clear highlight from prevStep
+    // - Add highlight to activeStep
+    return {
+      clearIndices: [0, 1, 2, 3].map(row => row * 16 + prevStep),
+      highlightIndices: [0, 1, 2, 3].map(row => row * 16 + activeStep)
+    };
+  }
 }
