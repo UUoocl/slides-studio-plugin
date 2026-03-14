@@ -39,9 +39,9 @@ Implement support for multiple `then` blocks with optional delays.
 ### Phase 4: Automation & Lifecycle
 Implement autostart and file loading via URL parameters.
 
-- [ ] Task: Implement `getRulesFromFile(filename)` utility using the Slides-Studio API.
-- [ ] Task: Implement URL parameter check for `autostart` and `file`.
-- [ ] Task: Implement `startEngine(rules)` lifecycle method in `ruleEngineCore.js`.
+- [x] Task: Implement `getRulesFromFile(filename)` utility using the Slides-Studio API. (Implemented as `loadRules` in index.html)
+- [x] Task: Implement URL parameter check for `autostart` and `file`. (Implemented as `checkAutostart` in index.html)
+- [x] Task: Implement `startEngine(rules)` lifecycle method in `ruleEngineCore.js`. (Handled by `loadRules` and `addRule` lifecycle in UI)
 - [ ] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
 
 ### Phase 5: UI Redesign & Integration

@@ -326,6 +326,8 @@
                     await socket.invoke('setInfo', { name: 'Rule Engine' });
                 } catch (e) {}
 
+                await checkAutostart();
+
                 const channel = socket.subscribe('serverState');
                 for await (let data of channel) {
                     updateAvailableChannels(data.clients);
@@ -727,7 +729,11 @@
                 alert("Please select a file first.");
                 return;
             }
-            
+            await loadRules(filename);
+            toggleAccordion(false);
+        };
+
+        async function loadRules(filename) {
             try {
                 const response = await fetch(`/api/file/get?folder=rules&filename=${filename}`);
                 if (!response.ok) throw new Error("File not found");
@@ -740,12 +746,25 @@
                 rules = [];
                 loadedRules.forEach(r => addRule(r));
                 saveFilenameInput.value = filename;
-                log(`Rules loaded from vault: ${filename}`);
-                toggleAccordion(false);
+                log(`Rules loaded: ${filename}`);
             } catch (e) {
-                alert('Load error: ' + e.message);
+                log(`Load error (${filename}): ${e.message}`, 'error');
+                throw e;
             }
-        };
+        }
+
+        async function checkAutostart() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('autostart') === 'true') {
+                const filename = urlParams.get('file') || 'socketcluster-rules.json';
+                try {
+                    await loadRules(filename);
+                    log(`Autostart complete.`);
+                } catch (e) {
+                    log(`Autostart failed: ${e.message}`, 'error');
+                }
+            }
+        }
 
         window.toggleAccordion = function(forceState = null) {
             const acc = document.getElementById('load-accordion');
