@@ -15,12 +15,12 @@
 - [x] Task: Implement input listener to reflect physical hardware state in the UI (Detailed Visuals). [2019c22]
 - [x] Task: Conductor - User Manual Verification 'Phase 2: MIDI Core & RGB/CC Implementation' (Protocol in workflow.md) [833a15a]
 
-## Phase 3: Interactive Features (Paint & Sequencer)
-- [ ] Task: Write TDD tests for 'Paint Mode' state management.
-- [ ] Task: Implement 'Paint Mode' (UI color picker -> Pad RGB update).
-- [ ] Task: Write TDD tests for 16-step sequencer logic (timing and pad highlighting).
-- [ ] Task: Implement 'Sequencer Demo' with basic animations.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Interactive Features (Paint & Sequencer)' (Protocol in workflow.md)
+## Phase 3: Interactive Features (Paint & Sequencer) [checkpoint: f755b78]
+- [x] Task: Write TDD tests for 'Paint Mode' state management. [bcb964b]
+- [x] Task: Implement 'Paint Mode' (UI color picker -> Pad RGB update). [00b3ccb]
+- [x] Task: Write TDD tests for 16-step sequencer logic (timing and pad highlighting). [efd1c01]
+- [x] Task: Implement 'Sequencer Demo' with basic animations. [9f9c9e3]
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Interactive Features (Paint & Sequencer)' (Protocol in workflow.md) [f755b78]
 
 ## Phase 4: OLED Integration
 - [ ] Task: Write TDD tests for OLED bitmap encoding (monochrome 128x64).
