@@ -13,7 +13,7 @@ Create a standalone HTML application in `apps/midi_controller_demo/` to demonstr
 
 ### Phase 1: Foundation & Logic (TDD)
 - [x] **Task: Setup Test Environment** [0f65e52]
-- [ ] **Task: MIDI Message Helpers (TDD)**
+- [x] **Task: MIDI Message Helpers (TDD)** [d104285]
 - [ ] **Task: Pattern Generation Logic (TDD)**
 - [ ] **Task: Conductor - User Manual Verification 'Foundation & Logic' (Protocol in workflow.md)**
 
