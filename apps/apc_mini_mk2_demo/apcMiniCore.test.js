@@ -35,4 +35,22 @@ describe('APCMiniCore - Standard LED Behaviors', () => {
       expect(result).toEqual(new Uint8Array([0x90, 0x70, 0x02]));
     });
   });
+
+  describe('SysEx Messages', () => {
+    it('should encode the Introduction Message (ID 0x60)', () => {
+      // F0 47 7F 4F 60 00 04 00 <VerH> <VerL> <Bug> F7
+      const result = APCMiniCore.encodeIntroMessage(1, 0, 0);
+      expect(result).toEqual(new Uint8Array([
+        0xF0, 0x47, 0x7F, 0x4F, 0x60, 0x00, 0x04, 0x00, 0x01, 0x00, 0x00, 0xF7
+      ]));
+    });
+
+    it('should encode the Device Enquiry Message', () => {
+      // F0 7E 00 06 01 F7
+      const result = APCMiniCore.encodeEnquiryMessage();
+      expect(result).toEqual(new Uint8Array([
+        0xF0, 0x7E, 0x00, 0x06, 0x01, 0xF7
+      ]));
+    });
+  });
 });
