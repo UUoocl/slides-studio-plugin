@@ -34,7 +34,7 @@ Implement support for multiple `then` blocks with optional delays.
 - [x] Task: Write failing tests for sequential actions in the `then` array. 02bb52f
 - [x] Task: Write failing tests for action delays using Vitest's fake timers. 02bb52f
 - [x] Task: Implement `executeActions` logic in `ruleEngineCore.js`. 02bb52f
-- [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md) 6252aac
 
 ### Phase 4: Automation & Lifecycle
 Implement autostart and file loading via URL parameters.
@@ -48,7 +48,7 @@ Implement autostart and file loading via URL parameters.
 Update the HTML app to use the new core module and redesign the editor UI.
 
 - [ ] Task: Update `index.html` to import and use `ruleEngineCore.js`. 
-- [ ] Task: Redesign the rule editor to support multiple `then` blocks (dynamic list).
+- [x] Task: Redesign the rule editor to support multiple `then` blocks (dynamic list). 55949f7
 - [x] Task: Add UI controls for `active` toggle and fix loading bug. 620631c
 - [ ] Task: Add UI controls for `matchMode` selector and action `delay` inputs.
 - [ ] Task: Update Save/Load logic to handle the new hierarchical JSON schema.
