@@ -1,8 +1,0 @@
-{
-  "track_id": "rule_engine_enhancement_20260314",
-  "type": "feature",
-  "status": "new",
-  "created_at": "2026-03-14T12:00:00Z",
-  "updated_at": "2026-03-14T12:00:00Z",
-  "description": "the @apps/rule_engine feature is partially implemented. Create a track to spec and plan the completion of the rule_engine feature. The rule_engine allows the User to set an input channel message to listen for and outputs a user set channel message."
-}

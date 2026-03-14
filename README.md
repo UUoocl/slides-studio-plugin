@@ -1,18 +1,18 @@
 # Slides Studio (for Obsidian)
 
-Slides Studio is the perfect companion for presenting Reveal.js slides with [Obsidian](https://obsidian.md) and [Open Broadcast Studio](https://obsproject.com/).
+Slides Studio is a powerful, unified OBS control hub integrated directly into Obsidian. It serves as a sophisticated bridge between live presentations, streaming software, and hardware controllers, designed for live streamers, educators, and power users who want professional-grade production control from their notes.
 
 > [!IMPORTANT]
-> This project was developed and enhanced using the **Gemini CLI** agent.
+> This project was developed and enhanced using the **Gemini CLI** agent and follows a spec-driven development workflow via **Conductor**.
 
 ## Features
 
-- **OBS Synchronization**: Automatically sync slide changes in Obsidian with OBS scene changes.
-- **Smart Tags**: Use slide tags to trigger complex OBS actions, camera transitions, and layout changes.
-- **Integrated Server**: A built-in Fastify server enables communication between Obsidian, OBS, and external devices.
-- **Real-time Control**: Low-latency support for MIDI and Open Sound Control (OSC) via dedicated WebSocket servers.
-- **On-Device Speech-to-Text**: Local, privacy-first transcription using Chrome's experimental Web Speech API (Chrome 142+).
-- **Unified SSE Support**: A single Server-Sent Events (SSE) endpoint at `/api/events` for real-time broadcasting of audio data, monitor events, and OBS status.
+- **Slide Syncing**: Seamless, real-time synchronization between Obsidian slide changes and OBS scene transitions.
+- **Smart Automation**: A robust automation engine. Beyond custom slide tags, it features a dynamic **Rule Engine** that monitors any system channel and triggers sequences of delayed actions.
+- **Hardware Bridging**: Low-latency, bidirectional communication with external devices via MIDI, OSC, and UVC.
+- **Unified Real-time Messaging**: Powered by **SocketCluster** for high-performance, system-wide event streaming.
+- **Integrated Presentation App**: A built-in Reveal.js environment (`slide-studio-app`) for professional slide delivery and real-time state management.
+- **On-Device Speech-to-Text**: Local, privacy-first transcription using Chrome's experimental Web Speech API.
 
 ## Usage
 
@@ -21,112 +21,68 @@ Slides Studio is the perfect companion for presenting Reveal.js slides with [Obs
 - Configure your IP, Port, and Password in Slides Studio settings.
 - Use the `Connect OBS` command to establish the link.
 
-### 2. Presentation Setup
-- Use **Slides Extended** or similar to create your Reveal.js content.
-- Add tags to your slides to define OBS behaviors (Scenes, Camera positions, etc.).
-- Use the "Open Slides Studio View" ribbon icon to manage your presentation tags.
+### 2. Rule Engine & Automation
+- Launch the **Rule Engine** from the Apps Gallery.
+- Create rules to bridge protocols (e.g., MIDI button -> OBS scene change).
+- Supports advanced matching (Regex, Wildcard) and sequential actions with delays.
 
 ### 3. External Devices
-- **OSC**: Configure input and output ports in settings to bridge Obsidian with software like TouchOSC.
-- **MIDI**: Connect MIDI controllers to trigger slide changes or OBS transitions directly from your hardware.
-- **Audio**: Connect microphones to broadcast FFT frequency data or use the **STT Transcriber** for local captions.
+- **OSC**: Configure input/output ports to bridge Obsidian with software like TouchOSC.
+- **MIDI**: Connect controllers to trigger slide changes or OBS transitions directly from hardware.
+- **Input Monitoring**: Automated tracking of global mouse and keyboard events via integrated Python monitors.
 
 ## Developer Overview
 
-Slides Studio is built as an Obsidian plugin with a modern TypeScript architecture.
-
 ### Architecture
-- **Core (`src/main.ts`)**: Manages the plugin lifecycle, Obsidian command registration, and event orchestration.
-- **Server (`src/utils/serverLogic.ts`)**: Implements a **Fastify** server that runs locally within Obsidian. It provides:
-    - **REST API**: For file management, device control, and status information.
-    - **Unified SSE**: A single stream at `/api/events` for system-wide status and monitor data.
-    - **WebSocket Servers**: Individual servers for high-frequency hardware communication (OSC, MIDI, UVC).
-- **Device Management**:
-    - **OSC (`src/utils/oscLogic.ts`)**: Bidirectional communication via `node-osc`.
-    - **MIDI (`src/utils/midiLogic.ts`)**: Hardware interaction via `webmidi`.
-    - **Audio (`src/utils/audioLogic.ts`)**: FFT analysis and microphone stream management.
+- **Core (`src/main.ts`)**: Manages the plugin lifecycle and Obsidian integration.
+- **Fastify Server**: Handles REST routes for file persistence and serving frontend apps.
+- **SocketCluster Server**: The central hub for all real-time communication.
+- **Python Bridge**: Used for global input monitoring where native Node.js support is limited.
 
-### Documentation
-API and code-level documentation can be generated using:
-```bash
-npm run doc
-```
-The output will be available in the `/docs` directory.
+### Real-time Communication (SocketCluster)
+The system has transitioned from legacy SSE to a unified **SocketCluster** architecture. All devices, monitors, and frontend apps connect to the central hub.
 
-## WebSockets
-
-High-frequency hardware data is handled via dedicated WebSocket servers to ensure maximum performance and isolation from the main SSE stream.
-
-| Device Type | Connection Pattern | Description |
-| :--- | :--- | :--- |
-| **OSC** | `ws://localhost:PORT` | One server per device (configured via `wsPort`). |
-| **MIDI** | `ws://localhost:PORT` | One server per device (configured via `wsPort`). |
-| **UVC** | `ws://localhost:PORT` | Single server for all UVC commands (configured via global `uvcWsPort`). |
-
-### WebSocket Example (JavaScript)
-```javascript
-// Consuming MIDI data from a specific device
-const ws = new WebSocket('ws://localhost:59000');
-ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log(`MIDI from ${data.deviceName}:`, data.message);
-};
-```
-
-## Server-Sent Events (SSE)
-
-The unified stream at `/api/events` broadcasts system activity and monitor data. Use `eventSource.addEventListener(eventName, ...)` to listen for specific topics.
-
-| Event Name | Description |
+#### Key Channels
+| Channel | Description |
 | :--- | :--- |
-| `audioData` | FFT frequency arrays (`fft`) or STT transcriptions (`stt`). |
-| `mousePosition`, `mouseClick` | Real-time global mouse tracking data. |
-| `keyboardPress`, `keyboardRelease`| Real-time global keyboard monitoring. |
-| `ConnectionOpened`, `Identified`| OBS WebSocket connection status events. |
-| `CustomEvent` | Dynamic OBS events or custom messages from `/api/custom/message`. |
+| `custom_slidesCommands` | Global slide state and orchestration commands. |
+| `obsEvents` | Real-time event stream from the OBS WebSocket server. |
+| `serverState` | System-wide status and connected client discovery. |
+| `keyboardPress`, `mousePosition` | Global input monitor data. |
+| `midi_in_<name>`, `osc_in_<name>` | Incoming hardware messages from bridged devices. |
+
+#### Example: Consuming Data (JavaScript)
+```javascript
+import { create } from './lib/socketcluster-client.min.js';
+
+const socket = create({ hostname: 'localhost', port: 57000, path: '/socketcluster/' });
+const channel = socket.subscribe('custom_slidesCommands');
+
+(async () => {
+    for await (let data of channel) {
+        console.log('Slide Command:', data.eventName, data.msgParam);
+    }
+})();
+```
 
 ## Server Routes (REST)
 
-### File Operations
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/file/list?folder=...` | List all JSON files in a specific folder. |
-| `GET` | `/api/file/get?folder=...&filename=...` | Retrieve the contents of a JSON file. |
-| `POST` | `/api/file/save` | Save data to a JSON file. |
+The REST API is primarily used for configuration and persistence.
 
-### Device Control & STT
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/api/osc/send` | Send an OSC message. |
+| `GET` | `/api/file/list?folder=...` | List JSON files in a vault folder. |
+| `GET` | `/api/file/get?folder=...&filename=...` | Retrieve contents of a JSON file. |
+| `POST` | `/api/file/save` | Save data to a JSON file in the vault. |
+| `POST` | `/api/osc/send` | Send an OSC message to a configured device. |
 | `POST` | `/api/midi/send` | Send a MIDI message. |
-| `POST` | `/api/stt/result` | Post transcription results from worker. |
-| `GET` | `/api/audio/stt-devices` | List configured STT audio devices. |
-
-## OBS Proxy API (v1)
-
-The plugin exposes a local proxy to the OBS WebSocket, allowing browser sources to call OBS functions without needing a direct connection or managing credentials.
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/v1/obs/isconnected` | Returns `{ "connected": boolean }`. |
-| `POST` | `/api/v1/obs/batch` | Execute a batch of OBS WebSocket requests. |
-| `POST` | `/api/v1/obs/:requestType` | Execute a single OBS WebSocket request (e.g., `SetCurrentProgramScene`). |
-
-### Proxy Example (JavaScript)
-```javascript
-// Switching a scene via the OBS Proxy API
-fetch('http://localhost:57001/api/v1/obs/SetCurrentProgramScene', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sceneName: 'Camera 1' })
-});
-```
 
 ## Installation
 
 1. Download the latest release.
 2. Place the contents in your vault's `.obsidian/plugins/slides-studio` folder.
 3. Enable the plugin in Obsidian settings.
+
 ---
 
 - MIT licensed | Copyright © 2025 Jonathan Wood

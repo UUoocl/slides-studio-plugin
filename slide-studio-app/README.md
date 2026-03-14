@@ -43,9 +43,75 @@ The `studio.html` file acts as the central logic hub ("the brain") of the applic
 - **Command Orchestration**: Sending synchronization events to all other views.
 
 ### Communication Protocols
-- **SocketCluster**: Replaces legacy SSE for all real-time bidirectional messaging. The app primarily communicates over the `custom_slidesCommands` channel.
+- **SocketCluster**: Replaces legacy SSE for all real-time bidirectional messaging.
 - **Reveal.js API (postMessage)**: Used to communicate with the Reveal.js instances running inside iframes. This allows the app to trigger navigation (`slide`, `next`) and extract content like slide notes.
 - **BroadcastChannel**: Utilized for high-performance, same-origin communication (e.g., passing camera shape updates between the Slide View and the Camera Shape overlay).
+
+### SocketCluster Channels
+The system utilizes a unified messaging network. Key channels include:
+
+| Channel | Scope | Description |
+| :--- | :--- | :--- |
+| `custom_slidesCommands` | App | Global slide state updates, scene triggers, and camera positions. |
+| `slides_navigation` | App | Explicit navigation commands (next, prev, slide index). |
+| `studio_to_currentSlide` | Internal | Logic sent from the Studio controller to the active slide iframe. |
+| `currentSlide_to_studio` | Internal | State/Content passed from the Reveal.js slide back to the controller. |
+| `obsEvents` | System | Passthrough for real-time events from the OBS WebSocket server. |
+| `serverState` | System | Lists connected clients and system-wide service availability. |
+| `keyboardPress` | Inputs | Stream of global key-down events (captured via Python monitor). |
+| `mousePosition` | Inputs | Stream of global cursor coordinates (captured via Python monitor). |
+| `midi_in_<name>` | Bridge | Incoming MIDI messages from specific hardware devices. |
+| `osc_in_<name>` | Bridge | Incoming Open Sound Control (OSC) messages. |
+
+#### `custom_slidesCommands` Payload Format
+Messages published to this channel follow a standardized structure:
+
+```json
+{
+  "eventName": "string",
+  "msgParam": "object | any"
+}
+```
+
+**Common Events:**
+
+*   **`slide-changed`**: Emitted when the user navigates or manually triggers a slide state.
+    ```json
+    {
+      "eventName": "slide-changed",
+      "msgParam": {
+        "id": 12,
+        "scene": "Speaker with Overlays",
+        "cameraPosition": "top-right",
+        "cameraShape": "circle",
+        "slideState": "5,2",
+        "notes": "Important point about SocketCluster..."
+      }
+    }
+    ```
+*   **`set-slides-studio-url`**: Used to synchronize the source Reveal.js deck across all views.
+    ```json
+    {
+      "eventName": "set-slides-studio-url",
+      "msgParam": {
+        "url": "http://127.0.0.1:57000/vault/decks/presentation.html"
+      }
+    }
+    ```
+*   **`next-slide`**: Triggered externally to navigate to the next slide.
+    ```json
+    {
+      "eventName": "next-slide",
+      "msgParam": {}
+    }
+    ```
+*   **`previous-slide`**: Triggered externally to navigate to the previous slide.
+    ```json
+    {
+      "eventName": "previous-slide",
+      "msgParam": {}
+    }
+    ```
 
 ### CSS Layout Engine
 Slides can define layouts using the `data-scene` attribute. The application logic splits this string on the keyword `"slides"` to identify the target CSS class. This class is then sent to the Slide View, which updates its iframe styling to reposition the content dynamically (e.g., shifting the slide to a corner for a head-shot overlay).
