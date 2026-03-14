@@ -292,9 +292,17 @@
         </select>
 
         <div id="midi-select-container">
-          <label for="midi-device">MIDI Device:</label>
+          <label for="midi-device">MIDI Device (WebMIDI):</label>
           <select id="midi-device">
             <option value="">(Scan for devices...)</option>
+          </select>
+        </div>
+
+        <div id="sc-select-container" style="display: none;">
+          <label for="sc-device-name">Plugin MIDI Alias:</label>
+          <input type="text" id="sc-device-name" placeholder="e.g. Fire1" style="width: 100%; padding: 8px; background: #222; border: 1px solid #444; color: white; border-radius: 4px; box-sizing: border-box; margin-bottom: 5px;">
+          <select id="sc-device-list" style="margin-top: 5px;">
+            <option value="">(Waiting for plugin...)</option>
           </select>
         </div>
 

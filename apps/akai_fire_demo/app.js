@@ -15,6 +15,11 @@ const btnSendOled = document.getElementById('btn-send-oled');
 const oledTextInput = document.getElementById('oled-text-input');
 const oledDisplay = document.getElementById('oled-display');
 
+const midiSelectContainer = document.getElementById('midi-select-container');
+const scSelectContainer = document.getElementById('sc-select-container');
+const scDeviceInput = document.getElementById('sc-device-name');
+const scDeviceList = document.getElementById('sc-device-list');
+
 let connection = new FireConnectionManager({
   onStatusChange: handleStatusChange,
   onMidiMessage: (data) => handleMidiInput(data)
@@ -33,6 +38,8 @@ async function init() {
   setupPaintControls();
   setupModeListener();
   setupOledControls();
+  setupCommModeListener();
+  
   const devices = await connection.listDevices();
   
   devices.forEach(device => {
@@ -45,6 +52,59 @@ async function init() {
     }
     midiDeviceSelect.appendChild(option);
   });
+
+  // Attempt to fetch plugin devices if SC is chosen or available
+  setupSocketDiscovery();
+}
+
+function setupCommModeListener() {
+  commMode.addEventListener('change', () => {
+    if (commMode.value === 'direct') {
+      midiSelectContainer.style.display = 'block';
+      scSelectContainer.style.display = 'none';
+    } else {
+      midiSelectContainer.style.display = 'none';
+      scSelectContainer.style.display = 'block';
+    }
+  });
+}
+
+async function setupSocketDiscovery() {
+  // We need a temporary socket to listen for serverState
+  if (connection.mode === 'socket' || true) {
+    await connection.connectSocketCluster(); // This initializes connection.socket
+    if (connection.socket) {
+      const channel = connection.socket.subscribe('serverState');
+      for await (const data of channel) {
+        if (data && data.clients) {
+          const internal = data.clients.find(c => c.id === 'plugin-internal');
+          if (internal && internal.channels) {
+            populateSCDeviceList(internal.channels);
+          }
+        }
+      }
+    }
+  }
+}
+
+function populateSCDeviceList(channels) {
+  // Extract names from midi_out_NAME channels
+  const midiNames = channels
+    .filter(c => c.startsWith('midi_out_'))
+    .map(c => c.replace('midi_out_', ''));
+
+  scDeviceList.innerHTML = '<option value="">(Select from Plugin...)</option>';
+  midiNames.forEach(name => {
+    const option = document.createElement('option');
+    option.value = name;
+    option.textContent = name;
+    scDeviceList.appendChild(option);
+  });
+
+  scDeviceList.onchange = (e) => {
+    scDeviceInput.value = e.target.value;
+    connection.setSCDeviceName(e.target.value);
+  };
 }
 
 function setupButtonListeners() {
@@ -215,10 +275,16 @@ midiDeviceSelect.addEventListener('change', (e) => {
 });
 
 btnConnect.addEventListener('click', async () => {
-  if (!connection.output && midiDeviceSelect.value) {
-    connection.setDevice(midiDeviceSelect.value);
-  }
   connection.mode = commMode.value;
+  if (connection.mode === 'direct') {
+    if (!connection.output && midiDeviceSelect.value) {
+      connection.setDevice(midiDeviceSelect.value);
+    }
+  } else {
+    if (scDeviceInput.value) {
+      connection.setSCDeviceName(scDeviceInput.value);
+    }
+  }
   await connection.connect();
 });
 

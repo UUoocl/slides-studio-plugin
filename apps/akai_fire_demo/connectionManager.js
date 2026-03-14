@@ -56,6 +56,10 @@ export class FireConnectionManager {
     }
   }
 
+  setSCDeviceName(name) {
+    this.deviceName = name;
+  }
+
   async connect() {
     if (this.mode === 'direct') {
       return this.connectWebMIDI();
@@ -83,18 +87,28 @@ export class FireConnectionManager {
 
   async connectSocketCluster() {
     try {
-      this.socket = socketClusterClient.create({
-        hostname: '127.0.0.1',
-        port: 8080 // Default Slides-Studio port
-      });
+      if (!this.socket) {
+        this.socket = socketClusterClient.create({
+          hostname: '127.0.0.1',
+          port: 8080 // Default Slides-Studio port
+        });
+
+        void (async () => {
+          for await (const { error } of this.socket.listener('error')) {
+            console.error('Socket error:', error);
+          }
+        })();
+      }
 
       this.onStatusChange('error', 'Connecting to SocketCluster...');
 
-      for await (const { error } of this.socket.listener('error')) {
-        console.error('Socket error:', error);
+      for await (const status of this.socket.listener('connect')) {
+        this.isConnected = true;
+        this.onStatusChange('connected', `SocketCluster: ${this.deviceName}`);
+        this.setupSocketChannels();
       }
 
-      for await (const status of this.socket.listener('connect')) {
+      if (this.socket.state === 'open') {
         this.isConnected = true;
         this.onStatusChange('connected', `SocketCluster: ${this.deviceName}`);
         this.setupSocketChannels();
