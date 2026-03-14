@@ -62,4 +62,33 @@ export class APCMiniCore {
   static encodeEnquiryMessage() {
     return new Uint8Array([0xF0, 0x7E, 0x00, 0x06, 0x01, 0xF7]);
   }
+
+  /**
+   * Encodes a 24-bit Custom RGB message for a range of pads.
+   * @param {number} startPad - Start index (0-63)
+   * @param {number} endPad - End index (0-63)
+   * @param {number} r - Red (0-255)
+   * @param {number} g - Green (0-255)
+   * @param {number} b - Blue (0-255)
+   * @returns {Uint8Array}
+   */
+  static encodeCustomRGB(startPad, endPad, r, g, b) {
+    // 8 bytes of data per range: start, end, rM, rL, gM, gL, bM, bL
+    const dataLen = 8; 
+    
+    // Split 8-bit values into 7-bit MSB/LSB
+    const rM = (r >> 7) & 0x01;
+    const rL = r & 0x7F;
+    const gM = (g >> 7) & 0x01;
+    const gL = g & 0x7F;
+    const bM = (b >> 7) & 0x01;
+    const bL = b & 0x7F;
+
+    return new Uint8Array([
+      0xF0, 0x47, 0x7F, 0x4F, 0x24, 
+      0x00, 0x08, // Length (8 bytes)
+      startPad, endPad, rM, rL, gM, gL, bM, bL,
+      0xF7
+    ]);
+  }
 }
