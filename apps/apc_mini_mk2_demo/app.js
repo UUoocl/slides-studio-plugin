@@ -199,7 +199,36 @@ class APCMiniApp {
       }
     }
 
+    // Peripheral Buttons (Track 0x64-0x6B, Scene 0x70-0x77)
+    if ((data1 >= 0x64 && data1 <= 0x6B) || (data1 >= 0x70 && data1 <= 0x77)) {
+      if (type === 0x90 || type === 0x80) {
+        const isPress = type === 0x90 && data2 > 0;
+        this.updateVirtualButton(data1, isPress);
+      }
+    }
+
     console.log(`Incoming MIDI: Status=${status.toString(16)}, Data1=${data1.toString(16)}, Data2=${data2}`);
+  }
+
+  updateVirtualButton(note, isPressed) {
+    let btn = null;
+    if (note >= 0x64 && note <= 0x6B) {
+      btn = document.getElementById(`track-${note - 0x64}`);
+    } else if (note >= 0x70 && note <= 0x77) {
+      btn = document.getElementById(`scene-${note - 0x70}`);
+    }
+
+    if (btn) {
+      if (isPressed) {
+        btn.classList.add('active');
+        btn.style.backgroundColor = (note >= 0x64 && note <= 0x6B) ? '#ff5252' : '#00e676';
+        btn.style.color = '#fff';
+      } else {
+        btn.classList.remove('active');
+        btn.style.backgroundColor = '';
+        btn.style.color = '';
+      }
+    }
   }
 
   updateVirtualPad(note, isPressed, velocity) {
@@ -321,6 +350,35 @@ class APCMiniApp {
       document.querySelectorAll('.pad.active').forEach(p => {
         this.updateVirtualPad(parseInt(p.dataset.note), false, 0);
       });
+    });
+
+    this.sceneButtons.addEventListener('mousedown', (e) => {
+      if (e.target.classList.contains('btn-scene')) {
+        const note = parseInt(e.target.dataset.note);
+        // Toggle: On -> Blink -> Off
+        const currentState = e.target.dataset.led || 'off';
+        let nextState = 'on';
+        if (currentState === 'on') nextState = 'blink';
+        else if (currentState === 'blink') nextState = 'off';
+        
+        e.target.dataset.led = nextState;
+        this.sendMidi(APCMiniCore.encodeButtonMessage(note, nextState));
+        this.updateVirtualButton(note, nextState !== 'off');
+      }
+    });
+
+    this.trackButtons.addEventListener('mousedown', (e) => {
+      if (e.target.classList.contains('btn-track')) {
+        const note = parseInt(e.target.dataset.note);
+        const currentState = e.target.dataset.led || 'off';
+        let nextState = 'on';
+        if (currentState === 'on') nextState = 'blink';
+        else if (currentState === 'blink') nextState = 'off';
+        
+        e.target.dataset.led = nextState;
+        this.sendMidi(APCMiniCore.encodeButtonMessage(note, nextState));
+        this.updateVirtualButton(note, nextState !== 'off');
+      }
     });
 
     this.btnConnect.addEventListener('click', () => this.toggleConnection());
