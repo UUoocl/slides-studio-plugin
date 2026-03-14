@@ -163,13 +163,29 @@ class APCMiniApp {
   }
 
   async subscribeToRemoteMidi(deviceName) {
-    const channelIn = this.socket.subscribe(`midi_in_${deviceName}`);
-    for await (const data of channelIn) {
-      if (this.commModeSelect.value === 'socket') {
-        // Match the launchpad demo's handling
-        this.handleMidiMessage({ data });
+    const handleChannel = async (channelName) => {
+      const channel = this.socket.subscribe(channelName);
+      for await (const data of channel) {
+        if (this.commModeSelect.value === 'socket') {
+          let midiData = null;
+          if (data.message) {
+            midiData = data.message.data || data.message;
+          } else if (data.data) {
+            midiData = data.data;
+          } else {
+            midiData = data;
+          }
+
+          if (midiData) {
+            const bytes = (midiData instanceof Uint8Array) ? midiData : new Uint8Array(Object.values(midiData));
+            this.handleMidiMessage({ data: bytes });
+          }
+        }
       }
-    }
+    };
+
+    handleChannel(`midi_in_${deviceName}`);
+    handleChannel(`midi_out_${deviceName}`);
   }
 
   async disconnect() {
