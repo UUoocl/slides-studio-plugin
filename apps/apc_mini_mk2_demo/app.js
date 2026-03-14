@@ -12,6 +12,7 @@ class APCMiniApp {
     this.statusIndicator = document.getElementById('status-indicator');
     this.commModeSelect = document.getElementById('comm-mode');
     this.midiDeviceSelect = document.getElementById('midi-device-select');
+    this.deviceAliasInput = document.getElementById('device-name');
     this.deviceModeSelect = document.getElementById('device-mode');
     this.btnScan = document.getElementById('btn-scan');
     this.btnConnect = document.getElementById('btn-connect');
@@ -96,19 +97,22 @@ class APCMiniApp {
 
   async connect() {
     const mode = this.commModeSelect.value;
-    const deviceId = this.midiDeviceSelect.value;
     
     if (mode === 'direct') {
+      const deviceId = this.midiDeviceSelect.value;
       await this.connectDirect(deviceId);
     } else {
-      await this.connectSocket(deviceId);
+      const deviceName = this.deviceAliasInput.value;
+      await this.connectSocket(deviceName);
     }
   }
 
   async connectDirect(deviceId) {
-    this.output = this.midiAccess.outputs.get(deviceId);
-    this.input = this.midiAccess.inputs.get(deviceId);
+    console.log(`Attempting Direct WebMIDI connection to ID: ${deviceId}`);
     
+    this.output = this.midiAccess.outputs.get(deviceId);
+    
+    this.input = this.midiAccess.inputs.get(deviceId);
     if (!this.input && this.output) {
       for (const input of this.midiAccess.inputs.values()) {
         if (input.name === this.output.name) {
@@ -127,14 +131,17 @@ class APCMiniApp {
     }
   }
 
-  async connectSocket(deviceId) {
+  async connectSocket(deviceName) {
     try {
-      const deviceName = this.midiDeviceSelect.options[this.midiDeviceSelect.selectedIndex].text;
       this.socket = create({
         hostname: window.location.hostname,
         port: window.location.port || 8080,
         path: '/socketcluster/'
       });
+
+      for await (const {error} of this.socket.listener('error')) {
+        console.error('Socket error:', error);
+      }
 
       for await (const {socket: s} of this.socket.listener('connect')) {
         this.updateStatus(`Connected to Server (Remote: ${deviceName})`, true);
@@ -147,10 +154,12 @@ class APCMiniApp {
   }
 
   async subscribeToRemoteMidi(deviceName) {
-    const channel = this.socket.subscribe(`midi_in_${deviceName}`);
-    for await (const data of channel) {
+    const channelIn = this.socket.subscribe(`midi_in_${deviceName}`);
+    for await (const data of channelIn) {
       if (this.commModeSelect.value === 'socket') {
-        this.handleMidiMessage({ data: new Uint8Array(Object.values(data.message)) });
+        const midiData = data.message || data.data || data;
+        const bytes = (midiData instanceof Uint8Array) ? midiData : new Uint8Array(Object.values(midiData));
+        this.handleMidiMessage({ data: bytes });
       }
     }
   }
@@ -173,7 +182,7 @@ class APCMiniApp {
       if (this.output) this.output.send(data);
     } else {
       if (this.socket && this.socket.state === 'open') {
-        const deviceName = this.midiDeviceSelect.options[this.midiDeviceSelect.selectedIndex].text;
+        const deviceName = this.deviceAliasInput.value;
         this.socket.transmitPublish(`midi_out_${deviceName}`, { type: 'raw', data: Array.from(data) });
       }
     }
@@ -352,6 +361,13 @@ class APCMiniApp {
       slider.addEventListener('input', () => {
         valDisplay.innerText = slider.value;
       });
+    });
+    
+    // Toggle displays based on comm mode
+    this.commModeSelect.addEventListener('change', () => {
+      const isDirect = this.commModeSelect.value === 'direct';
+      document.getElementById('midi-device-select').parentElement.style.display = isDirect ? 'block' : 'none';
+      document.getElementById('sc-select-container').style.display = isDirect ? 'none' : 'block';
     });
   }
 
