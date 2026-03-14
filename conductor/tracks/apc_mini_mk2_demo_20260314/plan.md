@@ -20,7 +20,7 @@
 - [x] Task: Implement WebMIDI and SocketCluster connection lifecycle management. [dbff2a1]
 - [x] Task: Map physical fader CC (0x30-0x38) to UI animated bars. [0887bf6]
 - [x] Task: Implement bidirectional pad matrix synchronization (Click-to-Device / Press-to-UI). [0645025]
-- [ ] Task: Implement peripheral button sync (Track 1-8 / Scene 1-8).
+- [x] Task: Implement peripheral button sync (Track 1-8 / Scene 1-8). [196863d]
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Hardware Interaction & Sync' (Protocol in workflow.md)
 
 ## Phase 4: Mode Handling & Advanced Features
