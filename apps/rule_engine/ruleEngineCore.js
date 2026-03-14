@@ -41,19 +41,28 @@ export function matchRule(rule, data) {
 }
 
 /**
- * Processes a rule trigger with throttling logic.
+ * Checks if a rule should trigger based on data and throttle state.
+ * Updates the rule's internal state (_lastPayload, _lastTriggerTime).
  * @param {object} rule The rule configuration.
  * @param {any} data The incoming data.
- * @param {function} triggerCallback Function to call if trigger is successful.
- * @returns {boolean} True if the trigger was processed.
+ * @param {function} triggerCallback Optional callback to execute on successful trigger.
+ * @returns {boolean} True if the rule triggered.
  */
-export function processRuleTrigger(rule, data, triggerCallback) {
+export function checkRule(rule, data, triggerCallback) {
+    const isMatch = matchRule(rule, data);
     const now = Date.now();
+    const currentPayloadStr = JSON.stringify(data);
     
+    // Track if payload changed for 'change' throttle
+    const payloadChanged = rule._lastPayload !== currentPayloadStr;
+    // ALWAYS update _lastPayload to allow "clearing" the event state
+    rule._lastPayload = currentPayloadStr;
+
+    if (!isMatch) return false;
+
+    // Throttle logic
     if (rule.throttleMode === 'change') {
-        const currentPayloadStr = JSON.stringify(data);
-        if (rule._lastPayload === currentPayloadStr) return false;
-        rule._lastPayload = currentPayloadStr;
+        if (!payloadChanged) return false;
     } else if (rule.throttleMode === 'interval') {
         if (now - (rule._lastTriggerTime || 0) < (rule.throttleValue || 0)) return false;
     }
@@ -63,4 +72,16 @@ export function processRuleTrigger(rule, data, triggerCallback) {
         triggerCallback(rule, data);
     }
     return true;
+}
+
+/**
+ * Processes a rule trigger with throttling logic.
+ * @deprecated Use checkRule instead for better throttle clearing.
+ * @param {object} rule The rule configuration.
+ * @param {any} data The incoming data.
+ * @param {function} triggerCallback Function to call if trigger is successful.
+ * @returns {boolean} True if the trigger was processed.
+ */
+export function processRuleTrigger(rule, data, triggerCallback) {
+    return checkRule(rule, data, triggerCallback);
 }

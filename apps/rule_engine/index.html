@@ -269,7 +269,7 @@
 
     <script type="module">
         import { create } from '../lib/socketcluster-client.min.js';
-        import { matchRule, processRuleTrigger } from './ruleEngineCore.js';
+        import { checkRule } from './ruleEngineCore.js';
 
         const statusEl = document.getElementById('sc-status');
         const countEl = document.getElementById('rule-count');
@@ -366,9 +366,7 @@
             rule._lastTriggerTime = 0;
             rule._lastPayload = null;
 
-            if (!initialData) {
-                rules.push(rule);
-            }
+            rules.push(rule);
 
             const ruleDiv = document.createElement('div');
             ruleDiv.className = 'rule-container';
@@ -384,6 +382,7 @@
 
             ruleDiv.innerHTML = `
                 <div class="rule-header">
+                    <input type="checkbox" ${rule.active ? 'checked' : ''} onchange="updateRule('${rule.id}', 'active', this.checked)">
                     <input type="text" class="rule-name-input" value="${rule.name}" oninput="updateRule('${rule.id}', 'name', this.value)" placeholder="Rule Name">
                     <button class="remove-btn" onclick="removeRule('${rule.id}')">REMOVE</button>
                 </div>
@@ -438,8 +437,13 @@
             const rule = rules.find(r => r.id === id);
             if (rule) {
                 rule[field] = value;
-                if (field === 'ifChannel') {
-                    startRuleListener(rule);
+                if (field === 'ifChannel' || (field === 'active' && value === true)) {
+                    if (rule.active) startRuleListener(rule);
+                } else if (field === 'active' && value === false) {
+                    if (activeListeners.has(id)) {
+                        activeListeners.get(id).stop = true;
+                        activeListeners.delete(id);
+                    }
                 }
                 if (field === 'throttleMode') {
                     const intervalGroup = document.getElementById(`interval-group-${id}`);
@@ -462,7 +466,7 @@
         let activeListeners = new Map(); // ruleId -> stopFlag object
 
         async function startRuleListener(rule) {
-            if (!rule.ifChannel) return;
+            if (!rule.ifChannel || !rule.active) return;
             
             // Cleanup existing listener for this rule
             if (activeListeners.has(rule.id)) {
@@ -477,9 +481,7 @@
             for await (let data of scChannel) {
                 if (stopFlag.stop) break;
                 
-                if (matchRule(rule, data)) {
-                    processRuleTrigger(rule, data, triggerRule);
-                }
+                checkRule(rule, data, triggerRule);
             }
         }
 
@@ -532,7 +534,7 @@
                     if (stopFlag.stop) break;
 
                     const payloadStr = JSON.stringify(data, null, 2);
-                    const textarea = document.querySelector(`#rule-${ruleId} .rule-side:${side === 'if' ? 'first-child' : 'last-child'} textarea`);
+                    const textarea = document.querySelector(`#rule-${ruleId} .rule-side:${side === 'if' ? 'first-child' : 'nth-of-type(2)'} textarea`);
                     if (textarea) {
                         textarea.value = payloadStr;
                         updateRule(ruleId, side === 'if' ? 'ifPayload' : 'thenPayload', payloadStr);

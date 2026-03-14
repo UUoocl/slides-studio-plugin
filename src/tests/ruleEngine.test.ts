@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { matchRule, partialMatch, processRuleTrigger } from '../../apps/rule_engine/ruleEngineCore.js';
+import { matchRule, partialMatch, processRuleTrigger, checkRule } from '../../apps/rule_engine/ruleEngineCore.js';
 
 describe('Rule Engine Core Logic', () => {
     describe('partialMatch', () => {
@@ -78,6 +78,33 @@ describe('Rule Engine Core Logic', () => {
             const result2 = processRuleTrigger(rule, { data: 2 }, callback);
             expect(result2).toBe(true);
             expect(callback).toHaveBeenCalled();
+        });
+    });
+
+    describe('checkRule (State Clearing)', () => {
+        it('should clear throttle state even on mismatch', () => {
+            const rule = { 
+                ifPayload: JSON.stringify({ active: true }), 
+                throttleMode: 'change',
+                _lastPayload: null 
+            };
+            const callback = vi.fn();
+
+            // 1. First matching message -> trigger
+            checkRule(rule, { active: true }, callback);
+            expect(callback).toHaveBeenCalledTimes(1);
+
+            // 2. Same matching message -> throttled
+            checkRule(rule, { active: true }, callback);
+            expect(callback).toHaveBeenCalledTimes(1);
+
+            // 3. Different NON-matching message -> should clear _lastPayload
+            checkRule(rule, { active: false }, callback);
+            expect(callback).toHaveBeenCalledTimes(1); // No new trigger
+
+            // 4. Same matching message as step 1 -> SHOULD trigger again because state was cleared
+            checkRule(rule, { active: true }, callback);
+            expect(callback).toHaveBeenCalledTimes(2);
         });
     });
 });
