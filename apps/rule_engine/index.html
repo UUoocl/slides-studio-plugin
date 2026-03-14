@@ -684,6 +684,13 @@
 
         window.saveRules = async function() {
             const filename = saveFilenameInput.value.trim() || 'socketcluster-rules.json';
+            
+            // Create a clean copy for storage (strip runtime tracking)
+            const cleanRules = rules.map(r => {
+                const { _lastTriggerTime, _lastPayload, ...cleanRule } = r;
+                return cleanRule;
+            });
+
             try {
                 const response = await fetch('/api/file/save', {
                     method: 'POST',
@@ -691,7 +698,7 @@
                     body: JSON.stringify({
                         folder: 'rules',
                         filename: filename,
-                        data: rules
+                        data: cleanRules
                     })
                 });
                 const result = await response.json();

@@ -47,11 +47,11 @@ Implement autostart and file loading via URL parameters.
 ### Phase 5: UI Redesign & Integration
 Update the HTML app to use the new core module and redesign the editor UI.
 
-- [ ] Task: Update `index.html` to import and use `ruleEngineCore.js`. 
+- [x] Task: Update `index.html` to import and use `ruleEngineCore.js`. cf34e57
 - [x] Task: Redesign the rule editor to support multiple `then` blocks (dynamic list). 55949f7
 - [x] Task: Add UI controls for `active` toggle and fix loading bug. 620631c
-- [ ] Task: Add UI controls for `matchMode` selector and action `delay` inputs.
-- [ ] Task: Update Save/Load logic to handle the new hierarchical JSON schema.
+- [x] Task: Add UI controls for `matchMode` selector and action `delay` inputs. ffc8676, 55949f7
+- [x] Task: Update Save/Load logic to handle the new hierarchical JSON schema. 02bb52f
 - [ ] Task: Final end-to-end manual verification in OBS/Obsidian.
 - [ ] Task: Conductor - User Manual Verification 'Phase 5' (Protocol in workflow.md)
 
