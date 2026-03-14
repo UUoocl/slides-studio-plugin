@@ -107,16 +107,31 @@ class APCMiniApp {
   }
 
   async connectDirect(deviceId) {
-    this.input = this.midiAccess.inputs.get(deviceId);
+    console.log(`Attempting Direct WebMIDI connection to ID: ${deviceId}`);
+    
     this.output = this.midiAccess.outputs.get(deviceId);
+    
+    // Try to find matching input by ID, then fallback to name matching
+    this.input = this.midiAccess.inputs.get(deviceId);
+    if (!this.input && this.output) {
+      console.log('Input ID mismatch, searching by name...');
+      for (const input of this.midiAccess.inputs.values()) {
+        if (input.name === this.output.name) {
+          this.input = input;
+          break;
+        }
+      }
+    }
 
     if (this.input && this.output) {
+      console.log(`Matched Input: ${this.input.id}, Output: ${this.output.id}`);
       this.input.onmidimessage = (msg) => this.handleMidiMessage(msg);
       this.updateStatus(`Connected to ${this.output.name}`, true);
       
       // Send Intro Message
       this.sendMidi(APCMiniCore.encodeIntroMessage());
     } else {
+      console.error('Connection failed: Input or Output missing.', { input: !!this.input, output: !!this.output });
       this.updateStatus('Device not found', false);
     }
   }
@@ -255,16 +270,21 @@ class APCMiniApp {
       cap.style.bottom = `${percent}%`;
     }
   }
-
-  generatePads() {
-    for (let i = 0; i < 64; i++) {
+generatePads() {
+  // 8x8 grid (Notes 0-63)
+  // Hardware maps 0-7 to bottom row, 56-63 to top row.
+  // We generate UI from top-to-bottom.
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const note = (7 - row) * 8 + col;
       const pad = document.createElement('div');
       pad.className = 'pad';
-      pad.id = `pad-${i}`;
-      pad.dataset.note = i;
+      pad.id = `pad-${note}`;
+      pad.dataset.note = note;
       this.padMatrix.appendChild(pad);
     }
   }
+}
 
   generateSceneButtons() {
     for (let i = 0; i < 8; i++) {
