@@ -1,6 +1,7 @@
 import { FireConnectionManager } from './connectionManager.js';
 import { FireMidiLogic } from './midiLogic.js';
 import { FireAppLogic } from './appLogic.js';
+import { FireOledLogic } from './oledLogic.js';
 
 const padMatrix = document.getElementById('pad-matrix');
 const statusText = document.getElementById('status-text');
@@ -10,6 +11,9 @@ const commMode = document.getElementById('comm-mode');
 const midiDeviceSelect = document.getElementById('midi-device');
 const appModeSelect = document.getElementById('app-mode');
 const colorSwatches = document.querySelectorAll('.color-swatch');
+const btnSendOled = document.getElementById('btn-send-oled');
+const oledTextInput = document.getElementById('oled-text-input');
+const oledDisplay = document.getElementById('oled-display');
 
 let connection = new FireConnectionManager({
   onStatusChange: handleStatusChange,
@@ -17,6 +21,7 @@ let connection = new FireConnectionManager({
 });
 
 const appLogic = new FireAppLogic();
+const oledLogic = new FireOledLogic();
 
 // State for toggling button LEDs
 const buttonStates = {};
@@ -27,6 +32,7 @@ async function init() {
   setupButtonListeners();
   setupPaintControls();
   setupModeListener();
+  setupOledControls();
   const devices = await connection.listDevices();
   
   devices.forEach(device => {
@@ -84,6 +90,22 @@ function setupModeListener() {
       clearGridUI();
     }
   });
+}
+
+function setupOledControls() {
+  btnSendOled.addEventListener('click', () => {
+    sendOLEDData(oledTextInput.value || 'AKAI FIRE');
+  });
+}
+
+function sendOLEDData(text) {
+  oledLogic.clear();
+  oledLogic.drawText(text, 0, 0);
+  const msg = oledLogic.createOledMessage();
+  connection.send(msg);
+
+  // Update Virtual OLED
+  oledDisplay.textContent = text;
 }
 
 function tickSequencer() {
