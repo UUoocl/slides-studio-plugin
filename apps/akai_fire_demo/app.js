@@ -16,6 +16,7 @@ async function init() {
   renderMatrix();
   const devices = await connection.listDevices();
   midiDeviceSelect.innerHTML = '<option value="">Select a device...</option>';
+  
   devices.forEach(device => {
     const option = document.createElement('option');
     option.value = device.id;
@@ -23,6 +24,7 @@ async function init() {
     // Auto-select if it looks like a Fire
     if (device.name.toLowerCase().includes('fire')) {
       option.selected = true;
+      // Also manually set the connection's device
       connection.setDevice(device.id);
     }
     midiDeviceSelect.appendChild(option);
@@ -51,10 +53,16 @@ function handleStatusChange(status, message) {
 }
 
 midiDeviceSelect.addEventListener('change', (e) => {
+  console.log('User manually selected MIDI device:', e.target.value);
   connection.setDevice(e.target.value);
 });
 
 btnConnect.addEventListener('click', async () => {
+  // If no device is set, try to use the selected value from the dropdown
+  if (!connection.output && midiDeviceSelect.value) {
+    connection.setDevice(midiDeviceSelect.value);
+  }
+  
   connection.mode = commMode.value;
   await connection.connect();
 });

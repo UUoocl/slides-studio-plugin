@@ -15,8 +15,13 @@ export class FireConnectionManager {
     try {
       this.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
       const devices = [];
+      // List unique device names based on outputs
+      const seenNames = new Set();
       for (const output of this.midiAccess.outputs.values()) {
-        devices.push({ id: output.id, name: output.name });
+        if (!seenNames.has(output.name)) {
+          devices.push({ id: output.id, name: output.name });
+          seenNames.add(output.name);
+        }
       }
       return devices;
     } catch (err) {
@@ -30,12 +35,33 @@ export class FireConnectionManager {
     this.input = null;
     this.output = null;
 
-    // Fire usually has same name/ID for in/out
-    for (const input of this.midiAccess.inputs.values()) {
-      if (input.id === deviceId || input.name.includes(deviceId)) this.input = input;
+    if (!deviceId) {
+      console.warn('setDevice called with empty deviceId');
+      return;
     }
+
+    // 1. Find the output port by ID or name
     for (const output of this.midiAccess.outputs.values()) {
-      if (output.id === deviceId || output.name.includes(deviceId)) this.output = output;
+      if (output.id === deviceId || output.name === deviceId) {
+        this.output = output;
+        break;
+      }
+    }
+
+    // 2. Find the matching input port by name (most reliable)
+    if (this.output) {
+      for (const input of this.midiAccess.inputs.values()) {
+        if (input.name === this.output.name) {
+          this.input = input;
+          break;
+        }
+      }
+    }
+
+    if (this.input && this.output) {
+      console.log(`Device set: ${this.output.name}`);
+    } else {
+      console.error(`Failed to find full port pair for: ${deviceId}. Input: ${!!this.input}, Output: ${!!this.output}`);
     }
   }
 
