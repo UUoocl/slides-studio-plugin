@@ -24,7 +24,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Hardware Interaction & Sync' (Protocol in workflow.md) [873fc61]
 
 ## Phase 4: Mode Handling & Advanced Features
-- [ ] Task: Implement multi-mode support (Session View, Drum Mode, Note Mode).
+- [x] Task: Implement multi-mode support (Session View, Drum Mode, Note Mode). [8cd95d1]
 - [ ] Task: Implement the "Intro Message" trigger on connection to fetch initial hardware fader states.
 - [ ] Task: Implement a "Custom RGB Mode" UI toggle to demonstrate 24-bit SysEx control.
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Mode Handling & Advanced Features' (Protocol in workflow.md)
