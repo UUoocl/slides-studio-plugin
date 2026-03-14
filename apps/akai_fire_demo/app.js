@@ -1,5 +1,6 @@
 import { FireConnectionManager } from './connectionManager.js';
 import { FireMidiLogic } from './midiLogic.js';
+import { FireAppLogic } from './appLogic.js';
 
 const padMatrix = document.getElementById('pad-matrix');
 const statusText = document.getElementById('status-text');
@@ -7,11 +8,15 @@ const statusIndicator = document.getElementById('status-indicator');
 const btnConnect = document.getElementById('btn-connect');
 const commMode = document.getElementById('comm-mode');
 const midiDeviceSelect = document.getElementById('midi-device');
+const appModeSelect = document.getElementById('app-mode');
+const colorSwatches = document.querySelectorAll('.color-swatch');
 
 let connection = new FireConnectionManager({
   onStatusChange: handleStatusChange,
   onMidiMessage: (data) => handleMidiInput(data)
 });
+
+const appLogic = new FireAppLogic();
 
 // State for toggling button LEDs
 const buttonStates = {};
@@ -19,6 +24,7 @@ const buttonStates = {};
 async function init() {
   renderMatrix();
   setupButtonListeners();
+  setupPaintControls();
   const devices = await connection.listDevices();
   // ... rest of init
 
@@ -58,6 +64,22 @@ function setupButtonListeners() {
   });
 }
 
+function setupPaintControls() {
+  colorSwatches.forEach(swatch => {
+    swatch.addEventListener('click', () => {
+      // Clear borders
+      colorSwatches.forEach(s => s.style.border = '1px solid #444');
+      // Set active border
+      swatch.style.border = '2px solid #fff';
+      
+      const r = parseInt(swatch.dataset.r);
+      const g = parseInt(swatch.dataset.g);
+      const b = parseInt(swatch.dataset.b);
+      appLogic.setSelectedColor(r, g, b);
+    });
+  });
+}
+
 function renderMatrix() {
   for (let row = 0; row < 4; row++) {
     const rowEl = document.createElement('div');
@@ -70,14 +92,16 @@ function renderMatrix() {
       pad.dataset.col = col;
       
       pad.addEventListener('click', () => {
-        // Default to Blue for Phase 2 test
-        const index = row * 16 + col;
-        const msg = FireMidiLogic.createRGBMessage(index, 0, 0, 127);
-        connection.send(msg);
-        
-        // Update UI
-        pad.style.backgroundColor = '#0000ff';
-        pad.style.boxShadow = '0 0 10px #0000ff';
+        if (appModeSelect.value === 'paint') {
+          const index = row * 16 + col;
+          const { r, g, b } = appLogic.paintPad(index);
+          const msg = FireMidiLogic.createRGBMessage(index, r, g, b);
+          connection.send(msg);
+          
+          // Update UI
+          pad.style.backgroundColor = `rgb(${r * 2}, ${g * 2}, ${b * 2})`;
+          pad.style.boxShadow = (r+g+b > 0) ? `0 0 10px rgb(${r * 2}, ${g * 2}, ${b * 2})` : 'none';
+        }
       });
 
       rowEl.appendChild(pad);

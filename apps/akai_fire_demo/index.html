@@ -275,6 +275,26 @@
 
         <button id="btn-connect">Connect</button>
       </div>
+
+      <div class="control-group">
+        <h3>Demo Controls</h3>
+        <label for="app-mode">Mode:</label>
+        <select id="app-mode">
+          <option value="paint">Paint Mode</option>
+          <option value="sequencer">Sequencer Demo</option>
+        </select>
+        
+        <div id="paint-controls">
+          <label>Selected Color:</label>
+          <div style="display: flex; gap: 5px; margin-top: 5px;">
+            <div class="color-swatch" data-r="127" data-g="0" data-b="0" style="background: #ff0000; width: 25px; height: 25px; cursor: pointer; border: 2px solid #fff;"></div>
+            <div class="color-swatch" data-r="0" data-g="127" data-b="0" style="background: #00ff00; width: 25px; height: 25px; cursor: pointer; border: 1px solid #444;"></div>
+            <div class="color-swatch" data-r="0" data-g="0" data-b="127" style="background: #0000ff; width: 25px; height: 25px; cursor: pointer; border: 1px solid #444;"></div>
+            <div class="color-swatch" data-r="127" data-g="127" data-b="0" style="background: #ffff00; width: 25px; height: 25px; cursor: pointer; border: 1px solid #444;"></div>
+            <div class="color-swatch" data-r="0" data-g="0" data-b="0" style="background: #000000; width: 25px; height: 25px; cursor: pointer; border: 1px solid #444;"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
