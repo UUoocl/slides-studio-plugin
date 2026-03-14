@@ -166,9 +166,8 @@ class APCMiniApp {
     const channelIn = this.socket.subscribe(`midi_in_${deviceName}`);
     for await (const data of channelIn) {
       if (this.commModeSelect.value === 'socket') {
-        const midiData = data.message || data.data || data;
-        const bytes = (midiData instanceof Uint8Array) ? midiData : new Uint8Array(Object.values(midiData));
-        this.handleMidiMessage({ data: bytes });
+        // Match the launchpad demo's handling
+        this.handleMidiMessage({ data });
       }
     }
   }
