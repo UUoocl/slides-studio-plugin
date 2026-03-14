@@ -52,5 +52,14 @@ describe('APCMiniCore - Standard LED Behaviors', () => {
         0xF0, 0x7E, 0x00, 0x06, 0x01, 0xF7
       ]));
     });
+
+    it('should encode Custom RGB SysEx for Pad 0-0 Blue (0,0,255)', () => {
+      // F0 47 7F 4F 24 <lenH> <lenL> <start> <end> <rM> <rL> <gM> <gL> <bM> <bL> F7
+      // Blue 255: MSB=1 (0x01), LSB=127 (0x7F) -> 1*128 + 127 = 255
+      const result = APCMiniCore.encodeCustomRGB(0, 0, 0, 0, 255);
+      expect(result).toEqual(new Uint8Array([
+        0xF0, 0x47, 0x7F, 0x4F, 0x24, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x7F, 0xF7
+      ]));
+    });
   });
 });
