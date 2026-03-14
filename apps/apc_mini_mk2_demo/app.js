@@ -1,7 +1,4 @@
 import { APCMiniCore } from './apcMiniCore.js';
-// socketcluster-client will be loaded via script tag in index.html for simplicity in this demo environment, 
-// similar to launchpad_mk1_demo if needed, but I'll use the module import if available.
-// Actually, looking at launchpad_mk1_demo/app.js, it uses: import { create } from '../lib/socketcluster-client.min.js';
 import { create } from '../lib/socketcluster-client.min.js';
 
 class APCMiniApp {
@@ -15,6 +12,7 @@ class APCMiniApp {
     this.statusIndicator = document.getElementById('status-indicator');
     this.commModeSelect = document.getElementById('comm-mode');
     this.midiDeviceSelect = document.getElementById('midi-device-select');
+    this.deviceModeSelect = document.getElementById('device-mode');
     this.btnScan = document.getElementById('btn-scan');
     this.btnConnect = document.getElementById('btn-connect');
     
@@ -48,6 +46,7 @@ class APCMiniApp {
     try {
       this.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
       this.scanDevices();
+      
       this.midiAccess.onstatechange = () => this.scanDevices();
     } catch (err) {
       this.updateStatus(`MIDI Access Error: ${err.message}`, false);
@@ -111,10 +110,8 @@ class APCMiniApp {
     
     this.output = this.midiAccess.outputs.get(deviceId);
     
-    // Try to find matching input by ID, then fallback to name matching
     this.input = this.midiAccess.inputs.get(deviceId);
     if (!this.input && this.output) {
-      console.log('Input ID mismatch, searching by name...');
       for (const input of this.midiAccess.inputs.values()) {
         if (input.name === this.output.name) {
           this.input = input;
@@ -124,14 +121,10 @@ class APCMiniApp {
     }
 
     if (this.input && this.output) {
-      console.log(`Matched Input: ${this.input.id}, Output: ${this.output.id}`);
       this.input.onmidimessage = (msg) => this.handleMidiMessage(msg);
       this.updateStatus(`Connected to ${this.output.name}`, true);
-      
-      // Send Intro Message
       this.sendMidi(APCMiniCore.encodeIntroMessage());
     } else {
-      console.error('Connection failed: Input or Output missing.', { input: !!this.input, output: !!this.output });
       this.updateStatus('Device not found', false);
     }
   }
@@ -199,6 +192,36 @@ class APCMiniApp {
     const [status, data1, data2] = msg.data;
     const channel = status & 0x0F;
     const type = status & 0xF0;
+    const currentMode = this.deviceModeSelect.value;
+
+    // Handle Note-On/Off for Pads and Buttons
+    if (type === 0x90 || type === 0x80) {
+      const isPress = type === 0x90 && data2 > 0;
+
+      // Pad Matrix (0x00-0x3F)
+      if (data1 >= 0x00 && data1 <= 0x3F) {
+        // In Drum Mode, pad layout might differ but device still sends these notes.
+        // We'll visualize standard mapping for now.
+        this.updateVirtualPad(data1, isPress, data2);
+      }
+
+      // Track Buttons (0x64-0x6B)
+      if (data1 >= 0x64 && data1 <= 0x6B) {
+        this.updateVirtualButton(data1, isPress);
+      }
+
+      // Scene Buttons (0x70-0x77)
+      if (data1 >= 0x70 && data1 <= 0x77) {
+        this.updateVirtualButton(data1, isPress);
+      }
+      
+      // Shift Button (0x7A)
+      if (data1 === 0x7A) {
+        const shiftBtn = document.getElementById('btn-shift');
+        if (isPress) shiftBtn.classList.add('active');
+        else shiftBtn.classList.remove('active');
+      }
+    }
 
     // Fader CC Messages (0xB0, 0x30-0x38)
     if (type === 0xB0 && data1 >= 0x30 && data1 <= 0x38) {
@@ -206,23 +229,21 @@ class APCMiniApp {
       this.updateVirtualFader(faderIndex, data2);
     }
 
-    // Pad Matrix Messages (0x90-0x9F / 0x80, Note 0x00-0x3F)
-    if (data1 >= 0x00 && data1 <= 0x3F) {
-      if (type === 0x90 || type === 0x80) {
-        const isPress = type === 0x90 && data2 > 0;
-        this.updateVirtualPad(data1, isPress, data2);
+    // Handle Drum/Note mode specifics if any (Note mode uses Port 1)
+    // If the browser provides a specific Port 1, Direct WebMIDI will handle it via device selection.
+  }
+
+  updateVirtualPad(note, isPressed, velocity) {
+    const pad = document.getElementById(`pad-${note}`);
+    if (pad) {
+      if (isPressed) {
+        pad.classList.add('active');
+        pad.style.backgroundColor = `rgba(255, 82, 82, ${velocity / 127})`;
+      } else {
+        pad.classList.remove('active');
+        pad.style.backgroundColor = '';
       }
     }
-
-    // Peripheral Buttons (Track 0x64-0x6B, Scene 0x70-0x77)
-    if ((data1 >= 0x64 && data1 <= 0x6B) || (data1 >= 0x70 && data1 <= 0x77)) {
-      if (type === 0x90 || type === 0x80) {
-        const isPress = type === 0x90 && data2 > 0;
-        this.updateVirtualButton(data1, isPress);
-      }
-    }
-
-    console.log(`Incoming MIDI: Status=${status.toString(16)}, Data1=${data1.toString(16)}, Data2=${data2}`);
   }
 
   updateVirtualButton(note, isPressed) {
@@ -246,20 +267,6 @@ class APCMiniApp {
     }
   }
 
-  updateVirtualPad(note, isPressed, velocity) {
-    const pad = document.getElementById(`pad-${note}`);
-    if (pad) {
-      if (isPressed) {
-        pad.classList.add('active');
-        // Simple visualization: use the velocity to guess a color for UI feedback
-        pad.style.backgroundColor = `rgba(255, 82, 82, ${velocity / 127})`;
-      } else {
-        pad.classList.remove('active');
-        pad.style.backgroundColor = '';
-      }
-    }
-  }
-
   updateVirtualFader(index, value) {
     const percent = (value / 127) * 100;
     const fill = document.getElementById(`fader-fill-${index}`);
@@ -270,21 +277,19 @@ class APCMiniApp {
       cap.style.bottom = `${percent}%`;
     }
   }
-generatePads() {
-  // 8x8 grid (Notes 0-63)
-  // Hardware maps 0-7 to bottom row, 56-63 to top row.
-  // We generate UI from top-to-bottom.
-  for (let row = 0; row < 8; row++) {
-    for (let col = 0; col < 8; col++) {
-      const note = (7 - row) * 8 + col;
-      const pad = document.createElement('div');
-      pad.className = 'pad';
-      pad.id = `pad-${note}`;
-      pad.dataset.note = note;
-      this.padMatrix.appendChild(pad);
+
+  generatePads() {
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const note = (7 - row) * 8 + col;
+        const pad = document.createElement('div');
+        pad.className = 'pad';
+        pad.id = `pad-${note}`;
+        pad.dataset.note = note;
+        this.padMatrix.appendChild(pad);
+      }
     }
   }
-}
 
   generateSceneButtons() {
     for (let i = 0; i < 8; i++) {
@@ -338,9 +343,7 @@ generatePads() {
       if (e.target.classList.contains('pad')) {
         const note = parseInt(e.target.dataset.note);
         const behaviorVal = document.getElementById('led-behavior').value;
-        const behavior = behaviorVal.startsWith('9') ? 'blink' : (behaviorVal === '97' || behaviorVal === '9A' ? 'pulse' : 'solid');
         
-        // Map UI select values to speeds/behaviors correctly
         let b = 'solid';
         let s = 100;
         
@@ -359,46 +362,14 @@ generatePads() {
         const color = parseInt(document.getElementById('palette-color').value);
         const msg = APCMiniCore.encodePadMessage(note, color, b, s);
         this.sendMidi(msg);
-        
-        // Local UI feedback (will be overwritten by hardware echo if connected and supported)
         this.updateVirtualPad(note, true, 127);
       }
     });
 
     window.addEventListener('mouseup', () => {
-      // Clear active UI states on global mouseup for simplicity in this demo
       document.querySelectorAll('.pad.active').forEach(p => {
         this.updateVirtualPad(parseInt(p.dataset.note), false, 0);
       });
-    });
-
-    this.sceneButtons.addEventListener('mousedown', (e) => {
-      if (e.target.classList.contains('btn-scene')) {
-        const note = parseInt(e.target.dataset.note);
-        // Toggle: On -> Blink -> Off
-        const currentState = e.target.dataset.led || 'off';
-        let nextState = 'on';
-        if (currentState === 'on') nextState = 'blink';
-        else if (currentState === 'blink') nextState = 'off';
-        
-        e.target.dataset.led = nextState;
-        this.sendMidi(APCMiniCore.encodeButtonMessage(note, nextState));
-        this.updateVirtualButton(note, nextState !== 'off');
-      }
-    });
-
-    this.trackButtons.addEventListener('mousedown', (e) => {
-      if (e.target.classList.contains('btn-track')) {
-        const note = parseInt(e.target.dataset.note);
-        const currentState = e.target.dataset.led || 'off';
-        let nextState = 'on';
-        if (currentState === 'on') nextState = 'blink';
-        else if (currentState === 'blink') nextState = 'off';
-        
-        e.target.dataset.led = nextState;
-        this.sendMidi(APCMiniCore.encodeButtonMessage(note, nextState));
-        this.updateVirtualButton(note, nextState !== 'off');
-      }
     });
 
     this.btnConnect.addEventListener('click', () => this.toggleConnection());
@@ -407,6 +378,16 @@ generatePads() {
       if (this.midiAccess) this.scanDevices();
       else this.requestMidiAccess();
     });
+
+    this.deviceModeSelect.addEventListener('change', () => {
+      this.clearUI();
+      console.log(`Switched to mode: ${this.deviceModeSelect.value}`);
+    });
+  }
+
+  clearUI() {
+    document.querySelectorAll('.pad').forEach(p => this.updateVirtualPad(parseInt(p.dataset.note), false, 0));
+    document.querySelectorAll('.btn-track, .btn-scene').forEach(b => this.updateVirtualButton(parseInt(b.dataset.note), false));
   }
 }
 
