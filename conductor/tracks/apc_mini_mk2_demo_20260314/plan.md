@@ -23,11 +23,11 @@
 - [x] Task: Implement peripheral button sync (Track 1-8 / Scene 1-8). [196863d]
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Hardware Interaction & Sync' (Protocol in workflow.md) [873fc61]
 
-## Phase 4: Mode Handling & Advanced Features
+## Phase 4: Mode Handling & Advanced Features [checkpoint: dd763ec]
 - [x] Task: Implement multi-mode support (Session View, Drum Mode, Note Mode). [8cd95d1]
-- [x] Task: Implement the "Intro Message" trigger on connection to fetch initial hardware fader states. [d3c248d]
+- [x] Task: Implement the "Intro Message" trigger on connection to fetch initial hardware fader states. [0421d81]
 - [x] Task: Implement a "Custom RGB Mode" UI toggle to demonstrate 24-bit SysEx control. [d3c248d]
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Mode Handling & Advanced Features' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Mode Handling & Advanced Features' (Protocol in workflow.md) [dd763ec]
 
 ## Phase 5: Refinement & Documentation
 - [ ] Task: Final UI polish, responsiveness check, and mobile-friendly touch targets.
