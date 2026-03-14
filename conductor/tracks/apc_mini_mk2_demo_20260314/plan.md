@@ -15,13 +15,13 @@
 - [x] Task: Implement Custom RGB encoding in `apcMiniCore.js`. [3cc9c9d]
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Core MIDI Logic (TDD)' (Protocol in workflow.md) [1d54ed9]
 
-## Phase 3: Hardware Interaction & Sync
+## Phase 3: Hardware Interaction & Sync [checkpoint: 873fc61]
 - [x] Task: Implement MIDI device scanning and dropdown selection for Direct WebMIDI. [d4f3566]
 - [x] Task: Implement WebMIDI and SocketCluster connection lifecycle management. [dbff2a1]
 - [x] Task: Map physical fader CC (0x30-0x38) to UI animated bars. [0887bf6]
 - [x] Task: Implement bidirectional pad matrix synchronization (Click-to-Device / Press-to-UI). [0645025]
 - [x] Task: Implement peripheral button sync (Track 1-8 / Scene 1-8). [196863d]
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Hardware Interaction & Sync' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Hardware Interaction & Sync' (Protocol in workflow.md) [873fc61]
 
 ## Phase 4: Mode Handling & Advanced Features
 - [ ] Task: Implement multi-mode support (Session View, Drum Mode, Note Mode).
