@@ -52,4 +52,15 @@ describe('FireMidiLogic', () => {
       });
     });
   });
+
+  describe('createRGBMessage', () => {
+    it('should create a valid SysEx message for Pad 4 Row 2 Full Blue', () => {
+      // Row 2, Col 4 = index 36 (0x24)
+      // SysEx: F0 47 7F 43 65 00 04 24 00 00 7F F7
+      const msg = FireMidiLogic.createRGBMessage(36, 0, 0, 127);
+      expect(msg).toEqual(new Uint8Array([
+        0xF0, 0x47, 0x7F, 0x43, 0x65, 0x00, 0x04, 0x24, 0x00, 0x00, 0x7F, 0xF7
+      ]));
+    });
+  });
 });

@@ -29,6 +29,17 @@ export class FireMidiLogic {
     return new Uint8Array([0xB0, cc, colorValue]);
   }
 
+  static createRGBMessage(index, r, g, b) {
+    // F0 47 7F 43 65 <Length MSB> <Length LSB> [<Pad Index> <Red> <Green> <Blue>] ... F7
+    // For single pad: 4 bytes payload, so Length LSB=4, MSB=0
+    return new Uint8Array([
+      0xF0, 0x47, 0x7F, 0x43, 0x65, // Header
+      0x00, 0x04, // Length
+      index, r, g, b, // Payload
+      0xF7 // End
+    ]);
+  }
+
   static parseInput(data) {
     if (data.length < 3) return null;
     const status = data[0];
