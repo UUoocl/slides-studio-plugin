@@ -1,3 +1,5 @@
+/* global socketClusterClient */
+
 export class FireConnectionManager {
   constructor(options = {}) {
     this.mode = options.mode || 'direct'; // 'direct' or 'socket'
@@ -39,6 +41,7 @@ export class FireConnectionManager {
     for (const output of this.midiAccess.outputs.values()) {
       if (output.id === deviceId || output.name === deviceId) {
         this.output = output;
+        this.deviceName = output.name;
         break;
       }
     }
@@ -70,22 +73,56 @@ export class FireConnectionManager {
     try {
       this.input.onmidimessage = (msg) => this.onMidiMessage(msg.data);
       this.isConnected = true;
-      this.onStatusChange('connected', `Connected to ${this.output.name}`);
+      this.onStatusChange('connected', `WebMIDI: ${this.output.name}`);
       return true;
     } catch (err) {
-      this.onStatusChange('error', `WebMIDI Connection Error: ${err.message}`);
+      this.onStatusChange('error', `WebMIDI Error: ${err.message}`);
       return false;
     }
   }
 
   async connectSocketCluster() {
-    this.onStatusChange('error', 'SocketCluster integration pending Phase 2');
-    return false;
+    try {
+      this.socket = socketClusterClient.create({
+        hostname: '127.0.0.1',
+        port: 8080 // Default Slides-Studio port
+      });
+
+      this.onStatusChange('error', 'Connecting to SocketCluster...');
+
+      for await (const { error } of this.socket.listener('error')) {
+        console.error('Socket error:', error);
+      }
+
+      for await (const status of this.socket.listener('connect')) {
+        this.isConnected = true;
+        this.onStatusChange('connected', `SocketCluster: ${this.deviceName}`);
+        this.setupSocketChannels();
+      }
+
+      return true;
+    } catch (err) {
+      this.onStatusChange('error', `Socket Error: ${err.message}`);
+      return false;
+    }
+  }
+
+  async setupSocketChannels() {
+    const inChannel = this.socket.subscribe(`midi_in_${this.deviceName}`);
+    for await (const data of inChannel) {
+      if (data && data.message) {
+        this.onMidiMessage(new Uint8Array(Object.values(data.message)));
+      }
+    }
   }
 
   send(data) {
     if (this.mode === 'direct' && this.output) {
       this.output.send(data);
+    } else if (this.mode === 'socket' && this.socket && this.socket.state === 'open') {
+      this.socket.transmitPublish(`midi_out_${this.deviceName}`, {
+        message: Array.from(data)
+      });
     }
   }
 }
