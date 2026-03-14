@@ -10,6 +10,11 @@ class APCMiniApp {
     this.trackButtons = document.getElementById('track-buttons');
     this.faderContainer = document.getElementById('fader-container');
     
+    this.statusText = document.getElementById('status-text');
+    this.statusIndicator = document.getElementById('status-indicator');
+    this.commModeSelect = document.getElementById('comm-mode');
+    this.deviceAliasInput = document.getElementById('midi-device-alias');
+    
     this.init();
   }
 
@@ -19,6 +24,16 @@ class APCMiniApp {
     this.generateTrackButtons();
     this.generateFaders();
     this.setupEventListeners();
+    this.updateStatus('Disconnected', false);
+  }
+
+  updateStatus(message, isConnected) {
+    this.statusText.innerText = message;
+    if (isConnected) {
+      this.statusIndicator.classList.add('connected');
+    } else {
+      this.statusIndicator.classList.remove('connected');
+    }
   }
 
   generatePads() {
@@ -87,7 +102,12 @@ class APCMiniApp {
     });
 
     document.getElementById('btn-connect').addEventListener('click', () => {
-      console.log('Connect clicked');
+      const mode = this.commModeSelect.value;
+      const alias = this.deviceAliasInput.value;
+      this.updateStatus(`Connecting to ${alias} via ${mode}...`, false);
+      
+      // Connection logic will be implemented in Phase 3
+      console.log(`Attempting connection: Mode=${mode}, Alias=${alias}`);
     });
   }
 }
