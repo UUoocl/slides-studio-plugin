@@ -1,4 +1,5 @@
 import { FireConnectionManager } from './connectionManager.js';
+import { FireMidiLogic } from './midiLogic.js';
 
 const padMatrix = document.getElementById('pad-matrix');
 const statusText = document.getElementById('status-text');
@@ -12,10 +13,15 @@ let connection = new FireConnectionManager({
   onMidiMessage: (data) => console.log('MIDI Input:', data)
 });
 
+// State for toggling button LEDs
+const buttonStates = {};
+
 async function init() {
   renderMatrix();
+  setupButtonListeners();
   const devices = await connection.listDevices();
-  midiDeviceSelect.innerHTML = '<option value="">Select a device...</option>';
+  // ... rest of init
+
   
   devices.forEach(device => {
     const option = document.createElement('option');
@@ -28,6 +34,27 @@ async function init() {
       connection.setDevice(device.id);
     }
     midiDeviceSelect.appendChild(option);
+  });
+}
+
+function setupButtonListeners() {
+  const buttons = document.querySelectorAll('.btn-fire');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.id.replace('btn-', '');
+      const cc = FireMidiLogic.getButtonCC(id);
+      if (!cc) return;
+
+      // Toggle state: 0x00 (Off) <-> 0x02 (High Green/Red)
+      buttonStates[id] = buttonStates[id] === 0x02 ? 0x00 : 0x02;
+      
+      const msg = FireMidiLogic.createButtonMessage(cc, buttonStates[id]);
+      connection.send(msg);
+
+      // Update UI
+      btn.style.backgroundColor = buttonStates[id] > 0 ? '#ff5252' : '#2a2a2a';
+      btn.style.color = buttonStates[id] > 0 ? '#fff' : '#ccc';
+    });
   });
 }
 
