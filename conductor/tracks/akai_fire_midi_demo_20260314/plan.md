@@ -28,8 +28,9 @@
 - [x] Task: Implement `sendOLEDData()` SysEx transmission. [312659c]
 - [x] Task: Conductor - User Manual Verification 'Phase 4: OLED Integration' (Protocol in workflow.md) [1ef9d3a]
 
-## Phase 5: Refinement & Verification
-- [ ] Task: Final UI polish and responsive adjustments for the virtual device.
-- [ ] Task: Verify seamless switching between Direct WebMIDI and SocketCluster modes.
-- [ ] Task: Document the MIDI/SysEx implementation in a `README.md` within the app folder.
-- [ ] Task: Conductor - User Manual Verification 'Phase 5: Refinement & Verification' (Protocol in workflow.md)
+## Phase 5: Refinement & Verification [checkpoint: 34129e6]
+- [x] Task: Final UI polish and responsive adjustments for the virtual device. [4619198]
+- [x] Task: Verify seamless switching between Direct WebMIDI and SocketCluster modes. [36af1ec]
+- [x] Task: Implement SocketCluster MIDI alias selection (text input + plugin settings fetch). [5755b54]
+- [x] Task: Document the MIDI/SysEx implementation in a `README.md` within the app folder. [92ccf68]
+- [x] Task: Conductor - User Manual Verification 'Phase 5: Refinement & Verification' (Protocol in workflow.md) [34129e6]
