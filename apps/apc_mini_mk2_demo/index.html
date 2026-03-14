@@ -15,8 +15,11 @@
       <span id="status-text">Disconnected</span>
     </div>
     <div class="midi-info">
-      <label for="midi-device-alias">Device Alias:</label>
-      <input type="text" id="midi-device-alias" value="APC mini mk2">
+      <label for="midi-device-select">MIDI Device:</label>
+      <select id="midi-device-select">
+        <option value="">Scan for devices...</option>
+      </select>
+      <button id="btn-scan" style="width: auto; margin-bottom: 0; padding: 5px 10px;">Scan</button>
     </div>
   </div>
 

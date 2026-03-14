@@ -13,18 +13,66 @@ class APCMiniApp {
     this.statusText = document.getElementById('status-text');
     this.statusIndicator = document.getElementById('status-indicator');
     this.commModeSelect = document.getElementById('comm-mode');
-    this.deviceAliasInput = document.getElementById('midi-device-alias');
+    this.midiDeviceSelect = document.getElementById('midi-device-select');
+    this.btnScan = document.getElementById('btn-scan');
+    
+    this.midiAccess = null;
+    this.availableDevices = [];
     
     this.init();
   }
 
-  init() {
+  async init() {
     this.generatePads();
     this.generateSceneButtons();
     this.generateTrackButtons();
     this.generateFaders();
     this.setupEventListeners();
     this.updateStatus('Disconnected', false);
+    
+    await this.requestMidiAccess();
+  }
+
+  async requestMidiAccess() {
+    if (!navigator.requestMIDIAccess) {
+      this.updateStatus('WebMIDI not supported', false);
+      return;
+    }
+
+    try {
+      this.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+      this.scanDevices();
+      
+      this.midiAccess.onstatechange = () => this.scanDevices();
+    } catch (err) {
+      this.updateStatus(`MIDI Access Error: ${err.message}`, false);
+    }
+  }
+
+  scanDevices() {
+    this.midiDeviceSelect.innerHTML = '';
+    const inputs = Array.from(this.midiAccess.inputs.values());
+    const outputs = Array.from(this.midiAccess.outputs.values());
+
+    // Group by name - we need both in/out for full functionality
+    const deviceNames = new Set();
+    outputs.forEach(out => deviceNames.add(out.name));
+
+    if (deviceNames.size === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.innerText = 'No devices found';
+      this.midiDeviceSelect.appendChild(opt);
+      return;
+    }
+
+    deviceNames.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.innerText = name;
+      if (name.toLowerCase().includes('apc mini')) opt.selected = true;
+      this.midiDeviceSelect.appendChild(opt);
+    });
   }
 
   updateStatus(message, isConnected) {
@@ -37,7 +85,6 @@ class APCMiniApp {
   }
 
   generatePads() {
-    // 8x8 grid (Notes 0-63)
     for (let i = 0; i < 64; i++) {
       const pad = document.createElement('div');
       pad.className = 'pad';
@@ -48,7 +95,6 @@ class APCMiniApp {
   }
 
   generateSceneButtons() {
-    // 8 Scene buttons (Notes 112-119 / 0x70-0x77)
     for (let i = 0; i < 8; i++) {
       const note = 0x70 + i;
       const btn = document.createElement('div');
@@ -61,7 +107,6 @@ class APCMiniApp {
   }
 
   generateTrackButtons() {
-    // 8 Track buttons (Notes 100-107 / 0x64-0x6B)
     for (let i = 0; i < 8; i++) {
       const note = 0x64 + i;
       const btn = document.createElement('div');
@@ -72,7 +117,6 @@ class APCMiniApp {
       this.trackButtons.appendChild(btn);
     }
 
-    // Add Shift button (Note 122 / 0x7A) at the end of the row
     const shiftBtn = document.createElement('div');
     shiftBtn.className = 'btn-shift';
     shiftBtn.id = 'btn-shift';
@@ -82,14 +126,10 @@ class APCMiniApp {
   }
 
   generateFaders() {
-    // 9 Faders (CC 0x30-0x38)
     for (let i = 0; i < 9; i++) {
-      const cc = 0x30 + i;
       const faderUnit = document.createElement('div');
       faderUnit.className = 'fader-unit';
-      
       const label = i === 8 ? 'MASTER' : `${i+1}`;
-      
       faderUnit.innerHTML = `
         <div class="fader-track" id="fader-track-${i}">
           <div class="fader-fill" id="fader-fill-${i}" style="height: 0%"></div>
@@ -102,7 +142,6 @@ class APCMiniApp {
   }
 
   setupEventListeners() {
-    // Basic UI feedback for pads
     this.padMatrix.addEventListener('mousedown', (e) => {
       if (e.target.classList.contains('pad')) {
         console.log(`Pad pressed: ${e.target.dataset.note}`);
@@ -111,11 +150,14 @@ class APCMiniApp {
 
     document.getElementById('btn-connect').addEventListener('click', () => {
       const mode = this.commModeSelect.value;
-      const alias = this.deviceAliasInput.value;
-      this.updateStatus(`Connecting to ${alias} via ${mode}...`, false);
-      
-      // Connection logic will be implemented in Phase 3
-      console.log(`Attempting connection: Mode=${mode}, Alias=${alias}`);
+      const deviceName = this.midiDeviceSelect.value;
+      this.updateStatus(`Connecting to ${deviceName} via ${mode}...`, false);
+      console.log(`Attempting connection: Mode=${mode}, Device=${deviceName}`);
+    });
+
+    this.btnScan.addEventListener('click', () => {
+      if (this.midiAccess) this.scanDevices();
+      else this.requestMidiAccess();
     });
   }
 }
