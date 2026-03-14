@@ -2,7 +2,20 @@ export class FireOledLogic {
   constructor() {
     this.width = 128;
     this.height = 64;
-    this.buffer = new Uint8Array(1024); // 128 * (64 / 8)
+    // For a full display update, Akai Fire uses 1171 bytes of packed data
+    this.buffer = new Uint8Array(1171);
+    
+    // Bit mutation table from hardware documentation
+    this.bitMutate = [
+      [13, 19, 25, 31, 37, 43, 49],
+      [0, 20, 26, 32, 38, 44, 50],
+      [1, 7, 27, 33, 39, 45, 51],
+      [2, 8, 14, 34, 40, 46, 52],
+      [3, 9, 15, 21, 41, 47, 53],
+      [4, 10, 16, 22, 28, 48, 54],
+      [5, 11, 17, 23, 29, 35, 55],
+      [6, 12, 18, 24, 30, 36, 42]
+    ];
   }
 
   clear() {
@@ -11,18 +24,29 @@ export class FireOledLogic {
 
   setPixel(x, y, on = true) {
     if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
-    
-    // The Fire OLED uses a non-linear mapping for pixels, 
-    // but the basic SysEx expects 1024 bytes for a full frame.
-    // Based on documentation, the display is 8 bands high.
-    const band = Math.floor(y / 8);
-    const bit = y % 8;
-    const index = (band * 128) + x;
+
+    // 1. Linearize to a 1024x8 strip
+    const stripX = x + 128 * Math.floor(y / 8);
+    const stripY = y % 8;
+
+    // 2. Divide into 7-column blocks
+    const blockIdx = Math.floor(stripX / 7);
+    const colInBlock = stripX % 7;
+
+    // 3. Get bit index from mutation table
+    const bitIdx = this.bitMutate[stripY][colInBlock];
+
+    // 4. Map bit index to MIDI bytes (7 bits each)
+    const byteOffsetInBlock = Math.floor(bitIdx / 7);
+    const bitInByte = bitIdx % 7;
+    const byteIndex = (blockIdx * 8) + byteOffsetInBlock;
+
+    if (byteIndex >= this.buffer.length) return;
 
     if (on) {
-      this.buffer[index] |= (1 << bit);
+      this.buffer[byteIndex] |= (1 << bitInByte);
     } else {
-      this.buffer[index] &= ~(1 << bit);
+      this.buffer[byteIndex] &= ~(1 << bitInByte);
     }
   }
 
@@ -67,7 +91,7 @@ export class FireOledLogic {
       '9': [0x06, 0x49, 0x49, 0x29, 0x1E],
     };
 
-    const bitmap = font[char.toUpperCase()] || [0x7F, 0x7F, 0x7F, 0x7F, 0x7F]; // Default box
+    const bitmap = font[char.toUpperCase()] || [0x7F, 0x7F, 0x7F, 0x7F, 0x7F];
     for (let i = 0; i < 5; i++) {
       for (let bit = 0; bit < 8; bit++) {
         if (bitmap[i] & (1 << bit)) {
@@ -81,24 +105,17 @@ export class FireOledLogic {
     let cursorX = x;
     for (const char of text) {
       this.drawChar(char, cursorX, y);
-      cursorX += 6; // 5 width + 1 spacing
+      cursorX += 6;
       if (cursorX >= this.width) break;
     }
   }
 
   createOledMessage() {
-    // Header: F0 47 7F 43 0E <Length MSB> <Length LSB> 00 07 00 7F
-    // Payload is 1024 bytes. 
-    // 1024 in 7-bit MIDI: MSB = 1024 >> 7 = 8, LSB = 1024 & 0x7F = 0
-    // Actually, Akai Fire uses a specific length encoding.
-    // For a full frame, length is 1175 bytes including header? 
-    // Let's re-check doc. Length is for the data segment.
-    
     const header = [
       0xF0, 0x47, 0x7F, 0x43, 0x0E,
-      0x08, 0x00, // Length: 1024 bytes (8 * 128)
-      0x00, 0x07, // Start/End Band (0-7)
-      0x00, 0x7F  // Start/End Column (0-127)
+      0x09, 0x17, // Length: 1175 bytes total (payload + range bytes)
+      0x00, 0x07, // Start/End Band
+      0x00, 0x7F  // Start/End Column
     ];
 
     const message = new Uint8Array(header.length + this.buffer.length + 1);

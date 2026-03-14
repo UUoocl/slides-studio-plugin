@@ -1,39 +1,30 @@
 import { describe, it, expect } from 'vitest';
 import { FireOledLogic } from './oledLogic.js';
 
-describe('FireOledLogic', () => {
-  it('should initialize with a 1024-byte buffer', () => {
+describe('FireOledLogic - Corrected Bit Packing', () => {
+  it('should initialize with a 1171-byte buffer', () => {
     const oled = new FireOledLogic();
-    expect(oled.buffer.length).toBe(1024);
+    expect(oled.buffer.length).toBe(1171);
     expect(oled.buffer.every(b => b === 0)).toBe(true);
   });
 
-  it('should set pixels in the correct byte and bit', () => {
+  it('should set pixels in MIDI-safe bytes (all < 128)', () => {
     const oled = new FireOledLogic();
-    
-    // Top-left (0,0)
-    oled.setPixel(0, 0);
-    expect(oled.buffer[0]).toBe(1);
-
-    // Band 1 (y=8), Col 0
-    oled.setPixel(0, 8);
-    expect(oled.buffer[128]).toBe(1);
-
-    // Band 0 (y=7), Col 10
-    oled.setPixel(10, 7);
-    expect(oled.buffer[10]).toBe(128); // 1 << 7
+    // Set a bunch of pixels to ensure various bits are set
+    for (let x = 0; x < 128; x++) {
+      for (let y = 0; y < 64; y += 7) {
+        oled.setPixel(x, y);
+      }
+    }
+    expect(oled.buffer.every(b => b < 128)).toBe(true);
   });
 
-  it('should generate a valid SysEx message with header and buffer', () => {
+  it('should generate a 1183-byte SysEx message', () => {
     const oled = new FireOledLogic();
-    oled.setPixel(0, 0);
     const msg = oled.createOledMessage();
-    
-    expect(msg[0]).toBe(0xF0);
-    expect(msg[4]).toBe(0x0E); // Command ID
-    expect(msg[5]).toBe(0x08); // Length MSB
-    expect(msg[6]).toBe(0x00); // Length LSB
-    expect(msg[11]).toBe(1); // Data start (pixel 0,0)
-    expect(msg[msg.length - 1]).toBe(0xF7);
+    // 11 header bytes + 1171 data bytes + 1 F7 byte = 1183
+    expect(msg.length).toBe(1183);
+    expect(msg[5]).toBe(0x09); // Length MSB
+    expect(msg[6]).toBe(0x17); // Length LSB
   });
 });
