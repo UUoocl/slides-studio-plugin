@@ -1,0 +1,8 @@
+{
+  "entryPoints": ["src/main.ts"],
+  "out": "docs",
+  "githubPages": true,
+  "readme": "README.md",
+  "name": "slides-studio",
+  "includeVersion": true
+}

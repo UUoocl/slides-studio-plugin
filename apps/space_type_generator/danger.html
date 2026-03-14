@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>STG _v.danger - Display</title>
+    <link rel="stylesheet" type="text/css" href="./css/stgStyle.css" />
+    <script src="./js/p5.min.1.1.0.js"></script>
+    <script src="./js/sketch_danger.js" type="text/javascript"></script>
+    <style>
+      body { padding: 0; margin: 0; background: transparent !important; overflow: hidden; }
+      canvas { vertical-align: top; }
+      /* Hide all UI elements */
+      #stg_menu, #obsidian-save-ui-layer, .bottom, .slug { display: none !important; }
+    </style>
+    </head>
+  <body>
+  <textarea id="textfield" style="display:none !important;"></textarea>
+
+  <script src="./js/manage_view.js"></script>
+  <script src="./js/keyboard_input.js"></script>
+  <script id="sketchSettings">
+  let hideCanvasUI = true;
+  function setSketchSettings(json){
+    if (!json) return;
+    if (typeof noiseSpeedSlider !== 'undefined') noiseSpeedSlider.value(json.noiseSpeed);
+    if (typeof radiusNoiseSlider !== 'undefined') radiusNoiseSlider.value(json.radiusNoise);
+    if (typeof tumultSlider !== 'undefined') tumultSlider.value(json.tumult);
+    if (typeof columnSlider !== 'undefined') columnSlider.value(json.columns);
+    if (typeof rowSlider !== 'undefined') rowSlider.value(json.rows);
+    if (typeof inp !== 'undefined') inp.value(json.text);
+    if (typeof fontSizeSlider !== 'undefined') fontSizeSlider.value(json.pgTextSize);
+    if (typeof leadingSlider !== 'undefined') leadingSlider.value(json.leading);
+    PRESET_SETTINGS = json;
+  }
+  </script>
+  <script src="./js/stg_sc_sync.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>STG _v.cylinder 1.1 - Display</title>
+    <script src="./js/p5.min.1.1.0.js"></script>
+    <link rel="stylesheet" type="text/css" href="./css/stgStyle.css" />
+    <script src="./js/sketch_cylinder.js" type="text/javascript"></script>
+    <script src="./js/keyboardEngine_190103.js" type="text/javascript"></script>
+    <style>
+      body { padding: 0; margin: 0; background: transparent !important; overflow: hidden; }
+      canvas { vertical-align: top; }
+      .bottom, .slug, #stg_menu, #obsidian-save-ui-layer { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <textarea id="textfield" style="display:none !important;"></textarea>
+
+    <script src="./js/manage_view.js"></script>
+    <script src="./js/keyboard_input.js"></script>
+    <script id="sketchSettings">
+      let hideCanvasUI = true;
+      function setSketchSettings(json){
+        if (!json) return;
+        if (typeof inp !== 'undefined') inp.value(json.text);
+        if (typeof rSlider !== 'undefined') rSlider.value(json.radius);
+        if (typeof stackNumSlider !== 'undefined') stackNumSlider.value(json.stackNum);
+        if (typeof rRotateSlider !== 'undefined') rRotateSlider.value(json.rRotate);
+        if (typeof rOffsetSlider !== 'undefined') rOffsetSlider.value(json.rOffset);
+        if (typeof rWaveCountSlider !== 'undefined') rWaveCountSlider.value(json.rWaveCount);
+        if (typeof rWaveSpeedSlider !== 'undefined') rWaveSpeedSlider.value(json.rWaveSpeed);
+        if (typeof rWaveSlider !== 'undefined') rWaveSlider.value(json.rWave);
+        if (typeof rZaxisSlider !== 'undefined') rZaxisSlider.value(json.rZaxis);
+        if (typeof strecherYslider !== 'undefined') strecherYslider.value(json.strecherYsize);
+        if (typeof strecherXslider !== 'undefined') strecherXslider.value(json.strecherXsize);
+        if (typeof rLongSlider !== 'undefined') rLongSlider.value(json.rLong);
+        if (typeof typeXSlider !== 'undefined') typeXSlider.value(json.typeX);
+        if (typeof typeYSlider !== 'undefined') typeYSlider.value(json.typeY);
+        if (typeof typeStrokeSlider !== 'undefined') typeStrokeSlider.value(json.typeStroke);
+        if (typeof xRotCameraSlider !== 'undefined') xRotCameraSlider.value(json.xRotCamera);
+        if (typeof yRotCameraSlider !== 'undefined') yRotCameraSlider.value(json.yRotCamera);
+        if (typeof zRotCameraSlider !== 'undefined') zRotCameraSlider.value(json.zRotCamera);
+        if (typeof xRotTweakSlider !== 'undefined') xRotTweakSlider.value(json.xRotTweak);
+        if (typeof yRotTweakSlider !== 'undefined') yRotTweakSlider.value(json.yRotTweak);
+        if (typeof zRotTweakSlider !== 'undefined') zRotTweakSlider.value(json.zRotTweak);
+        if (typeof zoomCameraSlider !== 'undefined') zoomCameraSlider.value(json.zoomCamera);
+
+        if (typeof inp1 !== 'undefined') inp1.value(json.strkColor);
+        if (typeof bkgdColorPicker !== 'undefined') bkgdColorPicker.value(json.bkgdColor);
+        PRESET_SETTINGS = json;
+      }
+    </script>
+    <script src="./js/stg_sc_sync.js" type="module"></script>
+  </body>
+</html>

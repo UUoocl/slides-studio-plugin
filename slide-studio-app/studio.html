@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reveal js studio</title>
+    <style>
+        .container {
+            position: relative;
+            overflow: hidden;
+            width: 500px;
+            padding-top: 281.25px; /* 16:9 Aspect Ratio (divide 9 by 16 = 0.5625) */
+        }
+
+        /* Then style the iframe to fit in the container div with full height and width */
+        .responsive-iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 2 column form grid layout         */
+        .form-grid {
+            display:grid;
+            grid-template-columns: 350px 150px;
+        }
+
+        .form-button{
+            padding: 2px;
+            margin: 10px 10px 0 0;
+        }
+        
+        .slide-location{
+            width: 500px
+        }
+    </style>
+     <link href="css/tabulator.min.css" rel="stylesheet" />
+   
+</head>
+<body>
+
+    <form>
+        <label for="slideDeckId">slide deck name</label> 
+        <input class= "slide-location" type="text" id="slideDeckId" name="slideDeckId"
+        placeholder="deck-id" />
+        <button type="button" id="slideDeckIdLoadButton" class="form-button">Load</button>
+    </form>
+        <div id="slidesTable" >
+            <h3>Slides tags</h3>
+    </div>
+ 
+        
+        <script type="text/javascript" src="lib/tabulator.min.js"></script>
+        
+        <script type="module">
+            import './lib/obsApiProxy.js';
+            import { loadTable } from './lib/setupTable.js';
+
+            // --- Global Variables ---
+            window.slideDeckId = undefined;
+            let slideStateStr = ''; // To track Reveal.js state for changes
+            window.slidesArray = [];
+            let dropDownOptions = {};
+            let selectedRowNumber = 0;
+            let slidesLoaded = false;
+            let tableLoaded = false;
+
+            // --- Function Definitions ---
+
+            // --- broadcastSlidesCommand (Centralized command handler & broadcaster) ---
+            window.broadcastSlidesCommand = async function(eventName, msgParam) {
+                // Handle OBS-specific tags in the Studio brain
+                if (eventName === "slide-changed") {
+                    await processTags(msgParam);
+                }
+
+                try {
+                    // Default to navigation channel for broadcast consistency
+                    await obsWss.publish('slides_navigation', eventName, msgParam);
+                } catch (e) {
+                    console.error("[Studio] Failed to broadcast command", e);
+                }
+            }
+
+            async function fetchOBSMetadata() {
+                try {
+                    // Get Scene options
+                    try {
+                        const sceneList = await window.obsWss.call("GetSceneList");
+                        dropDownOptions.scene = sceneList.scenes
+                            .filter(s => s.sceneName.startsWith("Scene"))
+                            .map(s => s.sceneName);
+                    } catch (e) { }
+                    
+                    // Get Camera Position options
+                    try {
+                        const cameraSources = await obsWss.call("GetSceneItemList", { sceneName: "Camera Position" });
+                        dropDownOptions.cameraPosition = cameraSources.sceneItems.map(s => s.sourceName);
+                    } catch (e) { }
+
+                    // Get Slide Position options
+                    try {
+                        const settings = await obsWss.call("GetInputSettings", { inputName: 'slides' });
+                        if (settings && settings.inputSettings && settings.inputSettings.css) {
+                            const regex = /\/\*(.*?)\*\//s;
+                            const match = settings.inputSettings.css.match(regex);
+                            if (match && match[1]) {
+                                dropDownOptions.slidePosition = JSON.parse(match[1].trim());
+                            }
+                        }
+                    } catch (e) { }
+
+                    // Get Camera Shape options
+                    try {
+                        const settings = await obsWss.call("GetInputSettings", { inputName: 'camera shapes' });
+                        if (settings && settings.inputSettings && settings.inputSettings.css) {
+                            const regex = /\/\*(.*?)\*\//s;
+                            const match = settings.inputSettings.css.match(regex);
+                            if (match && match[1]) {
+                                dropDownOptions.cameraShape = JSON.parse(match[1].trim());
+                            } else {
+                                dropDownOptions.cameraShape = ["none", "square", "circle", "pulsating-square", "pulsating-circle"];
+                            }
+                        } else {
+                            dropDownOptions.cameraShape = ["none", "square", "circle", "pulsating-square", "pulsating-circle"];
+                        }
+                    } catch (e) { 
+                        dropDownOptions.cameraShape = ["none", "square", "circle", "pulsating-square", "pulsating-circle"];
+                    }
+
+                    // Force refresh table if we have data
+                    if (window.table || (window.slidesArray && window.slidesArray.length > 0) || (window.slideDeckId && localStorage.getItem(window.slideDeckId))) {
+                        loadTable(dropDownOptions);
+                    }
+                } catch (e) {
+                    console.error("[Studio] Failed to fetch OBS metadata", e);
+                }
+            }
+
+            async function processTags(currentSlide) {
+                const batch = [];
+                
+                if (currentSlide.scene) {
+                    batch.push({
+                        requestType: "SetCurrentProgramScene",
+                        requestData: { sceneName: currentSlide.scene }
+                    });
+                };
+
+                if (currentSlide.cameraPosition) { 
+                    const sceneName = "Camera Position";
+                    try {
+                        const sceneItems = await obsWss.call("GetSceneItemList", { sceneName });
+                        if (sceneItems && sceneItems.sceneItems) {
+                            sceneItems.sceneItems.forEach((item) => {
+                                batch.push({
+                                    requestType: "SetSceneItemEnabled",
+                                    requestData: {
+                                        sceneName,
+                                        sceneItemId: item.sceneItemId,
+                                        sceneItemEnabled: item.sourceName === currentSlide.cameraPosition
+                                    }
+                                });
+                            });
+                        }
+                    } catch (e) { }
+                };
+
+                if (batch.length > 0) {
+                    try {
+                        await obsWss.callBatch(batch);
+                    } catch (err) {
+                        console.error("[Studio] OBS batch request failed:", err);
+                    }
+                }
+            }
+
+            // Global function to handle keyboard navigation
+            window.handleKeyboardNavigation = function(keyCode) {
+                if (!window.table) return;
+                const selectedRows = window.table.getSelectedRows();
+                if (selectedRows.length === 0) return;
+
+                let currentRow = selectedRows[0];
+                let targetRow = null;
+
+                switch (keyCode) {
+                    case 37: targetRow = currentRow.getPrevRow(); break;
+                    case 39: targetRow = currentRow.getNextRow(); break;
+                    case 32: targetRow = currentRow.getNextRow(); break;
+                    case 38: targetRow = currentRow.getPrevRow(); break;
+                    case 40: targetRow = currentRow.getNextRow(); break;
+                    case 27: window.table.deselectRow(); return;
+                }
+
+                if (targetRow) {
+                    window.table.deselectRow();
+                    targetRow.select();
+                    window.filterRowData(targetRow.getData());
+                }
+            }
+
+            window.sendMessageToParent = function(message) {
+                window.parent.postMessage(JSON.stringify(message), window.location.origin);
+            }
+
+            window.triggerIframeMethod = function(method, args = []) {
+                // If navigation is triggered manually in Studio, update the viewer
+                obsWss.publish('studio_to_currentSlide', 'navigate', { method, args });
+            }
+
+            window.updateSlideName = function() {
+                window.slideDeckId = document.getElementById("slideDeckId").value;
+            }
+
+            window.loadSavedTable = function() {
+                if (!window.slideDeckId) return;
+                let localSavedTable = localStorage.getItem(window.slideDeckId);
+                if (localSavedTable) {
+                    window.slidesArray = JSON.parse(localSavedTable);
+                    slidesLoaded = true;
+                    tableLoaded = true;
+                    loadTable(dropDownOptions);
+                }
+            }
+
+            window.filterRowData = function(rowData){
+                const row = Object.fromEntries(
+                    Object.entries(rowData).filter(([key, value]) => {
+                        if (key === 'cameraShape' && rowData.hasOwnProperty(key)) return true;
+                        return value != undefined && `${value}`.length > 0;
+                    })
+                );
+                
+                // Track state to prevent re-broadcast loops
+                if (row.slideState) {
+                    slideStateStr = row.slideState;
+                    const args = row.slideState.split(',').map(x => Number(x));
+                    window.triggerIframeMethod('slide', args);
+                }
+
+                // Broadcast to both viewer and broadcast overlays
+                window.broadcastSlidesCommand('slide-changed', row);
+            }
+
+            
+            // --- Event Listeners ---
+
+            window.addEventListener("DOMContentLoaded", (event) => {
+                document.getElementById("slideDeckId").addEventListener('change', window.updateSlideName);
+                document.getElementById("slideDeckIdLoadButton").addEventListener('click', window.loadSavedTable);
+
+                obsWss.connect().then(() => {
+                    fetchOBSMetadata();
+                }).catch(e => { });
+            });
+            
+            // Unified SocketCluster listener via obsWss
+            obsWss.on('keyboardPress', (eventData) => {
+                if (eventData.key) {
+                    window.handleKeyboardNavigation(eventData.keyCode || eventData.key);
+                }
+            });
+
+            // Sync OBS scene changes back to the table
+            obsWss.on('CurrentProgramSceneChanged', (data) => {
+                if (window.table) {
+                    const rows = window.table.searchRows("scene", "=", data.sceneName);
+                    if (rows.length > 0) {
+                        const targetRow = rows[0];
+                        const selectedRows = window.table.getSelectedRows();
+                        if (selectedRows.length === 0 || selectedRows[0].getIndex() !== targetRow.getIndex()) {
+                            window.table.deselectRow();
+                            targetRow.select();
+                            window.table.scrollToRow(targetRow, "center", false);
+                        }
+                    }
+                }
+            });
+
+            // Listen for global setup commands
+            obsWss.on('slidesCommands', async (data) => {
+                const eventName = data.eventName;
+                const payload = data.msgParam;
+
+                if (eventName === 'set-deck-id') {
+                    window.slideDeckId = payload.deckId;
+                    document.getElementById("slideDeckId").value = window.slideDeckId;
+                    
+                    if (localStorage.getItem(window.slideDeckId)) {
+                        window.loadSavedTable();
+                    } else if (!slidesLoaded) {
+                        window.slidesArray = [];
+                        window.triggerIframeMethod('slide', [0, 0]);
+                        window.triggerIframeMethod('getState');
+                    }
+                }
+
+                if (eventName === 'set-slides-studio-url') {
+                    // Relay the URL to the broadcast navigation channel so OBS views can load the deck
+                    window.broadcastSlidesCommand('set-slides-studio-url', { url: payload.url });
+                }
+
+                if (eventName === 'next-slide') {
+                    window.handleKeyboardNavigation(39); // Simulate right arrow
+                }
+
+                if (eventName === 'previous-slide') {
+                    window.handleKeyboardNavigation(37); // Simulate left arrow
+                }
+            });
+
+            // Listen specifically for viewer reporting its state
+            obsWss.on('currentSlide_to_studio', async (data) => {
+                try {
+                    const eventName = data.eventName;
+                    const payload = data.msgParam;
+
+                    if (eventName === 'reveal-event') {
+                        const revealData = payload;
+
+                        // Indexing Logic (Triggered if slidesLoaded is false)
+                        if (!slidesLoaded) {
+                            const isStartingEvent = revealData.eventName === 'ready' || 
+                                                   (revealData.eventName === 'slidechanged' && window.slidesArray.length === 0) ||
+                                                   (revealData.eventName === 'callback' && (revealData.method === 'slide' || revealData.method === 'getState') && window.slidesArray.length === 0);
+
+                            if (isStartingEvent) {
+                                window.slidesArray = [];
+                                revealData.state = revealData.state || revealData.result || { indexh: 0, indexv: 0 };
+                                addSlideToIndexedArray(revealData);
+                                return;
+                            }
+
+                            if (revealData.eventName === 'callback' && revealData.method === 'getSlideNotes') return;
+
+                            if (revealData.eventName === 'callback' && revealData.method === 'getProgress') {
+                                if (revealData.result === 1) {
+                                    slidesLoaded = true;
+                                    tableLoaded = true;
+                                    window.triggerIframeMethod('slide', [0, 0]);
+                                    loadTable(dropDownOptions);
+                                    // Notify other views
+                                    obsWss.publish('slides_navigation', 'indexing-complete', {});
+                                } else {
+                                    window.triggerIframeMethod('next');
+                                }
+                                return;
+                            }
+
+                            if ((revealData.eventName === 'slidechanged' || revealData.eventName === 'ready') && window.slidesArray.length > 0) {
+                                if (!revealData.state) return;
+                                const state = `${revealData.state.indexh},${revealData.state.indexv}`;
+                                if (!window.slidesArray.find(s => s.slideState === state)) {
+                                    addSlideToIndexedArray(revealData);
+                                } else {
+                                    window.triggerIframeMethod('getProgress');
+                                }
+                                return;
+                            }
+
+                            if (['fragmentshown', 'fragmenthidden'].includes(revealData.eventName)) {
+                                addFragmentToIndexedArray(revealData);
+                                return;
+                            }
+                        }
+
+                        // Navigation Sync (After indexing)
+                        if (revealData.state) {
+                            let stateString = `${revealData.state.indexh},${revealData.state.indexv}`;
+                            if (revealData.state.indexf !== undefined && revealData.state.indexf > -1) {
+                                stateString += `,${revealData.state.indexf}`;
+                            }
+
+                            if (stateString !== slideStateStr) {
+                                slideStateStr = stateString;
+                                
+                                if (window.table) {
+                                    let rows = window.table.searchRows("slideState", "=", stateString);
+                                    if (rows.length > 0) {
+                                        const targetRow = rows[0];
+                                        window.table.deselectRow();
+                                        targetRow.select();
+                                        selectedRowNumber = targetRow.getPosition();
+                                        window.table.scrollToRow(targetRow, "center", false);
+                                        
+                                        // Broadcast the master message only to broadcast navigation
+                                        window.broadcastSlidesCommand('slide-changed', targetRow.getData());
+                                    }
+                                }
+                            }
+                        }
+
+                        if (['overviewhidden', 'overviewshown'].includes(revealData.eventName)) {
+                            await processTags({ overview: revealData.state.overview });
+                        }
+                    }
+                } catch (err) {
+                    console.error("[Studio] Error processing viewer state message:", err);
+                }
+            });
+
+            window.addEventListener("message", async (event) => {
+                if (event.origin !== window.location.origin) return;
+                
+                let data;
+                try { data = JSON.parse(event.data); } catch (e) { return; }
+                
+                if (data.namespace === "speakerview" && data.message === "set-deck-id") {
+                    window.slideDeckId = data.deckId;
+                    document.getElementById("slideDeckId").value = window.slideDeckId;
+                    if (!slidesLoaded && localStorage.getItem(window.slideDeckId)) {
+                        window.loadSavedTable();
+                    }
+                }
+            });
+
+            function addSlideToIndexedArray(data) {
+                if (!data.state) return;
+                const attrs = data.attributes || {};
+                const state = `${data.state.indexh},${data.state.indexv}`;
+                
+                window.slidesArray.push({
+                    slideId: attrs.slideId,
+                    slideState: state,
+                    slideName: attrs.slideName,
+                    slidePosition: attrs.slidePosition,
+                    cameraPosition: attrs.cameraPosition,
+                    cameraShape: attrs.cameraShape,
+                    scene: attrs.scene
+                });
+                
+                window.triggerIframeMethod('getProgress');
+            }
+
+            function addFragmentToIndexedArray(data) {
+                if (!data.state) return;
+                const state = `${data.state.indexh},${data.state.indexv}`;
+                const foundSlide = window.slidesArray.find(s => s.slideState === state);
+                if (foundSlide) {
+                    if (!foundSlide._children) foundSlide._children = [];
+                    
+                    const attrs = data.attributes || {};
+                    const fragState = `${state},${data.state.indexf}`;
+                    
+                    if (!foundSlide._children.find(f => f.slideState === fragState)) {
+                        foundSlide._children.push({
+                            slideState: fragState,
+                            slideName: attrs.fragmentName || attrs.slideName,
+                            slidePosition: attrs.fragmentPosition || attrs.slidePosition,
+                            cameraPosition: attrs.fragmentCameraPosition || attrs.cameraPosition,
+                            cameraShape: attrs.fragmentCameraShape || attrs.cameraShape,
+                            scene: attrs.fragmentScene || attrs.scene
+                        });
+                    }
+                }
+                window.triggerIframeMethod('getProgress');
+            }
+        </script>
+</body>
+</html>

@@ -1,0 +1,723 @@
+import { Notice, Plugin, Platform, WorkspaceLeaf } from 'obsidian';
+import { slidesStudioSettingsTab } from 'src/settings';
+import { SLIDES_STUDIO_VIEW_TYPE, slidesStudioView } from 'src/ui/tagView';
+import { ServerManager } from 'src/utils/serverLogic';
+
+import { OscManager} from 'src/utils/oscLogic';
+import { MidiManager} from 'src/utils/midiLogic';
+import { AudioManager } from 'src/utils/audioLogic';
+import { MediaPipeManager } from 'src/utils/mediapipeLogic';
+
+// Re-export for Typedoc
+export { ServerManager, OscManager, MidiManager, AudioManager, MediaPipeManager };
+export * from './types';
+
+import { Message } from 'node-osc';
+import { OBSWebSocket } from 'obs-websocket-js';
+
+import { 
+    SlidesStudioPluginSettings, 
+    WssDetails, 
+    OBSSceneList, 
+    OBSSceneItemList, 
+    OBSCustomEvent,
+    OBSInputListResponse
+} from './types';
+
+import { ConnectObsCommand } from './commands/connectObs';
+import { OpenObsCommand } from './commands/openObs';
+import { GetObsTagsCommand } from './commands/getObsTags';
+import { OpenWebviewCommand } from './commands/webviewCommands';
+import { OpenAppsGalleryCommand } from './commands/ruleEngineCommands';
+import { SetObsReceiverCommand, UpdateBrowsersUrlCommand, RefreshObsBrowsersCommand } from './commands/obsBrowserCommands';
+import { ConnectOscCommand, ConnectMidiCommand, ConnectAudioCommand } from './commands/deviceCommands';
+
+const DEFAULT_SETTINGS: Partial<SlidesStudioPluginSettings> = {
+	websocketIP_Text: "127.0.0.1",
+	websocketPort_Text: "4455",
+	websocketPW_Text: "password",
+	slidesPort_Text: "5000",
+	slide_tags: [],
+	scene_tags: [],
+	camera_tags: [],
+	camera_shape_tags: [],
+	user_tags: [],
+	newTag: "",
+	obsAppName_Text: "OBS",
+	obsCollection_Text: "Untitled",
+	obsProfile_Text: "Untitled",
+	obsCollections_List: [],
+	obsProfiles_List: [],
+	obsDebugPort_Text: "9222",
+	obsAppPath_Text: "",
+    obsRequestLimit: 10,
+    serverPort: "57000",
+    serverEnabled: false,
+    pythonPath: "python3",
+    mouseMonitorEnabled: false,
+    mouseMonitorPosition: true,
+    mouseMonitorClicks: true,
+    mouseMonitorScroll: true,
+    keyboardMonitorEnabled: false,
+    keyboardMonitorShowCombinations: true,
+    uvcUtilEnabled: false,
+    uvcUtilLibPath: "pythonScripts/uvc-util/libuvcutil.dylib",
+    settingsFolder: "",
+    settingsFile: "slides-studio-settings.md",
+	oscDevices: [],
+	midiDevices: [],
+    audioDevices: [],
+    gamepadDevices: [],
+    mediapipeDevices: [],
+    uvcDevices: [],
+    all_sources: []
+};
+
+/**
+ * Main plugin class for Slides Studio.
+ * Handles lifecycle, settings, and core integrations with OBS, MIDI, and OSC.
+ */
+export default class slidesStudioPlugin extends Plugin {
+	settings: SlidesStudioPluginSettings;
+	public oscManager: OscManager;
+	public midiManager: MidiManager; 
+    public audioManager: AudioManager;
+    public mediapipeManager: MediaPipeManager;
+	public serverManager: ServerManager | null = null; 
+	public obs: OBSWebSocket;
+	public isObsConnected = false;
+
+    private gamepadLoopActive = false;
+    private previousGamepadState: string[] = [];
+
+	/**
+	 * Loads the plugin settings from the data store.
+	 * Merges with DEFAULT_SETTINGS to ensure all keys exist.
+	 */
+	async loadSettings(): Promise<void> {
+		// Use casting to avoid unsafe assignment from loadData()
+		const loadedData = await this.loadData() as SlidesStudioPluginSettings | null;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
+	}
+
+	/**
+	 * Saves the current settings to the data store.
+	 * Also persists WebSocket details to a separate file for external use.
+	 */
+	async saveSettings(): Promise<void> {
+		await this.saveData(this.settings);
+		await this.saveWebsocketDetailsToFile();
+	}
+
+	/**
+	 * Writes the configured OBS WebSocket details to a separate Javascript file.
+	 * This allows external scripts or webviews to access the connection details.
+	 */
+	async saveWebsocketDetailsToFile(): Promise<void> {
+		const pluginDir = this.manifest.dir;
+		const folderName = "obs_webSocket_details";
+		const fileName = "websocketDetails.js";
+
+		const targetFolder = `${pluginDir}/${folderName}`;
+		let filePath = `${targetFolder}/${fileName}`;
+		filePath = Platform.isWin ? filePath.replace(/\//g, '\\') : filePath;
+
+		try {
+			const adapter = this.app.vault.adapter;
+			if (!(await adapter.exists(targetFolder))) {
+				await this.app.vault.createFolder(targetFolder);
+			}
+
+			const port = parseInt(this.settings.websocketPort_Text) || 4455;
+			const content = `let websocketDetails = {"IP": "${this.settings.websocketIP_Text}", "PW": "${this.settings.websocketPW_Text}", "PORT": ${port}}`;
+
+			await adapter.write(filePath, content);
+		} catch (error) {
+			console.error("Error writing websocket details file:", error);
+		}
+	}
+
+	/**
+	 * Plugin initialization routine.
+	 * Sets up views, commands, server, and device managers.
+	 */
+	async onload(): Promise<void> {
+		await this.loadSettings();
+
+		this.obs = new OBSWebSocket();
+
+		this.registerView(
+    		SLIDES_STUDIO_VIEW_TYPE, 
+    		(leaf) => new slidesStudioView(leaf, this) // Pass 'this' (the plugin) as second argument
+		);
+		this.addRibbonIcon("aperture","Open slides studio view", () => {
+			void this.openView();
+		});
+
+		this.addSettingTab(new slidesStudioSettingsTab(this.app, this));
+
+		// Register External Commands
+		this.addCommand(ConnectObsCommand(this));
+		this.addCommand(OpenObsCommand(this));
+		this.addCommand(GetObsTagsCommand(this));
+		this.addCommand(OpenWebviewCommand(this));
+		this.addCommand(OpenAppsGalleryCommand(this));
+		this.addCommand(SetObsReceiverCommand(this));
+		this.addCommand(UpdateBrowsersUrlCommand(this));
+		this.addCommand(RefreshObsBrowsersCommand(this));
+		this.addCommand(ConnectOscCommand(this));
+		this.addCommand(ConnectMidiCommand(this));
+        this.addCommand(ConnectAudioCommand(this));
+
+		new Notice("Enabled slides studio plugin");
+
+		if (this.settings.serverEnabled) {
+			const port = parseInt(this.settings.serverPort) || 57000;
+			// Pass 'this' as the second argument
+			this.serverManager = new ServerManager(this.app, this, port); 
+			this.app.workspace.onLayoutReady(() => {
+				void this.serverManager?.start();
+			});
+		}
+
+		this.oscManager = new OscManager((name, msg: unknown[]) => {
+			this.serverManager?.broadcastOscMessage(name, msg);
+		});
+
+		this.midiManager = new MidiManager((name, msg) => {
+			this.serverManager?.broadcastMidiMessage(name, msg);
+		});
+		await this.midiManager.enable();
+
+        this.audioManager = new AudioManager((type, name, data) => {
+            if (type === 'fft') {
+                this.serverManager?.broadcastAudioMessage('audioFFT', name, data);
+            } else if (type === 'stt') {
+                this.serverManager?.broadcastAudioMessage('audioSTT', name, data);
+            }
+        });
+
+        this.mediapipeManager = new MediaPipeManager(this);
+
+		this.setupObsEventListeners();
+
+        // Auto-connect devices
+        this.app.workspace.onLayoutReady(async () => {
+            this.settings.oscDevices.forEach(device => {
+                if (device.autoStart) {
+                    console.warn(`[Plugin] Auto-connecting OSC device: ${device.name}`);
+                    this.oscManager.connectDevice(device);
+                }
+            });
+
+            this.settings.midiDevices.forEach(device => {
+                if (device.autoStart) {
+                    console.warn(`[Plugin] Auto-connecting MIDI device: ${device.name}`);
+                    this.midiManager.connectDevice(device);
+                }
+            });
+
+            this.settings.audioDevices.forEach(device => {
+                if (device.autoStart) {
+                    console.warn(`[Plugin] Auto-connecting Audio device: ${device.name}`);
+                    void this.audioManager.connectDevice(device);
+                }
+            });
+
+            // MediaPipe initialization
+            if (this.isObsConnected) {
+                const wssDetails = {
+                    IP: this.settings.websocketIP_Text,
+                    PORT: this.settings.websocketPort_Text,
+                    PW: this.settings.websocketPW_Text
+                };
+                await this.mediapipeManager.connect(wssDetails);
+                
+                this.settings.mediapipeDevices.forEach(device => {
+                    if (device.autoStart) {
+                        console.warn(`[Plugin] Auto-starting MediaPipe task: ${device.name}`);
+                        void this.mediapipeManager.startTask(device);
+                    }
+                });
+            }
+
+            this.startGamepadLoop();
+        });
+	}
+
+    private startGamepadLoop() {
+        if (this.gamepadLoopActive) return;
+        this.gamepadLoopActive = true;
+        
+        const poll = () => {
+            if (!this.gamepadLoopActive) return;
+            this.broadcastGamepadStatus();
+            requestAnimationFrame(poll);
+        };
+        poll();
+    }
+
+    private broadcastGamepadStatus() {
+        const gamepads = navigator.getGamepads();
+        for (let i = 0; i < gamepads.length; i++) {
+            const gp = gamepads[i];
+            if (!gp) continue;
+
+            const device = this.settings.gamepadDevices.find(d => d.index === gp.index);
+            if (!device || !device.enabled) continue;
+
+            const state = {
+                index: gp.index,
+                id: gp.id,
+                buttons: gp.buttons.map(b => ({ pressed: b.pressed, value: b.value })),
+                axes: gp.axes
+            };
+
+            const stateString = JSON.stringify(state);
+            if (this.previousGamepadState[gp.index] !== stateString) {
+                this.previousGamepadState[gp.index] = stateString;
+                this.serverManager?.broadcastGamepadMessage(device.name, state);
+            }
+        }
+    }
+
+    public handleUvcResponse(data: { action: string, data: unknown[] }) {
+        if (data.action === "list_devices") {
+            this.app.workspace.trigger("slides-studio:uvc-devices", data.data);
+        }
+    }
+
+	/**
+	 * Sets up listeners for OBS WebSocket events.
+	 * Handles connection status, initial data synchronization, and custom events.
+	 */
+	private setupObsEventListeners(): void {
+		this.obs.on('ConnectionOpened', () => {
+			console.warn('[Plugin] Connection to OBS WebSocket successfully opened');
+            this.serverManager?.broadcastObsEvent('ConnectionOpened', {});
+		});
+
+		this.obs.on('ConnectionClosed', () => {
+			console.warn('[Plugin] Connection to OBS WebSocket closed');
+			this.isObsConnected = false;
+            this.serverManager?.broadcastObsEvent('ConnectionClosed', {});
+		});
+
+		this.obs.on('ConnectionError', (err) => {
+			console.error('[Plugin] OBS WebSocket connection error:', err);
+		});
+
+		this.obs.on("Identified", () => {
+			console.warn('[Plugin] OBS WebSocket identified successfully');
+			this.isObsConnected = true;
+            this.serverManager?.broadcastObsEvent('Identified', {});
+
+			const wssDetails = {
+				IP: this.settings.websocketIP_Text,
+				PORT: this.settings.websocketPort_Text,
+				PW: this.settings.websocketPW_Text
+			};
+
+			void this.obs.call("CallVendorRequest", {
+				vendorName: "obs-browser",
+				requestType: "emit_event",
+				requestData: {
+					event_name: "ws-details",
+					event_data: { wssDetails },
+				},
+			});
+
+			// Use command IDs to trigger logic
+			const commands = [
+				'slides-studio:get-obs-scene-tags',
+				'slides-studio:update-browsers-url',
+				'slides-studio:set-slides-studio-obs-receiver'
+			];
+			commands.forEach(id => {
+				console.warn(`[Plugin] Executing automatic command: ${id}`);
+				this.app.commands.executeCommandById(id);
+			});
+
+			void (async () => {
+				await this.getObsCollectionsAndProfiles();
+				await this.ensureSlidesStudioCollection();
+			})();
+		});
+
+		// Forward common OBS events to SocketCluster
+		const commonEvents = [
+            // General Events
+            'ExitStarted', 'VendorEvent',
+            // Config Events
+            'CurrentSceneCollectionChanging', 'CurrentSceneCollectionChanged', 'SceneCollectionListChanged',
+            'CurrentProfileChanging', 'CurrentProfileChanged', 'ProfileListChanged',
+            // Canvases Events
+            'CanvasCreated', 'CanvasRemoved', 'CanvasNameChanged',
+            // Scenes Events
+            'SceneCreated', 'SceneRemoved', 'SceneNameChanged',
+            'CurrentProgramSceneChanged', 'CurrentPreviewSceneChanged', 'SceneListChanged',
+            // Inputs Events
+            'InputCreated', 'InputRemoved', 'InputNameChanged', 'InputSettingsChanged',
+            'InputActiveStateChanged', 'InputShowStateChanged', 'InputMuteStateChanged',
+            'InputVolumeChanged', 'InputAudioBalanceChanged', 'InputAudioSyncOffsetChanged',
+            'InputAudioTracksChanged', 'InputAudioMonitorTypeChanged', 'InputVolumeMeters',
+            // Transitions Events
+            'CurrentSceneTransitionChanged', 'CurrentSceneTransitionDurationChanged',
+            'SceneTransitionStarted', 'SceneTransitionEnded', 'SceneTransitionVideoEnded',
+            // Filters Events
+            'SourceFilterListReindexed', 'SourceFilterCreated', 'SourceFilterRemoved',
+            'SourceFilterNameChanged', 'SourceFilterSettingsChanged', 'SourceFilterEnableStateChanged',
+            // Scene Items Events
+            'SceneItemCreated', 'SceneItemRemoved', 'SceneItemListReindexed',
+            'SceneItemEnableStateChanged', 'SceneItemLockStateChanged', 'SceneItemSelected', 'SceneItemTransformChanged',
+            // Outputs Events
+            'StreamStateChanged', 'RecordStateChanged', 'RecordFileChanged',
+            'ReplayBufferStateChanged', 'VirtualcamStateChanged', 'ReplayBufferSaved',
+            // Media Inputs Events
+            'MediaInputPlaybackStarted', 'MediaInputPlaybackEnded', 'MediaInputActionTriggered',
+            // Ui Events
+            'StudioModeStateChanged', 'ScreenshotSaved'
+		];
+		commonEvents.forEach(eventName => {
+			this.obs.on(eventName as unknown, (data) => {
+				this.serverManager?.broadcastObsEvent(eventName, data);
+			});
+		});
+
+		this.obs.on("CustomEvent", (eventData) => {
+			const event = eventData as unknown as OBSCustomEvent;
+			
+			// Forward to SocketCluster
+			this.serverManager?.broadcastObsEvent('CustomEvent', eventData);
+
+			if (event.event_name === `OSC-out` && event.address && event.osc_name) {
+				const message = new Message(event.address);
+				[event.arg1, event.arg2, event.arg3, event.arg4, event.arg5, event.arg6, event.arg7].forEach(arg => {
+					if (arg !== undefined) message.append(arg);
+				});
+				this.oscManager.sendMessage(event.osc_name, message);
+			}
+
+			if (event.event_name === `MIDI-out` && event.midi_name) {
+				const midiData = {
+					type: event.arg1 as string, 
+					channel: event.arg2 as number,
+					note: event.arg3 as number,    
+					velocity: event.arg4 as number, 
+					value: event.arg4 as number,
+					controller: event.arg3 as number
+				};
+				this.midiManager.sendMidiMessage(event.midi_name, this.settings.midiDevices, midiData);
+			}
+		});
+	}
+
+	/**
+	 * Fetches scene collections and profiles from OBS to populate dropdown lists.
+	 */
+	async getObsCollectionsAndProfiles(): Promise<void> {
+		try {
+			const collectionList = await this.obs.call("GetSceneCollectionList") as unknown as { currentSceneCollectionName: string, sceneCollections: string[] };
+			this.settings.obsCollections_List = collectionList.sceneCollections.sort((a, b) => 
+                a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+            );
+			
+			const profileList = await this.obs.call("GetProfileList") as unknown as { currentProfileName: string, profiles: string[] };
+			this.settings.obsProfiles_List = profileList.profiles.sort((a, b) => 
+                a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+            );
+
+			await this.saveData(this.settings);
+		} catch (error) {
+			console.error("Error fetching OBS collections and profiles", error);
+		}
+	}
+
+	/**
+	 * Fetches scenes and scene items from OBS to populate tag lists.
+	 * Identifies scenes starting with "Scene" and specific items like "Camera Position".
+	 */
+	async getObsTags(): Promise<void> {
+		new Notice("Getting obs tags");
+
+		this.settings.scene_tags = [];
+		this.settings.camera_tags = [];
+		this.settings.camera_shape_tags = [];
+		this.settings.slide_tags = [];
+        this.settings.all_sources = [];
+
+		try {
+			const sceneList = await this.obs.call("GetSceneList") as unknown as OBSSceneList;
+			sceneList.scenes.forEach((scene) => {
+                if (!this.settings.all_sources.includes(scene.sceneName)) {
+                    this.settings.all_sources.push(scene.sceneName);
+                }
+				if(scene.sceneName.startsWith("Scene")){
+					if (!this.settings.scene_tags.includes(scene.sceneName)) {
+						this.settings.scene_tags.push(scene.sceneName);
+					}
+				}
+			});
+
+            const inputList = await this.obs.call("GetInputList") as unknown as OBSInputListResponse;
+            inputList.inputs.forEach((input) => {
+                if (!this.settings.all_sources.includes(input.inputName)) {
+                    this.settings.all_sources.push(input.inputName);
+                }
+            });
+
+			const tagMapping = [
+				{ scene: 'Camera Position', target: this.settings.camera_tags },
+				{ scene: 'Slide Position', target: this.settings.slide_tags },
+				{ scene: 'Camera Shape', target: this.settings.camera_shape_tags }
+			];
+
+			for (const map of tagMapping) {
+				if (sceneList.scenes.find(s => s.sceneName === map.scene)) {
+					const items = await this.obs.call("GetSceneItemList", { sceneName: map.scene }) as unknown as OBSSceneItemList;
+					items.sceneItems.forEach(item => {
+						if (!map.target.includes(item.sourceName)) {
+							map.target.push(item.sourceName);
+						}
+					});
+				}
+			}
+
+			// Sort all lists alphanumeric ascending for better UX
+			const sortFn = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+			this.settings.all_sources.sort(sortFn);
+			this.settings.scene_tags.sort(sortFn);
+			this.settings.camera_tags.sort(sortFn);
+			this.settings.camera_shape_tags.sort(sortFn);
+			this.settings.slide_tags.sort(sortFn);
+
+			await this.saveData(this.settings);
+		} catch (error) {
+			console.error("Error fetching OBS tags", error);
+			new Notice("Failed to fetch obs tags. Is obs connected?");
+		}
+	}
+
+	/**
+	 * Attempts to connect to the OBS WebSocket server.
+	 * @param wssDetails - The connection details (IP, Port, Password).
+	 */
+	async obsWSSconnect(wssDetails: WssDetails): Promise<void> {
+		try {
+			await this.disconnect();
+			await this.obs.connect(`ws://${wssDetails.IP}:${wssDetails.PORT}`, wssDetails.PW, { rpcVersion: 1 });
+			new Notice("Connected to obs websocket server");
+            
+            // Also connect MediaPipe
+            if (this.mediapipeManager) {
+                await this.mediapipeManager.connect(wssDetails);
+            }
+		} catch (error) {
+			new Notice("Failed to connect to obs websocket server");
+			console.error(error)
+		}
+	}
+
+	/**
+	 * Disconnects from the OBS WebSocket server if currently connected.
+	 */
+	async disconnect(): Promise<void> {
+		try {
+			if (this.isObsConnected) {
+				await this.obs.disconnect();
+				this.isObsConnected = false; 
+			}
+            if (this.mediapipeManager) {
+                await this.mediapipeManager.disconnect();
+            }
+		} catch(error) {
+			console.error("Disconnect error", error);
+		} 
+	}
+
+	/**
+	 * Opens the dedicated Slides Studio sidebar view.
+	 */
+	async openView(): Promise<void> {
+		const { workspace } = this.app;
+		let leaf: WorkspaceLeaf | null = null;
+		const leaves = workspace.getLeavesOfType(SLIDES_STUDIO_VIEW_TYPE);
+
+		if (leaves.length > 0) {
+			leaf = leaves[0];
+		} else {
+			leaf = workspace.getRightLeaf(false);
+			if (leaf) await leaf.setViewState({ type: SLIDES_STUDIO_VIEW_TYPE, active: true });
+		}
+		if (leaf) void workspace.revealLeaf(leaf);
+	}
+
+	/**
+	 * Opens a webview in a new tab pointing to the local server's slides studio page.
+	 */
+	async openWebView(): Promise<void> {
+		const { workspace } = this.app;
+
+		const leaf = workspace.getLeaf('tab');
+		const port = this.settings.serverPort;
+		const url = `http://127.0.0.1:${port}/${this.manifest.dir}/slide-studio-app/`;
+		await leaf.setViewState({
+			type: 'webviewer',
+			state: { url, navigate: true },
+			active: true,
+		});
+		void workspace.revealLeaf(leaf);
+
+	}
+
+	/**
+	 * Opens a webview in a new tab pointing to the apps gallery page.
+	 */
+	async openAppsGallery(): Promise<void> {
+		const { workspace } = this.app;
+
+		const leaf = workspace.getLeaf('tab');
+		const port = this.settings.serverPort;
+		const url = `http://127.0.0.1:${port}/${this.manifest.dir}/apps/index.html`;
+		await leaf.setViewState({
+			type: 'webviewer',
+			state: { url, navigate: true },
+			active: true,
+		});
+		void workspace.revealLeaf(leaf);
+	}
+
+	/**
+	 * Ensures the "slides-studio" scene collection exists in OBS.
+	 * If not, creates it and populates it from the template JSON.
+	 */
+	async ensureSlidesStudioCollection(): Promise<void> {
+		if (!this.isObsConnected) return;
+
+		try {
+			if (this.settings.obsCollections_List.includes("slides-studio")) {
+				console.warn("[Plugin] Collection 'slides-studio' already exists.");
+				return;
+			}
+
+			new Notice("Creating 'slides-studio' OBS collection...");
+
+			// Reference the JSON location in the plugin directory using Obsidian API
+			const jsonPath = `${this.manifest.dir}/slide-studio-app/slidesstudio_obs_collection.json`;
+			const adapter = this.app.vault.adapter;
+			
+			if (!(await adapter.exists(jsonPath))) {
+				console.error(`[Plugin] Collection template not found at ${jsonPath}`);
+				return;
+			}
+
+			const jsonStr = await adapter.read(jsonPath);
+			const collectionData = JSON.parse(jsonStr);
+
+			// 1. Create the collection
+			await this.obs.call("CreateSceneCollection", { sceneCollectionName: "slides-studio" });
+			
+			// Wait for switch
+			await new Promise(resolve => setTimeout(resolve, 2000));
+
+			// 2. Recreate the collection using WebSocket commands
+			await this.recreateCollectionFromData(collectionData);
+			
+			// Refresh lists and tags
+			await this.getObsCollectionsAndProfiles();
+			await this.getObsTags();
+
+			new Notice("Finished creating 'slides-studio' collection");
+		} catch (error) {
+			console.error("Error ensuring slides-studio collection:", error);
+		}
+	}
+
+	/**
+	 * Converts collection JSON data to OBS WebSocket commands.
+	 */
+	private async recreateCollectionFromData(data: any): Promise<void> {
+		const sources = data.sources || [];
+		const sceneOrder = [...(data.scene_order || [])].reverse(); // Reverse to ensure first item ends up at top
+		
+		// 1. Create all scenes in reverse order specified in scene_order
+		// OBS often inserts new scenes at the top, so creating in reverse preserves top-to-bottom order.
+		for (const sceneItem of sceneOrder) {
+			const sceneName = sceneItem.name;
+			const sceneDef = sources.find((s: any) => s.name === sceneName && s.id === 'scene');
+			if (sceneDef) {
+				try {
+					await this.obs.call("CreateScene", { sceneName: sceneName });
+				} catch (e) {
+					// Scene might already exist
+				}
+			}
+		}
+
+		// Fallback: Create any scenes defined in sources but missing from scene_order (also reversed)
+		const otherScenes = sources.filter((s: any) => s.id === 'scene' && !sceneOrder.find(so => so.name === s.name)).reverse();
+		for (const scene of otherScenes) {
+			try {
+				await this.obs.call("CreateScene", { sceneName: scene.name });
+			} catch (e) {}
+		}
+
+		// 2. Create inputs and add items to scenes
+		// We use the original sources list here as the scenes now exist in the correct order
+		const scenesToPopulate = sources.filter((s: any) => s.id === 'scene');
+		for (const sceneDef of scenesToPopulate) {
+			const items = sceneDef.settings?.items || [];
+			for (const item of items) {
+				// Find the source definition for this item
+				const sourceDef = sources.find((s: any) => s.uuid === item.source_uuid || s.name === item.name);
+				if (!sourceDef) continue;
+
+				if (sourceDef.id === 'scene') {
+					// It's a sub-scene item
+					try {
+						await this.obs.call("CreateSceneItem", {
+							sceneName: sceneDef.name,
+							sourceName: sourceDef.name,
+							sceneItemEnabled: item.visible
+						});
+					} catch (e) {}
+				} else {
+					// It's an input
+					try {
+						await this.obs.call("CreateInput", {
+							sceneName: sceneDef.name,
+							inputName: sourceDef.name,
+							inputKind: sourceDef.id,
+							inputSettings: sourceDef.settings,
+							sceneItemEnabled: item.visible
+						});
+					} catch (e) {
+						// Input might already exist, just add it to this scene
+						try {
+							await this.obs.call("CreateSceneItem", {
+								sceneName: sceneDef.name,
+								sourceName: sourceDef.name,
+								sceneItemEnabled: item.visible
+							});
+						} catch (innerE) {}
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Plugin cleanup routine.
+	 * Stops servers and disconnects devices.
+	 */
+	onunload(): void {
+		new Notice("Disabled slides studio plugin");
+        this.gamepadLoopActive = false;
+		if (this.serverManager) void this.serverManager.stop();
+		if (this.oscManager) this.oscManager.disconnectAll();
+		if (this.midiManager) this.midiManager.disconnectAll(this.settings.midiDevices);
+        if (this.audioManager) this.audioManager.disconnectAll(this.settings.audioDevices);
+        if (this.mediapipeManager) void this.mediapipeManager.disconnect();
+		if (this.obs) void this.obs.disconnect();
+	}
+}

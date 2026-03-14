@@ -1,0 +1,111 @@
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>STG _v.Boost - Display</title>
+  <script src="./js/p5.min.1.11.9.js"></script>
+  <script src="./js/opentype.min.1.3.4.js"></script>  
+  <link rel="stylesheet" href="./css/stgBoostStyle.css">
+  <script src="./js/sketch_boost.js" type="text/javascript" data-obsidian="true"></script> 
+  <script src="./js/sketch_boost_update.js" type="text/javascript"></script>
+  <script src="./js/animators.js" type="text/javascript"></script>
+  <script src="./js/tumble_class_base.js" type="text/javascript"></script>
+  <script src="./js/tumble_class_let.js" type="text/javascript"></script>
+  <script src="./js/tumble_class_letArabic.js" type="text/javascript"></script>
+  <style> 
+    body { padding: 0; margin: 0; background: transparent !important; overflow: hidden; } 
+    canvas { vertical-align: top; }
+    #widget, #generatorInput, .collapsible, .content, .titleh2, .popup { display: none !important; }
+  </style>
+</head>
+<body>
+  <div id="widget" style="display:none !important;">
+    <div id="generatorInput">
+      <textarea id="textArea" style="display:none !important;"></textarea>
+      <select id="fontChange" style="display:none !important;"></select>
+      <select id="alignMode" style="display:none !important;"></select>
+      <input id="scaler" type="range" style="display:none !important;">
+      <input id="bkgdColor" type="color" style="display:none !important;">
+      <input id="capsOn" type="checkbox" style="display:none !important;">
+      <input id="textColor" type="color" style="display:none !important;">
+      <input id="strokeOn" type="checkbox" style="display:none !important;">
+      <input id="strokeWeight" type="range" style="display:none !important;">
+      <input id="strokeColor" type="color" style="display:none !important;">
+      <select id="sidesType" style="display:none !important;"></select>
+      <input id="sideSolidColor" type="color" style="display:none !important;">
+      <input id="quint0color" type="color" style="display:none !important;">
+      <input id="quint1color" type="color" style="display:none !important;">
+      <input id="quint2color" type="color" style="display:none !important;">
+      <input id="quint3color" type="color" style="display:none !important;">
+      <input id="quint4color" type="color" style="display:none !important;">
+      <input id="orbitOn" type="checkbox" style="display:none !important;">
+      <input id="mouseCenter" type="checkbox" style="display:none !important;">
+      <select id="extrudeType" style="display:none !important;"></select>
+      <input id="tumbleDepthLength" type="range" style="display:none !important;">
+      <input id="tumbleAmount" type="range" style="display:none !important;">
+      <input id="zoomDepthLength" type="range" style="display:none !important;">
+      <input id="punchDepthLength" type="range" style="display:none !important;">
+      <input id="punchDistance" type="range" style="display:none !important;">
+      <input id="maxDelay" type="range" style="display:none !important;">
+      <select id="stageAstrength" style="display:none !important;"></select>
+      <select id="stageAdirect" style="display:none !important;"></select>
+      <input id="pauseLength" type="range" style="display:none !important;">
+      <select id="stageBstrength" style="display:none !important;"></select>
+      <select id="stageBdirect" style="display:none !important;"></select>
+      <input id="stageBlength" type="range" style="display:none !important;">
+    </div>
+  </div>
+
+  <script src="./js/manage_view.js"></script>
+  <script src="./js/keyboard_input.js"></script>
+  <script id="sketchSettings">
+    let hideCanvasUI = true;
+    function setSketchSettings(json){
+      if (!json) return;
+      const el = (id) => document.getElementById(id);
+      
+      if (json.text !== undefined) { el("textArea").value = json.text; }
+      if (json.setFont !== undefined) { el("fontChange").value = json.setFont; if(typeof setFont === 'function') setFont(json.setFont); }
+      if (json.setAlignMode !== undefined) { el("alignMode").value = json.setAlignMode; if(typeof setAlignMode === 'function') setAlignMode(json.setAlignMode); }
+      if (json.setScaler !== undefined) { el("scaler").value = json.setScaler; if(typeof setScaler === 'function') setScaler(json.setScaler); }
+      if (json.setBkgdColor !== undefined) { el("bkgdColor").value = json.setBkgdColor; if(typeof setBkgdColor === 'function') setBkgdColor(json.setBkgdColor); }
+      if (json.setCapsOn !== undefined) { el("capsOn").checked = json.setCapsOn === "on"; if(typeof setCapsOn === 'function') setCapsOn(); }
+      if (json.setTextColor !== undefined) { el("textColor").value = json.setTextColor; if(typeof setTextColor === 'function') setTextColor(json.setTextColor); }
+      if (json.setStrokeOn !== undefined) { el("strokeOn").checked = json.setStrokeOn === "on"; if(typeof setStrokeOn === 'function') setStrokeOn(); }
+      if (json.setStrokeWeight !== undefined) { el("strokeWeight").value = json.setStrokeWeight; if(typeof setStrokeWeight === 'function') setStrokeWeight(json.setStrokeWeight); }
+      if (json.setStrokeColor !== undefined) { el("strokeColor").value = json.setStrokeColor; if(typeof setStrokeColor === 'function') setStrokeColor(json.setStrokeColor); }
+      if (json.setSidesType !== undefined) { el("sidesType").value = json.setSidesType; if(typeof setSidesType === 'function') setSidesType(json.setSidesType); }
+      if (json.setSideSolidColor !== undefined) { el("sideSolidColor").value = json.setSideSolidColor; if(typeof setSideSolidColor === 'function') setSideSolidColor(json.setSideSolidColor); }
+      
+      if (json.quint0color !== undefined) { el("quint0color").value = json.quint0color; if(typeof setColorSet === 'function') setColorSet("0", json.quint0color); }
+      if (json.quint1color !== undefined) { el("quint1color").value = json.quint1color; if(typeof setColorSet === 'function') setColorSet("1", json.quint1color); }
+      if (json.quint2color !== undefined) { el("quint2color").value = json.quint2color; if(typeof setColorSet === 'function') setColorSet("2", json.quint2color); }
+      if (json.quint3color !== undefined) { el("quint3color").value = json.quint3color; if(typeof setColorSet === 'function') setColorSet("3", json.quint3color); }
+      if (json.quint4color !== undefined) { el("quint4color").value = json.quint4color; if(typeof setColorSet === 'function') setColorSet("4", json.quint4color); }
+      
+      if (json.setOrbitOn !== undefined) { el("orbitOn").checked = json.setOrbitOn === "on"; if(typeof setOrbitOn === 'function') setOrbitOn(); }
+      if (json.setMouseCenterOn !== undefined) { el("mouseCenter").checked = json.setMouseCenterOn === "on"; if(typeof setMouseCenterOn === 'function') setMouseCenterOn(); }
+      if (json.setExtrudeType !== undefined) { el("extrudeType").value = json.setExtrudeType; if(typeof setExtrudeType === 'function') setExtrudeType(json.setExtrudeType); }
+      if (json.setTumbleDepthLength !== undefined) { el("tumbleDepthLength").value = json.setTumbleDepthLength; if(typeof setTumbleDepthLength === 'function') setTumbleDepthLength(json.setTumbleDepthLength); }
+      if (json.setTumbleAmount !== undefined) { el("tumbleAmount").value = json.setTumbleAmount; if(typeof setTumbleAmount === 'function') setTumbleAmount(json.setTumbleAmount); }
+      if (json.setZoomDepthLength !== undefined) { el("zoomDepthLength").value = json.setZoomDepthLength; if(typeof setZoomDepthLength === 'function') setZoomDepthLength(json.setZoomDepthLength); }
+      if (json.setPunchDepthLength !== undefined) { el("punchDepthLength").value = json.setPunchDepthLength; if(typeof setPunchDepthLength === 'function') setPunchDepthLength(json.setPunchDepthLength); }
+      if (json.setPunchDistance !== undefined) { el("punchDistance").value = json.setPunchDistance; if(typeof setPunchDistance === 'function') setPunchDistance(json.setPunchDistance); }
+      
+      if (json.setMaxDelay !== undefined) { el("maxDelay").value = json.setMaxDelay; if(typeof setMaxDelay === 'function') setMaxDelay(json.setMaxDelay); }
+      if (json.setStageAstrength !== undefined) { el("stageAstrength").value = json.setStageAstrength; if(typeof setStageAstrength === 'function') setStageAstrength(json.setStageAstrength); }
+      if (json.setStageAdirect !== undefined) { el("stageAdirect").value = json.setStageAdirect; if(typeof setStageAdirect === 'function') setStageAdirect(json.setStageAdirect); }
+      if (json.setPauseLength !== undefined) { el("pauseLength").value = json.setPauseLength; if(typeof setPauseLength === 'function') setPauseLength(json.setPauseLength); }
+      if (json.setStageBstrength !== undefined) { el("stageBstrength").value = json.setStageBstrength; if(typeof setStageBstrength === 'function') setStageBstrength(json.setStageBstrength); }
+      if (json.setStageBdirect !== undefined) { el("stageBdirect").value = json.setStageBdirect; if(typeof setStageBdirect === 'function') setStageBdirect(json.setStageBdirect); }
+      if (json.setStageBlength !== undefined) { el("stageBlength").value = json.setStageBlength; if(typeof setStageBlength === 'function') setStageBlength(json.setStageBlength); }
+      
+      if(typeof p5Camera !== 'undefined' && json.p5CameraX !== undefined) {
+        p5Camera.camera(json.p5CameraX, json.p5CameraY, json.p5CameraZ);
+      }
+      PRESET_SETTINGS = json;
+    }
+  </script>
+  <script src="./js/stg_sc_sync.js" type="module"></script>
+</body>
+</html>

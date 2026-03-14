@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS Screenshot Broadcaster</title>
+    <style>
+        :root {
+            font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+            line-height: 1.5;
+            font-weight: 400;
+            color-scheme: light dark;
+            color: rgba(255, 255, 255, 0.87);
+            background-color: #242424;
+            font-synthesis: none;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            margin: 0;
+            display: block;
+            min-width: 320px;
+            min-height: 100vh;
+        }
+
+        main {
+            text-align: left;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        h1 { text-align: center; }
+
+        .error {
+            color: #ff6b6b;
+            background: #330000;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 2px solid #ff4444;
+        }
+
+        .loading { text-align: center; padding: 2rem; color: #646cff; font-weight: bold; }
+
+        .control-panel {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background-color: #2a2a2a;
+        }
+
+        h2 { margin-top: 0; }
+
+        .controls {
+            display: flex;
+            gap: 1.5rem;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+
+        select, input {
+            padding: 0.5rem;
+            border-radius: 4px;
+            border: 1px solid #555;
+            background-color: #333;
+            color: white;
+        }
+
+        select { min-width: 200px; }
+        input[type="number"] { width: 80px; }
+        input[type="text"] { width: 200px; }
+
+        .create-btn {
+            padding: 0.6rem 1.2rem;
+            background-color: #646cff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .create-btn:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        .sessions-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        /* Session Card Styles */
+        .card {
+            border: 1px solid #555;
+            padding: 1rem;
+            margin: 0.5rem;
+            border-radius: 8px;
+            width: 320px;
+            background-color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .card h3 { margin: 0; font-size: 1.1rem; }
+        .card .subtext { font-size: 0.8rem; color: #aaa; word-break: break-all; margin-bottom: 1rem; }
+        
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1.2fr 0.6fr;
+            gap: 0.5rem;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        .control-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .control-item label { font-size: 0.7rem; color: #ccc; margin-bottom: 2px; }
+        .control-item input, .control-item select { width: 100%; padding: 0.2rem; font-size: 0.9rem; box-sizing: border-box; }
+
+        .preview-container {
+            margin-bottom: 1rem;
+            height: 152px;
+            width: 270px;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid #444;
+        }
+
+        .preview-container img { width: 100%; height: 100%; object-fit: contain; }
+        .preview-container .waiting { color: #fff; font-size: 0.8rem; }
+        
+        .preview-container .overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.6);
+            color: #0f0;
+            font-size: 0.8rem;
+            padding: 4px;
+            text-align: center;
+        }
+
+        .remove-btn {
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        /* Debug Console Styles */
+        #debug-console {
+            margin-top: 2rem;
+            background: #111;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.7rem;
+            color: #0f0;
+            display: none;
+        }
+        .debug-entry { margin-bottom: 4px; border-bottom: 1px solid #222; padding-bottom: 2px; }
+        .debug-error { color: #ff6b6b; }
+        .debug-warn { color: #ffcc00; }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>OBS Screenshot Broadcaster <span style="font-size: 0.8rem; color: #666;">(v1.7)</span></h1>
+        
+        <div id="status-area">
+            <div class="loading">Bootstrapping v1.7...</div>
+        </div>
+
+        <div id="main-content" style="display: none;">
+            <div class="control-panel">
+                <h2>Create New Capture Instance</h2>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="instance-name">Instance Name</label>
+                        <input id="instance-name" type="text" placeholder="my-channel">
+                    </div>
+
+                    <div class="control-group">
+                        <label for="source-select">Source</label>
+                        <select id="source-select"></select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="fps-input">B-FPS</label>
+                        <input id="fps-input" type="number" value="1" min="0.1" step="0.1" title="Broadcast FPS">
+                    </div>
+
+                    <div class="control-group">
+                        <label for="mode-select">Initial Mode</label>
+                        <select id="mode-select">
+                            <option value="image">Image Only</option>
+                            <option value="pose">Pose</option>
+                            <option value="face">Face</option>
+                            <option value="hands">Hands</option>
+                        </select>
+                    </div>
+                    <button id="create-btn" class="create-btn" disabled>Create Instance</button>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h2>Configuration Management</h2>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="config-name">Active Config Name</label>
+                        <input id="config-name" type="text" value="sessions.json" placeholder="sessions.json">
+                    </div>
+                    <button id="save-config-btn" class="create-btn" style="background-color: #28a745;">Save Config</button>
+
+                    <div id="saved-configs-area" class="control-group" style="display: none;">
+                        <label for="config-select">Saved Configs</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <select id="config-select" style="min-width: 150px;"></select>
+                            <button id="load-config-btn" class="create-btn">Load</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sessions-grid" class="sessions-grid"></div>
+        </div>
+
+        <div id="debug-console"></div>
+        <div style="text-align: center; margin-top: 10px;">
+            <button onclick="document.getElementById('debug-console').style.display='block'; this.style.display='none';" style="font-size: 0.7rem; background: none; border: 1px solid #444; color: #888; cursor: pointer; padding: 2px 10px; border-radius: 4px;">Show Debug Console</button>
+        </div>
+    </main>
+
+    <!-- Essential setup and error trapping -->
+    <script>
+        (function() {
+            var consoleLog = console.log;
+            var consoleError = console.error;
+            var consoleWarn = console.warn;
+            var debugConsole = null;
+
+            function logToUI(msg, type) {
+                if (!debugConsole) debugConsole = document.getElementById('debug-console');
+                if (debugConsole) {
+                    var entry = document.createElement('div');
+                    entry.className = 'debug-entry' + (type ? ' debug-' + type : '');
+                    entry.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+                    debugConsole.appendChild(entry);
+                    debugConsole.scrollTop = debugConsole.scrollHeight;
+                }
+            }
+
+            console.log = function() {
+                logToUI(Array.from(arguments).join(' '));
+                consoleLog.apply(console, arguments);
+            };
+            console.error = function() {
+                logToUI(Array.from(arguments).join(' '), 'error');
+                consoleError.apply(console, arguments);
+            };
+            console.warn = function() {
+                logToUI(Array.from(arguments).join(' '), 'warn');
+                consoleWarn.apply(console, arguments);
+            };
+        })();
+
+        console.log("Source Capture App v1.7 - Bootstrapping");
+        
+        window.updateStatus = function(msg, isError) {
+            console.log(isError ? "Error: " + msg : "Status: " + msg);
+            var area = document.getElementById('status-area');
+            if (area) {
+                if (isError) {
+                    area.innerHTML = '<div class="error">' +
+                        '<h3>Critical Error (v1.7)</h3>' +
+                        '<p><b>' + msg + '</b></p>' +
+                        '<p style="font-size:0.7rem; color:#aaa; margin-top:10px;">User Agent: ' + navigator.userAgent + '</p>' +
+                        '<button onclick="window.location.reload()" style="margin-top: 15px; padding: 8px 20px;">Reload Page</button>' +
+                    '</div>';
+                } else {
+                    area.innerHTML = '<div class="loading">' + msg + '</div>';
+                }
+            }
+        };
+
+        window.getUUID = function() {
+            if (typeof self.crypto !== 'undefined' && self.crypto.randomUUID) {
+                return self.crypto.randomUUID();
+            }
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        };
+
+        window.addEventListener('error', function(event) {
+            console.error("Global Script Error: " + event.message + " at " + event.filename + ":" + event.lineno);
+            window.updateStatus("Script Error: " + event.message, true);
+        });
+
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error("Global Promise Rejection: " + (event.reason ? (event.reason.message || event.reason) : "Unknown"));
+            window.updateStatus("Async Error: " + (event.reason ? (event.reason.message || event.reason) : "Unhandled rejection"), true);
+        });
+    </script>
+
+    <script src="lib/obs-websocket.js"></script>
+    <script type="module">
+        console.log("v1.7 Logic: Module Script Starting");
+        
+        let FilesetResolver, PoseLandmarker, FaceLandmarker, HandLandmarker;
+        
+        async function loadModules() {
+            try {
+                window.updateStatus("Loading MediaPipe bundle...");
+                const mp = await import('./lib/vision_bundle.mjs');
+                FilesetResolver = mp.FilesetResolver;
+                PoseLandmarker = mp.PoseLandmarker;
+                FaceLandmarker = mp.FaceLandmarker;
+                HandLandmarker = mp.HandLandmarker;
+                console.log("MediaPipe bundle loaded.");
+            } catch (e) {
+                console.error("Failed to import MediaPipe bundle:", e);
+                throw new Error("Module Load Failed: vision_bundle.mjs could not be loaded. Please ensure the file exists in lib/. Error: " + e.message);
+            }
+        }
+
+        const OBSWebSocket = window.OBSWebSocket;
+
+        // --- ModelManager Class ---
+        class ModelManager {
+            constructor() {
+                this.vision = null;
+                this.poseLandmarker = null;
+                this.faceLandmarker = null;
+                this.handLandmarker = null;
+            }
+
+            async ensureVision() {
+                if (!this.vision) {
+                    console.log("Initializing MediaPipe Vision WASM...");
+                    this.vision = await FilesetResolver.forVisionTasks("/mediapipe_models/wasm");
+                }
+            }
+
+            async getPoseLandmarker() {
+                if (this.poseLandmarker) return this.poseLandmarker;
+                await this.ensureVision();
+                this.poseLandmarker = await PoseLandmarker.createFromOptions(this.vision, {
+                    baseOptions: { modelAssetPath: `/mediapipe_models/pose_landmarker_lite.task`, delegate: "GPU" },
+                    runningMode: "IMAGE",
+                    numPoses: 1
+                });
+                return this.poseLandmarker;
+            }
+
+            async getFaceLandmarker() {
+                if (this.faceLandmarker) return this.faceLandmarker;
+                await this.ensureVision();
+                this.faceLandmarker = await FaceLandmarker.createFromOptions(this.vision, {
+                    baseOptions: { modelAssetPath: `/mediapipe_models/face_landmarker.task`, delegate: "GPU" },
+                    outputFaceBlendshapes: true,
+                    runningMode: "IMAGE",
+                    numFaces: 1
+                });
+                return this.faceLandmarker;
+            }
+
+            async getHandLandmarker() {
+                if (this.handLandmarker) return this.handLandmarker;
+                await this.ensureVision();
+                this.handLandmarker = await HandLandmarker.createFromOptions(this.vision, {
+                    baseOptions: { modelAssetPath: `/mediapipe_models/hand_landmarker.task`, delegate: "GPU" },
+                    runningMode: "IMAGE",
+                    numHands: 2
+                });
+                return this.handLandmarker;
+            }
+        }
+
+        const modelManager = new ModelManager();
+
+        // --- CaptureSession Class ---
+        class CaptureSession {
+            constructor(obs, config) {
+                this.id = config.id || window.getUUID();
+                this.obs = obs;
+                this.instanceName = config.instanceName;
+                this.sourceName = config.sourceName;
+                this.broadcastFps = config.broadcastFps;
+                this.previewFps = config.previewFps || 1;
+                this.processingMode = config.processingMode;
+                this.showPreview = config.showPreview !== undefined ? config.showPreview : true;
+                this.broadcastChannel = new BroadcastChannel(this.instanceName);
+                this.intervalId = null;
+                this.isRunning = false;
+                this.onFrameCallback = null;
+            }
+
+            setOnFrame(callback) { this.onFrameCallback = callback; }
+
+            start() {
+                if (this.isRunning) return;
+                this.isRunning = true;
+                this.loop();
+            }
+
+            async loop() {
+                if (!this.isRunning) return;
+                const start = Date.now();
+                try {
+                    const response = await this.obs.call('GetSourceScreenshot', {
+                        sourceName: this.sourceName,
+                        imageFormat: 'png',
+                        imageWidth: 200
+                    });
+
+                    if (this.isRunning && response && response.imageData) {
+                        await this.processAndBroadcast(response.imageData);
+                    }
+                } catch (error) {
+                    console.error(`Screenshot failed for ${this.sourceName}:`, error);
+                }
+
+                if (!this.isRunning) return;
+                const elapsed = Date.now() - start;
+                const targetInterval = 1000 / this.broadcastFps;
+                const delay = Math.max(0, targetInterval - elapsed);
+                this.intervalId = window.setTimeout(() => this.loop(), delay);
+            }
+
+            async processAndBroadcast(base64Data) {
+                const timestamp = Date.now();
+                const fullDataUrl = base64Data.startsWith('data:') ? base64Data : `data:image/png;base64,${base64Data}`;
+
+                if (this.processingMode === 'image') {
+                    if (this.onFrameCallback) this.onFrameCallback({ type: 'image', payload: fullDataUrl, image: fullDataUrl, timestamp });
+                    this.broadcastChannel.postMessage({ type: 'image', payload: fullDataUrl, timestamp });
+                    return;
+                }
+
+                const img = new Image();
+                const loadPromise = new Promise((resolve, reject) => {
+                    img.onload = () => resolve(img);
+                    img.onerror = () => reject(new Error("Image decoding failed"));
+                    setTimeout(() => reject(new Error("Image decoding timed out")), 5000);
+                });
+                img.src = fullDataUrl;
+
+                try {
+                    await loadPromise;
+                    let result;
+                    let hasDetection = false;
+                    switch (this.processingMode) {
+                        case 'pose':
+                            const poseModel = await modelManager.getPoseLandmarker();
+                            result = poseModel.detect(img);
+                            hasDetection = result.landmarks && result.landmarks.length > 0;
+                            break;
+                        case 'face':
+                            const faceModel = await modelManager.getFaceLandmarker();
+                            result = faceModel.detect(img);
+                            hasDetection = result.faceLandmarks && result.faceLandmarks.length > 0;
+                            break;
+                        case 'hands':
+                            const handModel = await modelManager.getHandLandmarker();
+                            result = handModel.detect(img);
+                            hasDetection = result.landmarks && result.landmarks.length > 0;
+                            break;
+                    }
+
+                    if (hasDetection) {
+                        this.broadcastChannel.postMessage({ type: this.processingMode, payload: result, timestamp });
+                    }
+                    if (this.onFrameCallback) {
+                        this.onFrameCallback({ type: this.processingMode, payload: result, image: fullDataUrl, timestamp });
+                    }
+                } catch (e) {
+                    console.error(`MediaPipe task failed:`, e);
+                }
+            }
+
+            stop() {
+                this.isRunning = false;
+                if (this.intervalId !== null) { clearTimeout(this.intervalId); this.intervalId = null; }
+            }
+            updateBroadcastFps(newFps) { this.broadcastFps = newFps; if (this.isRunning) { this.stop(); this.start(); } }
+            updateMode(newMode) { this.processingMode = newMode; }
+            updatePreviewFps(newFps) { this.previewFps = newFps; }
+            updateShowPreview(show) { this.showPreview = show; }
+            serialize() {
+                return {
+                    id: this.id, instanceName: this.instanceName, sourceName: this.sourceName,
+                    broadcastFps: this.broadcastFps, previewFps: this.previewFps,
+                    processingMode: this.processingMode, showPreview: this.showPreview
+                };
+            }
+            destroy() { this.stop(); this.broadcastChannel.close(); }
+        }
+
+        // --- App Initialization ---
+        let obs = null;
+        let sources = [];
+        let sessions = [];
+        const statusArea = document.getElementById('status-area');
+        const mainContent = document.getElementById('main-content');
+        const sourceSelect = document.getElementById('source-select');
+        const instanceNameInput = document.getElementById('instance-name');
+        const fpsInput = document.getElementById('fps-input');
+        const modeSelect = document.getElementById('mode-select');
+        const createBtn = document.getElementById('create-btn');
+        const sessionsGrid = document.getElementById('sessions-grid');
+        const configNameInput = document.getElementById('config-name');
+        const configSelect = document.getElementById('config-select');
+        const savedConfigsArea = document.getElementById('saved-configs-area');
+
+        const urlPath = window.location.pathname.replace("/index.html", "");
+        const VAULT_FOLDER = `${urlPath}/saved`.replace(/\/+/g, "/").replace(/^\//, "");
+
+        async function init() {
+            try {
+                // 1. Module Load
+                await loadModules();
+
+                // 2. Protocol Check
+                if (window.location.protocol === 'file:') {
+                    throw new Error("Local File Mode detected. Please use the URL provided by the plugin (e.g. http://127.0.0.1:57001/...) instead of checking 'Local file' in OBS properties.");
+                }
+
+                // 3. Plugin Settings Fetch
+                window.updateStatus("Syncing OBS settings from plugin...");
+                const response = await fetch('/api/obswss');
+                if (!response.ok) throw new Error("Plugin settings API unavailable (Status " + response.status + ")");
+                const config = await response.json();
+                
+                // 4. OBS Connection
+                let ip = config.IP;
+                if (ip === "localhost") ip = "127.0.0.1"; // Prefer 127.0.0.1 for CEF compatibility
+                
+                window.updateStatus("Connecting to OBS WebSocket at " + ip + ":" + config.PORT + "...");
+                
+                if (typeof window.OBSWebSocket === 'undefined') throw new Error("OBSWebSocket JS library failed to load.");
+                
+                obs = new window.OBSWebSocket();
+                const address = "ws://" + ip + ":" + config.PORT;
+                
+                try {
+                    console.log("Initiating OBS connection to " + address);
+                    const connectPromise = obs.connect(address, config.PW, { eventSubscriptions: 0 });
+                    const timeoutPromise = new Promise((_, r) => setTimeout(() => r(new Error("Connection Timeout (10s)")), 10000));
+                    await Promise.race([connectPromise, timeoutPromise]);
+                    console.log("OBS Connection Success.");
+                } catch (e) {
+                    throw new Error("OBS WebSocket Connection Failed: " + e.message + ". Verify that OBS WebSocket is enabled and port matches.");
+                }
+                
+                // 5. Populate Data
+                window.updateStatus("Refreshing source list...");
+                const { inputs } = await obs.call('GetInputList');
+                const { scenes } = await obs.call('GetSceneList');
+                sources = [...inputs.map(i => i.inputName), ...scenes.map(s => s.sceneName)];
+                console.log("Sources synced: " + sources.length);
+                
+                populateSourceSelect();
+                await updateConfigList();
+                
+                const params = new URLSearchParams(window.location.search);
+                const queryConfig = params.get('config');
+                if (queryConfig) {
+                    configNameInput.value = queryConfig.endsWith('.json') ? queryConfig : (queryConfig + '.json');
+                }
+
+                await loadSessions();
+
+                // 6. Finalize UI
+                statusArea.style.display = 'none';
+                mainContent.style.display = 'block';
+                console.log("Initialization Complete.");
+            } catch (err) {
+                console.error("Init Error:", err);
+                window.updateStatus(err.message, true);
+            }
+        }
+
+        // Helper functions
+        function populateSourceSelect() {
+            sourceSelect.innerHTML = sources.map(s => `<option value="${s}">${s}</option>`).join('');
+            validateCreateBtn();
+        }
+
+        function validateCreateBtn() {
+            createBtn.disabled = !sourceSelect.value || !instanceNameInput.value;
+        }
+
+        instanceNameInput.addEventListener('input', validateCreateBtn);
+        sourceSelect.addEventListener('change', validateCreateBtn);
+
+        createBtn.addEventListener('click', () => {
+            const config = {
+                id: window.getUUID(),
+                instanceName: instanceNameInput.value,
+                sourceName: sourceSelect.value,
+                broadcastFps: parseFloat(fpsInput.value),
+                previewFps: 1,
+                processingMode: modeSelect.value
+            };
+            const session = new CaptureSession(obs, config);
+            sessions.push(session);
+            renderSession(session);
+            saveSessions();
+            instanceNameInput.value = '';
+            validateCreateBtn();
+        });
+
+        async function updateConfigList() {
+            try {
+                const res = await fetch(`/api/file/list?folder=${encodeURIComponent(VAULT_FOLDER)}`);
+                if (res.ok) {
+                    const configs = await res.json();
+                    if (configs.length > 0) {
+                        configSelect.innerHTML = configs.map(c => `<option value="${c}">${c}</option>`).join('');
+                        savedConfigsArea.style.display = 'block';
+                    }
+                }
+            } catch (e) { console.warn("Config sync skipped", e); }
+        }
+
+        async function saveSessions() {
+            const configs = sessions.map(s => s.serialize());
+            let filename = configNameInput.value || 'sessions.json';
+            if (!filename.endsWith('.json')) filename += '.json';
+            try {
+                await fetch('/api/file/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ folder: VAULT_FOLDER, filename, data: configs })
+                });
+                await updateConfigList();
+            } catch (e) { console.error("Session save failed", e); }
+        }
+
+        async function loadSessions() {
+            if (!obs) return;
+            try {
+                sessions.forEach(s => s.destroy());
+                sessions = [];
+                sessionsGrid.innerHTML = '';
+                let filename = configNameInput.value || 'sessions.json';
+                if (!filename.endsWith('.json')) filename += '.json';
+                const url = `/api/file/get?folder=${encodeURIComponent(VAULT_FOLDER)}&filename=${encodeURIComponent(filename)}`;
+                const response = await fetch(url);
+                if (!response.ok) return;
+                const configs = await response.json();
+                for (const config of configs) {
+                    const session = new CaptureSession(obs, config);
+                    sessions.push(session);
+                    renderSession(session);
+                }
+            } catch (e) { console.error("Session load failed", e); }
+        }
+
+        document.getElementById('save-config-btn').addEventListener('click', saveSessions);
+        document.getElementById('load-config-btn').addEventListener('click', loadSessions);
+        configSelect.addEventListener('change', () => { configNameInput.value = configSelect.value; });
+
+        function renderSession(session) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.id = 'session-' + session.id;
+            card.innerHTML = `
+                <h3>${session.instanceName}</h3>
+                <p class="subtext">Source: ${session.sourceName}</p>
+                <div class="controls-grid">
+                    <div class="control-item">
+                        <label>B-FPS:</label>
+                        <input type="number" class="bfps-input" value="${session.broadcastFps}" min="0.1" max="60" step="0.1">
+                    </div>
+                    <div class="control-item">
+                        <label>P-FPS:</label>
+                        <input type="number" class="pfps-input" value="${session.previewFps}" min="0.1" max="60" step="0.1">
+                    </div>
+                    <div class="control-item">
+                        <label>Mode:</label>
+                        <select class="mode-input">
+                            <option value="image" ${session.processingMode === 'image' ? 'selected' : ''}>Image Only</option>
+                            <option value="pose" ${session.processingMode === 'pose' ? 'selected' : ''}>Pose</option>
+                            <option value="face" ${session.processingMode === 'face' ? 'selected' : ''}>Face</option>
+                            <option value="hands" ${session.processingMode === 'hands' ? 'selected' : ''}>Hands</option>
+                        </select>
+                    </div>
+                    <div class="control-item" style="align-items: center;">
+                        <label>Show:</label>
+                        <input type="checkbox" class="show-input" ${session.showPreview ? 'checked' : ''} style="width: auto; margin-top: 5px;">
+                    </div>
+                </div>
+                <div class="preview-container"><div class="waiting">Awaiting frame...</div></div>
+                <button class="remove-btn">Stop Capture</button>
+            `;
+
+            const bfpsInput = card.querySelector('.bfps-input');
+            const pfpsInput = card.querySelector('.pfps-input');
+            const modeInput = card.querySelector('.mode-input');
+            const showInput = card.querySelector('.show-input');
+            const removeBtn = card.querySelector('.remove-btn');
+            const previewContainer = card.querySelector('.preview-container');
+
+            bfpsInput.addEventListener('input', (e) => { session.updateBroadcastFps(parseFloat(e.target.value)); saveSessions(); });
+            pfpsInput.addEventListener('input', (e) => { session.updatePreviewFps(parseFloat(e.target.value)); saveSessions(); });
+            modeInput.addEventListener('change', (e) => { session.updateMode(e.target.value); saveSessions(); });
+            showInput.addEventListener('change', (e) => { session.updateShowPreview(e.target.checked); saveSessions(); });
+            removeBtn.addEventListener('click', () => { session.destroy(); sessions = sessions.filter(s => s.id !== session.id); card.remove(); saveSessions(); });
+
+            let lastPreviewUpdate = 0;
+            session.setOnFrame((data) => {
+                if (!session.showPreview) { previewContainer.innerHTML = '<div class="waiting">Preview disabled</div>'; return; }
+                const now = Date.now();
+                if (now - lastPreviewUpdate < (1000 / session.previewFps)) return;
+                lastPreviewUpdate = now;
+
+                let statusText = '';
+                let previewUrl = (data.type === 'image') ? data.payload : (data.image || '');
+                if (data.type === 'pose') statusText = 'Pose Detection Active';
+                else if (data.type === 'face') statusText = 'Face Detection Active';
+                else if (data.type === 'hands') statusText = 'Hand Detection Active';
+
+                if (previewUrl) {
+                    previewContainer.innerHTML = '<img src="' + previewUrl + '" alt="preview"><div class="overlay">' + statusText + '</div>';
+                }
+            });
+
+            session.start();
+            sessionsGrid.appendChild(card);
+        }
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MIDI Monitor (SocketCluster)</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1e1e1e; color: #d4d4d4; padding: 20px; margin: 0; }
+        #container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #569cd6; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        #status-bar { margin-bottom: 20px; display: flex; align-items: center; gap: 15px; font-size: 0.9em; }
+        #controls { margin-bottom: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover { background: #1177bb; }
+        button:disabled { background: #444; cursor: not-allowed; opacity: 0.6; }
+
+        #messages { 
+            background: #252526; 
+            border: 1px solid #444; 
+            border-radius: 4px; 
+            padding: 10px; 
+            height: 60vh; 
+            overflow-y: auto; 
+            display: flex;
+            flex-direction: column-reverse;
+        }
+        .msg { 
+            margin-bottom: 8px; 
+            border-bottom: 1px solid #333; 
+            padding: 8px;
+            animation: fadeIn 0.3s ease-out;
+        }
+        .meta { color: #888; font-size: 0.85em; margin-bottom: 4px; }
+        .type { color: #ce9178; font-weight: bold; }
+        .details { color: #b5cea8; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .error-hint { color: #f44747; font-size: 0.9em; margin-left: 10px; }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            background: #555;
+        }
+        .status-dot.connected { background: #4ec9b0; box-shadow: 0 0 5px #4ec9b0; }
+        #sc-status { color: #888; }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1 id="title">MIDI Monitor (SocketCluster)</h1>
+
+        <div id="status-bar">
+            <span><span id="sc-dot" class="status-dot"></span> SC: <span id="sc-status">Connecting...</span></span>
+        </div>
+
+        <div id="controls">
+            <button id="noteOnBtn">Send Note On (C3, ch1)</button>
+            <button id="noteOffBtn">Send Note Off (C3, ch1)</button>
+            <button id="ccBtn">Send CC (Ctrl 1, Val 127, ch1)</button>
+            <span id="hint" class="error-hint"></span>
+        </div>
+
+        <div id="messages"></div>
+    </div>
+
+    <!-- Load SocketCluster Client -->
+    <script type="module">
+        import { create } from '../lib/socketcluster-client.min.js';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetDevice = urlParams.get('deviceName');
+
+        const scStatusEl = document.getElementById('sc-status');
+        const scDot = document.getElementById('sc-dot');
+        const messagesEl = document.getElementById('messages');
+        const titleEl = document.getElementById('title');
+        const hintEl = document.getElementById('hint');
+
+        const buttons = {
+            noteOn: document.getElementById('noteOnBtn'),
+            noteOff: document.getElementById('noteOffBtn'),
+            cc: document.getElementById('ccBtn')
+        };
+
+        let socket = null;
+
+        if (targetDevice) {
+            titleEl.textContent = `MIDI Monitor: ${targetDevice}`;
+        } else {
+            titleEl.textContent = `MIDI Monitor: (All Devices)`;
+            Object.values(buttons).forEach(btn => btn.disabled = true);
+            hintEl.textContent = "Specify ?deviceName=... in URL to enable sending and listening";
+        }
+
+        // SocketCluster Setup
+        socket = create({
+            hostname: window.location.hostname,
+            port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
+            path: '/socketcluster/',
+            authToken: { name: targetDevice ? `Midi-Monitor: ${targetDevice}` : 'Midi-Monitor' }
+        });
+
+        (async () => {
+            for await (let {error} of socket.listener('error')) {
+                console.error('Socket Error:', error);
+            }
+        })();
+
+        (async () => {
+            for await (let event of socket.listener('connect')) {
+                console.log('Connected to SocketCluster');
+                scStatusEl.textContent = 'Connected';
+                scDot.classList.add('connected');
+                if (targetDevice) {
+                    subscribeToMidi();
+                }
+            }
+        })();
+
+        (async () => {
+            for await (let event of socket.listener('disconnect')) {
+                console.log('Disconnected from SocketCluster');
+                scStatusEl.textContent = 'Disconnected';
+                scDot.classList.remove('connected');
+            }
+        })();
+
+        async function subscribeToMidi() {
+            const channelName = `midi_in_${targetDevice}`;
+            console.log(`Subscribing to ${channelName} (Hardware -> Plugin)`);
+            const scChannel = socket.subscribe(channelName);
+
+            for await (let data of scChannel) {
+                // data is { deviceName, message: MidiPayload }
+                addMessage(data);
+            }
+        }
+
+        async function sendMidi(payload) {
+            if (!socket || socket.state !== 'open') {
+                alert('Socket not connected');
+                return;
+            }
+            if (!targetDevice) {
+                alert('No deviceName specified');
+                return;
+            }
+            try {
+                // Use invokePublish to wait for server acknowledgement/errors
+                // Use _out_ channel to send from Plugin to Hardware
+                const channelName = `midi_out_${targetDevice}`;
+                console.log(`Publishing to ${channelName} (Plugin -> Hardware)`, payload);
+                await socket.invokePublish(channelName, payload);
+            } catch (e) {
+                console.error('Socket publish error:', e);
+                alert(`Socket publish error: ${e.message || e}`);
+            }
+        }
+
+        buttons.noteOn.onclick = () => sendMidi({ type: 'noteon', note: 60, velocity: 0.8, channel: 1 });
+        buttons.noteOff.onclick = () => sendMidi({ type: 'noteoff', note: 60, channel: 1 });
+        buttons.cc.onclick = () => sendMidi({ type: 'controlchange', controller: 1, value: 127, channel: 1 });
+
+        function addMessage(data) {
+            const div = document.createElement('div');
+            div.className = 'msg';
+
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            meta.textContent = `${new Date().toLocaleTimeString()} - Device: ${data.deviceName}`;
+
+            const content = document.createElement('div');
+            const msg = data.message;
+
+            const typeSpan = document.createElement('span');
+            typeSpan.className = 'type';
+            typeSpan.textContent = (msg.type || 'UNKNOWN').toUpperCase();
+
+            const detailsSpan = document.createElement('span');
+            detailsSpan.className = 'details';
+
+            let details = ` (Ch: ${msg.channel})`;
+            if (msg.note !== null && msg.note !== undefined) details += ` Note: ${msg.note}, Vel: ${msg.velocity?.toFixed(2)}`;
+            if (msg.controller !== null && msg.controller !== undefined) details += ` CC: ${msg.controller}, Val: ${msg.value}`;
+
+            detailsSpan.textContent = details;
+
+            content.appendChild(typeSpan);
+            content.appendChild(detailsSpan);
+
+            div.appendChild(meta);
+            div.appendChild(content);
+
+            messagesEl.appendChild(div);
+
+            while (messagesEl.children.length > 100) {
+                messagesEl.removeChild(messagesEl.firstChild);
+            }
+        }
+    </script>
+</body>
+</html>
+
+

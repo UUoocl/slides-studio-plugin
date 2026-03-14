@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OSC Monitor (SocketCluster)</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1e1e1e; color: #d4d4d4; padding: 20px; margin: 0; }
+        #container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #569cd6; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        #status-bar { margin-bottom: 20px; display: flex; align-items: center; gap: 15px; font-size: 0.9em; }
+        #controls { margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover { background: #1177bb; }
+        button:disabled { background: #444; cursor: not-allowed; opacity: 0.6; }
+        button.on { background: #4ec9b0; color: #1e1e1e; }
+        
+        #messages { 
+            background: #252526; 
+            border: 1px solid #444; 
+            border-radius: 4px;
+            padding: 10px; 
+            height: 60vh; 
+            overflow-y: auto; 
+            display: flex;
+            flex-direction: column-reverse;
+        }
+        .msg { 
+            margin-bottom: 8px; 
+            border-bottom: 1px solid #333; 
+            padding: 8px;
+            animation: fadeIn 0.3s ease-out;
+        }
+        .meta { color: #888; font-size: 0.85em; margin-bottom: 4px; }
+        .address { color: #ce9178; font-weight: bold; }
+        .args { color: #b5cea8; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .error-hint { color: #f44747; font-size: 0.9em; margin-left: 10px; }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            background: #555;
+        }
+        .status-dot.connected { background: #4ec9b0; box-shadow: 0 0 5px #4ec9b0; }
+        #sc-status { color: #888; }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1 id="title">OSC Monitor (SocketCluster)</h1>
+        <div style="font-size: 0.7em; color: #555; margin-top: -10px; margin-bottom: 10px;">v1.0.2</div>
+        
+        <div id="status-bar">
+            <span><span id="sc-dot" class="status-dot"></span> SC: <span id="sc-status">Connecting...</span></span>
+        </div>
+        
+        <div id="controls">
+            <button id="toggleBtn">Toggle OSC (/4/toggle1)</button>
+            <span id="hint" class="error-hint"></span>
+        </div>
+
+        <div id="messages"></div>
+    </div>
+
+    <!-- Load SocketCluster Client -->
+    <script type="module">
+        import { create } from '../lib/socketcluster-client.min.js';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetDevice = urlParams.get('deviceName');
+        
+        const scStatusEl = document.getElementById('sc-status');
+        const scDot = document.getElementById('sc-dot');
+        const messagesEl = document.getElementById('messages');
+        const titleEl = document.getElementById('title');
+        const toggleBtn = document.getElementById('toggleBtn');
+        const hintEl = document.getElementById('hint');
+
+        let isOn = false;
+        let socket = null;
+
+        if (targetDevice) {
+            titleEl.textContent = `OSC Monitor: ${targetDevice}`;
+        } else {
+            titleEl.textContent = `OSC Monitor: (All Devices)`;
+            toggleBtn.disabled = true;
+            hintEl.textContent = "Specify ?deviceName=... in URL to enable sending and listening";
+        }
+
+        // SocketCluster Setup
+        socket = create({
+            hostname: window.location.hostname,
+            port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
+            path: '/socketcluster/',
+            authToken: { name: targetDevice ? `Osc-Monitor: ${targetDevice}` : 'Osc-Monitor' }
+        });
+
+        (async () => {
+            for await (let {error} of socket.listener('error')) {
+                console.error('Socket Error:', error);
+            }
+        })();
+
+        (async () => {
+            for await (let event of socket.listener('connect')) {
+                console.warn('Connected to SocketCluster');
+                scStatusEl.textContent = 'Connected';
+                scStatusEl.style.color = '#4ec9b0';
+                scDot.classList.add('connected');
+                
+                if (targetDevice) {
+                    subscribeToOsc();
+                }
+            }
+        })();
+
+        (async () => {
+            for await (let event of socket.listener('disconnect')) {
+                console.warn('Disconnected from SocketCluster');
+                scStatusEl.textContent = 'Disconnected';
+                scStatusEl.style.color = '#ce9178';
+                scDot.classList.remove('connected');
+            }
+        })();
+
+        async function subscribeToOsc() {
+            const channelName = `osc_in_${targetDevice}`;
+            console.log(`Subscribing to ${channelName} (Hardware -> Plugin)`);
+            const channel = socket.subscribe(channelName);
+            
+            for await (let data of channel) {
+                // data: { deviceName, message: [address, ...args] }
+                addMessage(data);
+            }
+        }
+
+        // --- Toggle Logic ---
+        toggleBtn.onclick = async () => {
+            if (!socket || socket.state !== 'open') {
+                alert('Socket not connected');
+                return;
+            }
+            
+            if (!targetDevice) {
+                alert('No deviceName specified');
+                return;
+            }
+            
+            const nextState = !isOn;
+            const val = nextState ? 1 : 0;
+            
+            try {
+                // Use invokePublish to wait for server acknowledgement/errors
+                // Use _out_ channel to send from Plugin to Hardware
+                const channelName = `osc_out_${targetDevice}`;
+                console.log(`[v1.0.2] Publishing to ${channelName} (Plugin -> Hardware) with value ${val}`);
+                
+                await socket.invokePublish(channelName, {
+                    address: '/4/toggle1',
+                    args: [val]
+                });
+                
+                isOn = nextState;
+                toggleBtn.classList.toggle('on', isOn);
+                toggleBtn.textContent = `Toggle OSC: ${isOn ? 'ON' : 'OFF'}`;
+            } catch (e) {
+                console.error('Socket publish error:', e);
+                alert(`Socket publish error: ${e.message || e}`);
+            }
+        };
+
+        function addMessage(data) {
+            const div = document.createElement('div');
+            div.className = 'msg';
+            
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            const timestamp = new Date().toLocaleTimeString();
+            meta.textContent = `${timestamp} - Device: ${data.deviceName}`;
+            
+            const content = document.createElement('div');
+            
+            // Assuming data.message is [address, ...args]
+            const [address, ...args] = data.message || [];
+            
+            const addrSpan = document.createElement('span');
+            addrSpan.className = 'address';
+            addrSpan.textContent = address || 'unknown';
+            
+            const addrSpace = document.createTextNode(' ');
+            
+            const argsSpan = document.createElement('span');
+            argsSpan.className = 'args';
+            argsSpan.textContent = args.length > 0 ? JSON.stringify(args) : '';
+            
+            content.appendChild(addrSpan);
+            content.appendChild(addrSpace);
+            content.appendChild(argsSpan);
+            
+            div.appendChild(meta);
+            div.appendChild(content);
+            
+            messagesEl.appendChild(div);
+            
+            while (messagesEl.children.length > 100) {
+                messagesEl.removeChild(messagesEl.firstChild);
+            }
+        }
+    </script>
+</body>
+</html>

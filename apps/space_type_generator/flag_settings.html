@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>STG _v.flag - Settings</title>
+    <script src="./js/p5.min.1.1.0.js"></script>
+    <link rel="stylesheet" type="text/css" href="./css/stgStyle.css" />
+    <script src="./js/sketch_flag.js" type="text/javascript"></script>
+    <script src="./js/keyboardEngine_190402_corners.js" type="text/javascript"></script>
+    <style>
+      body { padding: 0; margin: 0; }
+      canvas { vertical-align: top; }
+    </style>
+  </head>
+  <body>
+    <div class="bottom">
+      <h1>SPACE TYPE GENERATOR</h1>
+      <h2>_v. flag</h2>
+      <textarea id="textfield" autofocus="">SPACE TYPE GENERATOR _V.FLAG</textarea>
+      <div class="slug">
+        <p>
+          a kinetic type generator from <a href="http://www.kielm.com">kielm</a><br /><br />
+          <a href="https://www.buymeacoffee.com/kieldm">Buy me a coffee</a> to help support STG<br />
+        </p>
+        <button onclick="myFunction()">ReadMe</button>
+      </div>
+    </div>
+
+    <script src="./js/stg_menu.js"></script>
+    <script src="./js/obsidian_save_load.js"></script>
+    <script src="./js/manage_view.js"></script>
+    <script src="./js/keyboard_input.js"></script>
+    
+    <script id="sketchSettings">
+      function getSketchSettings(filename){
+          const settings = {
+              "filename" : filename,
+              "typeX" : typeXSlider.value(),
+              "typeY" : typeYSlider.value(),
+              "typeStroke" : typeStrokeSlider.value(),
+              "rows" : rowSlider.value(),
+              "padding" : paddingSlider.value() / 100,
+              
+              "xWaveRaw" : xWaveSlider.value(),
+              "yWaveRaw" : yWaveSlider.value(),
+              "zWave" : zWaveSlider.value(),
+              "offset" : offsetSlider.value(),
+              "speed" : -speedSlider.value(), // speed is inverted in sketch_flag.js
+              "rowOffset" : rowOffsetSlider.value(),
+              "slope" : slopeSlider.value(),
+              
+              "typePush" : typePushSlider.value(),
+              
+              "xRotCamera" : xRotCameraSlider.value(),
+              "yRotCamera" : yRotCameraSlider.value(),
+              "zRotCamera" : zRotCameraSlider.value(),
+              "zoomCamera" : zoomCameraSlider.value(),
+
+              "inp1color" : inp1.value(),
+              "inp2color" : inp2.value(),
+              "inp3color" : inp3.value(),
+              "inp4color" : inp4.value(),
+              "inp5color" : inp5.value(),
+              
+              "inp0check" : inp0check.checked(),
+              "inp1check" : inp1check.checked(),
+              "inp2check" : inp2check.checked(),
+              "inp3check" : inp3check.checked(),
+              "inp4check" : inp4check.checked(),
+              "inp5check" : inp5check.checked(),
+              
+              "text" : inp.value(),
+              "inpNumber" : inpNumber,
+              "bkgdColor" : bkgdColorPicker.value(),
+              "backSide" : backSide
+          }
+          if (typeof inp6 !== 'undefined' && inp6 !== null) {
+              settings.inp6color = inp6.toString();
+          }
+          return settings
+      }
+
+      function setSketchSettings(json){
+          if (!json) return;
+          if (typeof typeXSlider !== 'undefined') typeXSlider.value(json.typeX);
+          if (typeof typeYSlider !== 'undefined') typeYSlider.value(json.typeY);
+          if (typeof typeStrokeSlider !== 'undefined') typeStrokeSlider.value(json.typeStroke);
+          if (typeof rowSlider !== 'undefined') rowSlider.value(json.rows);
+          if (typeof paddingSlider !== 'undefined') paddingSlider.value(json.padding * 100);
+          
+          if (typeof xWaveSlider !== 'undefined') xWaveSlider.value(json.xWaveRaw);
+          if (typeof yWaveSlider !== 'undefined') yWaveSlider.value(json.yWaveRaw);
+          if (typeof zWaveSlider !== 'undefined') zWaveSlider.value(json.zWave);
+          if (typeof offsetSlider !== 'undefined') offsetSlider.value(json.offset);
+          if (typeof speedSlider !== 'undefined') speedSlider.value(-json.speed);
+          if (typeof rowOffsetSlider !== 'undefined') rowOffsetSlider.value(json.rowOffset);
+          if (typeof slopeSlider !== 'undefined') slopeSlider.value(json.slope);
+          
+          if (typeof typePushSlider !== 'undefined') typePushSlider.value(json.typePush);
+          
+          if (typeof xRotCameraSlider !== 'undefined') xRotCameraSlider.value(json.xRotCamera);
+          if (typeof yRotCameraSlider !== 'undefined') yRotCameraSlider.value(json.yRotCamera);
+          if (typeof zRotCameraSlider !== 'undefined') zRotCameraSlider.value(json.zRotCamera);
+          if (typeof zoomCameraSlider !== 'undefined') zoomCameraSlider.value(json.zoomCamera);
+
+          if (typeof inp1 !== 'undefined') inp1.value(json.inp1color);
+          if (typeof inp2 !== 'undefined') inp2.value(json.inp2color);
+          if (typeof inp3 !== 'undefined') inp3.value(json.inp3color);
+          if (typeof inp4 !== 'undefined') inp4.value(json.inp4color);
+          if (typeof inp5 !== 'undefined') inp5.value(json.inp5color);
+          if (json.inp6color && typeof color === 'function') {
+              inp6 = color(json.inp6color);
+          }
+          
+          if (typeof inp0check !== 'undefined') inp0check.checked(json.inp0check);
+          if (typeof inp1check !== 'undefined') inp1check.checked(json.inp1check);
+          if (typeof inp2check !== 'undefined') inp2check.checked(json.inp2check);
+          if (typeof inp3check !== 'undefined') inp3check.checked(json.inp3check);
+          if (typeof inp4check !== 'undefined') inp4check.checked(json.inp4check);
+          if (typeof inp5check !== 'undefined') inp5check.checked(json.inp5check);
+
+          if (typeof inp !== 'undefined') inp.value(json.text);
+
+          if (typeof inpNumber !== 'undefined') inpNumber = json.inpNumber;
+          if (typeof bkgdColorPicker !== 'undefined') bkgdColorPicker.value(json.bkgdColor);
+          if (typeof backSide !== 'undefined') backSide = json.backSide;
+          
+          PRESET_SETTINGS = json;
+      }
+    </script>
+    <script src="./js/stg_sc_sync.js" type="module"></script>
+    <script>
+        function myFunction() {
+            alert("SPACE TYPE GENERATOR\n_v.flag 1.1\nDesign and coding by KielM.com\nThanks for using! Let me know what you make.\nkiel.d.m@gmail.com");
+        }
+    </script>
+  </body>
+</html>

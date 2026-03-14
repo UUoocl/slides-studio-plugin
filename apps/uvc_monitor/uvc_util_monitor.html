@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UVC Live Monitor (SocketCluster)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .card {
+            background-color: #252526;
+            border-left: 5px solid #ce9178;
+            border-radius: 3px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        h2 { margin-top: 0; font-size: 1.1em; color: #808080; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #333;
+            padding: 8px 12px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        .status.connected { color: #4ec9b0; }
+        .status.disconnected { color: #f44747; }
+
+        #monitor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .control-card {
+            background: #2d2d2d;
+            padding: 12px;
+            border-radius: 4px;
+            border: 1px solid #333;
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+
+        .control-name { font-weight: bold; color: #569cd6; }
+        .control-type { font-size: 0.75em; color: #888; background: #333; padding: 2px 6px; border-radius: 10px; }
+
+        .value-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            font-family: 'Consolas', monospace;
+        }
+
+        .val-label { font-size: 0.85em; color: #808080; }
+        .val-raw { color: #ce9178; }
+        .val-mapped { color: #4ec9b0; font-weight: bold; }
+
+        .bar-container {
+            height: 6px;
+            background: #1a1a1a;
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            background: #4ec9b0;
+            width: 0%;
+            transition: width 0.1s ease-out;
+        }
+
+        .log-box {
+            background-color: #000;
+            font-family: 'Consolas', monospace;
+            padding: 10px;
+            height: 100px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            font-size: 0.8em;
+            color: #6a9955;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="status-bar">
+        <span>Device: <strong id="chan-display" style="color: #569cd6;">...</strong></span>
+        <span>SocketCluster: <strong id="sc-status" class="status disconnected">Disconnected</strong></span>
+    </div>
+
+    <div id="monitor-grid">
+        <!-- Control cards will be injected here -->
+    </div>
+
+    <div class="card">
+        <h2>System Messages</h2>
+        <div id="log" class="log-box"></div>
+    </div>
+
+    <script type="module">
+        import { create } from '../lib/socketcluster-client.min.js';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const deviceName = urlParams.get('name');
+        
+        if (!deviceName) {
+            document.body.innerHTML = '<div style="color: #ff4444; padding: 20px; font-weight: bold;">Error: No "name" parameter provided.<br>Usage: ?name=camera_alias</div>';
+            throw new Error("Missing name param");
+        }
+
+        const IN_CHAN = `uvc_in_${deviceName}`;
+        document.getElementById('chan-display').textContent = deviceName;
+
+        let socket = null;
+        const grid = document.getElementById('monitor-grid');
+        const scStatus = document.getElementById('sc-status');
+        const logBox = document.getElementById('log');
+
+        function addLog(msg) {
+            const entry = document.createElement('div');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logBox.insertBefore(entry, logBox.firstChild);
+            if (logBox.children.length > 10) logBox.removeChild(logBox.lastChild);
+        }
+
+        async function initSocketCluster() {
+            socket = create({
+                hostname: window.location.hostname,
+                port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
+                path: '/socketcluster/',
+                authToken: { name: `UVC-Monitor: ${deviceName}` }
+            });
+            
+            (async () => {
+                for await (let event of socket.listener('connect')) {
+                    scStatus.textContent = "Connected";
+                    scStatus.className = "status connected";
+                    addLog("SocketCluster Connected");
+                    
+                    // Identify this client for the SC Monitor
+                    try {
+                        await socket.invoke('setInfo', { name: `UVC Monitor (${deviceName})` });
+                    } catch (e) {
+                        console.error("Failed to set client info", e);
+                    }
+
+                    subscribeToInChannel();
+                }
+            })();
+
+            (async () => {
+                for await (let event of socket.listener('disconnect')) {
+                    scStatus.textContent = "Disconnected";
+                    scStatus.className = "status disconnected";
+                    addLog("SocketCluster Disconnected");
+                }
+            })();
+        }
+
+        async function subscribeToInChannel() {
+            const channel = socket.subscribe(IN_CHAN);
+            for await (let msg of channel) {
+                handleMessage(msg);
+            }
+        }
+
+        function handleMessage(msg) {
+            if (msg.action === "get_controls" || msg.action === "poll") {
+                renderControls(msg.data);
+            } else if (msg.action === "get_value") {
+                updateSingleControl(msg);
+            }
+        }
+
+        function renderControls(controls) {
+            if (!controls || !Array.isArray(controls)) return;
+            
+            controls.forEach(c => {
+                let card = document.getElementById(`card-${c.name}`);
+                if (!card) {
+                    card = createControlCard(c);
+                    grid.appendChild(card);
+                }
+                updateCardValues(card, c);
+            });
+        }
+
+        function createControlCard(ctrl) {
+            const div = document.createElement('div');
+            div.className = 'control-card';
+            div.id = `card-${ctrl.name}`;
+            
+            div.innerHTML = `
+                <div class="control-header">
+                    <span class="control-name">${ctrl.name}</span>
+                    <span class="control-type">${ctrl.type || 'unknown'}</span>
+                </div>
+                <div class="card-content"></div>
+            `;
+            return div;
+        }
+
+        function updateCardValues(card, ctrl) {
+            const content = card.querySelector('.card-content');
+            const val = ctrl["current-value"];
+            const mapped = ctrl["mapped-value"];
+            
+            if (val === undefined) return;
+
+            let html = '';
+            
+            if (typeof val === 'object' && val !== null) {
+                // Compound value (e.g. pan-tilt)
+                for (const key in val) {
+                    const rawVal = val[key];
+                    const mappedVal = (mapped && mapped[key] !== undefined) ? mapped[key] : '--';
+                    html += createValueHtml(key, rawVal, mappedVal);
+                }
+            } else {
+                // Scalar value
+                const mappedVal = (mapped !== undefined) ? mapped : '--';
+                html += createValueHtml('Value', val, mappedVal);
+            }
+
+            content.innerHTML = html;
+        }
+
+        function createValueHtml(label, raw, mapped) {
+            // Determine progress bar percentage (if mapped is numeric)
+            let barHtml = '';
+            if (typeof mapped === 'number') {
+                // We assume mapping is often to 0-1 or 0-100. 
+                // Let's try to detect if it's 0-1 or higher.
+                let pct = mapped;
+                if (mapped <= 1 && mapped >= 0) pct = mapped * 100;
+                else if (mapped > 100) pct = 100;
+                else if (mapped < 0) pct = 0;
+                
+                barHtml = `
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: ${pct}%"></div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div style="margin-bottom: 10px;">
+                    <div class="value-row">
+                        <span class="val-label">${label}</span>
+                        <div>
+                            <span class="val-raw">${raw}</span>
+                            <span style="color:#444; margin: 0 5px;">→</span>
+                            <span class="val-mapped">${mapped}</span>
+                        </div>
+                    </div>
+                    ${barHtml}
+                </div>
+            `;
+        }
+
+        function updateSingleControl(msg) {
+            const card = document.getElementById(`card-${msg.control}`);
+            if (card) {
+                // Wrap in a mock control object to reuse logic
+                updateCardValues(card, {
+                    name: msg.control,
+                    "current-value": msg.data,
+                    "mapped-value": msg["mapped-value"]
+                });
+            }
+        }
+
+        initSocketCluster();
+    </script>
+</body>
+</html>

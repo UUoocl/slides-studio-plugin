@@ -1,0 +1,11 @@
+{
+	"id": "slides-studio",
+	"name": "Slides Studio",
+	"version": "1.0.0",
+	"minAppVersion": "1.10.0",
+	"description": "Sync Reveal.js slides and Open Broadcast Studio (OBS) scene changes.",
+	"author": "UUoocl",
+	"authorUrl": "https://github.com/UUoocl",
+	"fundingUrl": "https://github.com/sponsors/UUoocl",
+	"isDesktopOnly": true
+}

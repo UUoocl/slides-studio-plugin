@@ -1,0 +1,555 @@
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+
+    <title>Slides Studio</title>
+
+    <style>
+      body {
+        font-family: Helvetica;
+        font-size: 18px;
+      }
+
+      #current-slide,
+      #upcoming-slide,
+      #speaker-controls {
+        padding: 6px;
+        box-sizing: border-box;
+        -moz-box-sizing: border-box;
+      }
+
+      #current-slide iframe,
+      #upcoming-slide iframe {
+        width: 100%;
+        height: 100%;
+        border: 1px solid #333;
+      }
+
+      #current-slide {
+        position: absolute;
+        width: 60%;
+        height: 100%;
+        top: 0;
+        left: 0;
+      }
+
+      #upcoming-slide {
+        position: absolute;
+        width: 40%;
+        height: 40%;
+        right: 0;
+        top: 0;
+      }
+
+      #speaker-controls {
+        position: absolute;
+        top: 40%;
+        right: 0;
+        width: 40%;
+        height: 60%;
+        overflow: auto;
+        font-size: 18px;
+      }
+
+      .speaker-controls-time {
+        display: none;
+      }
+
+      .speaker-controls-notes {
+        padding: 10px 0;
+      }
+
+      .speaker-controls-notes .label {
+        color: #666;
+        text-transform: uppercase;
+        font-size: 0.6em;
+        font-weight: bold;
+      }
+
+      .speaker-controls-notes .value {
+        margin-top: 5px;
+        line-height: 1.4;
+        font-size: 1.2em;
+      }
+
+      .clear {
+        clear: both;
+      }
+
+      /* Layout selector */
+      #speaker-layout {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        color: #222;
+        z-index: 10;
+      }
+
+      #speaker-layout .speaker-layout-label {
+        text-transform: uppercase;
+        font-weight: bold;
+        font-size: 0.6em;
+        padding-right: 10px;
+      }
+
+      #speaker-layout .speaker-layout-dropdown {
+        font-size: 0.8em;
+      }
+
+      /* Speaker layout overrides */
+      /* Wide */
+      body[data-speaker-layout="wide"] #current-slide,
+      body[data-speaker-layout="wide"] #upcoming-slide {
+        width: 50%;
+        height: 45%;
+        padding: 6px;
+      }
+
+      body[data-speaker-layout="wide"] #current-slide {
+        top: 0;
+        left: 0;
+      }
+
+      body[data-speaker-layout="wide"] #upcoming-slide {
+        top: 0;
+        left: 50%;
+      }
+
+      body[data-speaker-layout="wide"] #speaker-controls {
+        top: 45%;
+        left: 0;
+        width: 100%;
+        height: 55%;
+      }
+
+      /* Tall */
+      body[data-speaker-layout="tall"] #current-slide,
+      body[data-speaker-layout="tall"] #upcoming-slide {
+        width: 45%;
+        height: 50%;
+        padding: 6px;
+      }
+
+      body[data-speaker-layout="tall"] #current-slide {
+        top: 0;
+        left: 0;
+      }
+
+      body[data-speaker-layout="tall"] #upcoming-slide {
+        top: 50%;
+        left: 0;
+      }
+
+      body[data-speaker-layout="tall"] #speaker-controls {
+        top: 0;
+        left: 45%;
+        width: 55%;
+        height: 100%;
+      }
+
+      /* Notes only */
+      body[data-speaker-layout="notes-only"] #current-slide,
+      body[data-speaker-layout="notes-only"] #upcoming-slide {
+        display: none;
+      }
+
+      body[data-speaker-layout="notes-only"] #speaker-controls {
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Teleprompter/Studio specific layout */
+      body[data-speaker-layout="teleprompter"] #current-slide,
+      body[data-speaker-layout="teleprompter"] #upcoming-slide {
+        width: 50%;
+        height: 30%;
+        padding: 6px;
+      }
+
+      body[data-speaker-layout="teleprompter"] #current-slide {
+        top: 0;
+        left: 0;
+      }
+
+      body[data-speaker-layout="teleprompter"] #upcoming-slide {
+        top: 0;
+        left: 50%;
+      }
+
+      body[data-speaker-layout="teleprompter"] #speaker-controls {
+        top: 30%;
+        left: 0;
+        width: 100%;
+        height: 70%;
+      }
+
+      .connection-status {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 20;
+        padding: 30px 20px;
+        background: #fff;
+        color: #222;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
+
+      .connection-status h2 {
+        margin-bottom: 0.5em;
+      }
+
+      .connection-status p {
+        margin-bottom: 1.5em;
+        color: #666;
+      }
+
+      .location-input {
+        width: 400px;
+        padding: 10px;
+        font-size: 1.1em;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        margin-bottom: 1em;
+      }
+
+      .load-button {
+        padding: 10px 20px;
+        font-size: 1.1em;
+        background: #222;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .load-button:hover {
+        background: #444;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="connection-status" class="connection-status">
+      <h2>Slide Studio Viewer</h2>
+      <p>Enter the location of your slide deck to begin.</p>
+      <input
+        type="text"
+        id="location"
+        class="location-input"
+        placeholder="export/Welcome/index.html"
+        value="export/Welcome/index.html"
+      />
+      <button id="loadDeckButton" class="load-button">Load Presentation</button>
+    </div>
+
+    <div id="current-slide" style="display: none;"></div>
+
+    <div id="upcoming-slide" style="display: none;"></div>
+
+    <div id="speaker-controls" style="display: none;">
+      <div id="studio-table" style="height: 100%; width: 100%; display: none;"></div>
+      <div id="teleprompter" style="height: 100%; width: 100%; display: none;"></div>
+    </div>
+
+    <div id="speaker-layout" class="overlay-element interactive" style="display: none;">
+      <span class="speaker-layout-label"></span>
+      <select class="speaker-layout-dropdown"></select>
+    </div>
+
+    <script type="module" src="lib/sc-connection.js"></script>
+    <script type="module" src="lib/obsApiProxy.js"></script>
+
+
+    <script>
+      window.addEventListener("load", (event) => {
+        document.getElementById("loadDeckButton").addEventListener("click", () => {
+            if (window.loadSpeakerView) window.loadSpeakerView();
+        });
+      });
+    </script>
+    <script id="setupSpeakerView" type="module">
+
+        let notesIframe,
+        studioIframe,
+        layoutLabel,
+        layoutDropdown,
+        lastRevealApiCallId = 0,
+        connected = false,
+        slideDeck,
+        slideDeckURL;
+
+        let slidesLoaded = false;
+
+        // Expose to window for other modules
+        window.currentSlide = undefined;
+        window.upcomingSlide = undefined;
+
+        var SPEAKER_LAYOUTS = {
+            'teleprompter': 'Teleprompter',
+            'studio': 'Studio',
+            'default': 'Default',
+            'wide': 'Wide',
+            'tall': 'Tall',
+            'notes-only': 'Notes only'
+        };
+
+        window.loadSpeakerView = async function(){
+          if (slidesLoaded) return;
+          
+          slidesLoaded = true;
+
+          // Connect to OBS via proxy
+          try {
+              await obsWss.connect();
+          } catch (e) {
+              console.warn("Continuing without OBS connection:", e);
+          }
+
+          document.getElementById("connection-status").style.display = 'none';
+          document.getElementById("current-slide").style.display = 'block';
+          document.getElementById("upcoming-slide").style.display = 'block';
+          document.getElementById("speaker-controls").style.display = 'block';
+          document.getElementById("speaker-layout").style.display = 'block';
+
+          //set slides url
+          let locationValue = document.getElementById("location").value;
+          if(!locationValue.startsWith("http")){
+            locationValue = `${window.location.origin}/${locationValue}`
+            document.getElementById("location").value = locationValue;
+          }
+
+          try {
+              slideDeckURL = new URL(locationValue)
+              slideDeck = `${locationValue}`
+
+              // Extract a deck ID from the URL for storage purposes
+              const deckId = slideDeckURL.pathname.split('/').filter(p => p && p !== 'index.html').pop() || 'default-deck';
+
+              setupLayout();
+              setupIframes();
+
+              // Send initialization data to other views (Studio, etc.) via SocketCluster
+              setTimeout(() => {
+                  window.broadcastSlidesCommand("set-slides-studio-url", {url: slideDeck});
+                  window.broadcastSlidesCommand("set-deck-id", { deckId: deckId });
+              }, 1000);
+
+          } catch (e) {
+              alert("Please enter a valid URL or deck path.");
+              slidesLoaded = false;
+              document.getElementById("connection-status").style.display = 'flex';
+              return;
+          }
+
+          handleConnectMessage();
+          window.document.getElementById("speaker-controls").focus();
+        }
+
+    // Helper to get attributes from the current slide in the iframe
+    window.getSlideAttributes = function() {
+        if (!window.currentSlide || !window.currentSlide.contentDocument) return {};
+        
+        let slideEl = window.currentSlide.contentDocument.querySelector('.present');
+        if (slideEl && slideEl.classList.contains('stack')) {
+            slideEl = window.currentSlide.contentDocument.querySelector('.present .present');
+        }
+        if (!slideEl) return {};
+
+        const getAttr = (name) => {
+          if (slideEl.getAttribute(name)) return slideEl.getAttribute(name);
+          const subEl = slideEl.querySelector(`[${name}]`);
+          return subEl ? subEl.getAttribute(name) : "";
+        };
+
+        const fragmentEl = slideEl.querySelector('.current-fragment');
+
+        return {
+          slideId: getAttr("data-id"),
+          slideName: getAttr("data-slide-name"),
+          slidePosition: getAttr("data-slide-position"),
+          cameraPosition: getAttr("data-camera-position"),
+          cameraShape: getAttr("data-camera-shape"),
+          scene: getAttr("data-scene"),
+          // Fragment specific attributes
+          fragmentName: fragmentEl ? fragmentEl.getAttribute("data-fragment-name") : "",
+          fragmentPosition: fragmentEl ? fragmentEl.getAttribute("data-fragment-position") : "",
+          fragmentCameraPosition: fragmentEl ? fragmentEl.getAttribute("data-fragment-camera-position") : "",
+          fragmentCameraShape: fragmentEl ? fragmentEl.getAttribute("data-fragment-camera-shape") : "",
+          fragmentScene: fragmentEl ? fragmentEl.getAttribute("data-fragment-scene") : ""
+        };
+    }
+
+    // Listen for messages from Reveal.js iframes
+    window.addEventListener('message', event => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.namespace === 'reveal') {
+            if (typeof window.broadcastSlidesCommand === 'function') {
+                if (data.eventName === 'slidechanged') {
+                    // Request notes for the teleprompter
+                    window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes' }), "*");
+                } else if (['overviewhidden', 'overviewshown'].includes(data.eventName)) {
+                    window.obsWss.publish('studio_to_currentSlide', 'overview-toggled', data.state);
+                }
+                
+                // Publish reveal events specifically to the Studio "brain" to prevent loops
+                obsWss.publish('currentSlide_to_studio', 'reveal-event', data);
+            }
+          }
+        } catch (e) {
+            // Silently ignore non-JSON messages
+        }
+    });
+
+    // #region Iframe setup
+    function setupIframes() {
+        const currentUrl = new URL(slideDeck);
+        currentUrl.searchParams.set("postMessageEvents", "true");
+        
+        window.currentSlide = document.createElement("iframe");
+        window.currentSlide.setAttribute("width", "100%");
+        window.currentSlide.setAttribute("height", "100%");
+        window.currentSlide.setAttribute("src", currentUrl.toString());
+        window.currentSlide.setAttribute("id", "current-iframe");
+        document.querySelector("#current-slide").appendChild(window.currentSlide);
+
+        const upcomingUrl = new URL(slideDeck);
+        upcomingUrl.searchParams.set("postMessageEvents", "false");
+        upcomingUrl.searchParams.set("postMessage", "true");
+
+        window.upcomingSlide = document.createElement("iframe");
+        window.upcomingSlide.setAttribute("width", "100%");
+        window.upcomingSlide.setAttribute("height", "100%");
+        window.upcomingSlide.setAttribute("src", upcomingUrl.toString());
+        window.upcomingSlide.setAttribute("id", "upcoming-iframe");
+        document.querySelector("#upcoming-slide").appendChild(window.upcomingSlide);
+        
+        notesIframe = document.createElement("iframe");
+        notesIframe.setAttribute("width",'100%')
+        notesIframe.setAttribute("height",'100%')
+        notesIframe.setAttribute("style", "border:none;")
+        notesIframe.setAttribute("src",`teleprompter.html`)
+        notesIframe.setAttribute("id", "notes-iframe");
+        document.getElementById("teleprompter").appendChild(notesIframe);
+
+        studioIframe = document.createElement("iframe");
+        studioIframe.setAttribute("width",'100%')
+        studioIframe.setAttribute("height",'100%')
+        studioIframe.setAttribute("style", "border:none;")
+        studioIframe.setAttribute("src",`studio.html`)
+        studioIframe.setAttribute("id", "studio-iframe");
+        document.getElementById("studio-table").appendChild(studioIframe);
+    }
+    //#endregion
+
+    // #region Layout
+    function setupLayout() {
+        layoutDropdown = document.querySelector(".speaker-layout-dropdown");
+        layoutLabel = document.querySelector(".speaker-layout-label");
+
+        // Render the list of available layouts
+        if (layoutDropdown) {
+            layoutDropdown.innerHTML = '';
+            for (var id in SPEAKER_LAYOUTS) {
+              var option = document.createElement("option");
+              option.setAttribute("value", id);
+              option.textContent = SPEAKER_LAYOUTS[id];
+              layoutDropdown.appendChild(option);
+            }
+
+            layoutDropdown.addEventListener('change', event => {
+                setLayout(event.target.value);
+            });
+        }
+
+        setLayout(getLayout());
+    }
+
+    function setLayout(value) {
+        var title = SPEAKER_LAYOUTS[value];
+        
+        if (layoutLabel) layoutLabel.innerHTML = "Layout" + (title ? ": " + title : "");
+        if (layoutDropdown) layoutDropdown.value = value;
+        
+        // Persist locally
+        if (supportsLocalStorage()) {
+          window.localStorage.setItem("reveal-speaker-layout", value);
+        }
+
+        const tagTable = document.getElementById("studio-table")
+        const teleprompter = document.getElementById("teleprompter")
+        
+        if(value === "teleprompter"){
+          if (teleprompter) teleprompter.style.display = 'block';
+          if (tagTable) tagTable.style.display = 'none';
+        } else if(value === "studio"){
+          if (teleprompter) teleprompter.style.display = 'none';
+          if (tagTable) tagTable.style.display = 'block';
+          value = 'teleprompter';
+        } else {
+          if (teleprompter) teleprompter.style.display = 'block';
+          if (tagTable) tagTable.style.display = 'none';
+        }
+      
+        document.body.setAttribute("data-speaker-layout", value);
+    }
+
+    function getLayout() {
+        if (supportsLocalStorage()) {
+          var layout = window.localStorage.getItem("reveal-speaker-layout");
+          if (layout && SPEAKER_LAYOUTS[layout]) {
+            return layout;
+          }
+        }
+        return 'default';
+    }
+    //#endregion
+
+    // #region Reveal.js API
+    function callRevealApi(method, args) {
+        if (!window.currentSlide || !window.currentSlide.contentWindow) return;
+        const callId = ++lastRevealApiCallId;
+        window.currentSlide.contentWindow.postMessage(JSON.stringify({
+            method: method,
+            args: args,
+            callId: callId
+        }), '*');
+    }
+
+    function handleConnectMessage() {
+        if (connected === false) {
+          connected = true;
+          callRevealApi('configure', [{
+              controls: false,
+              progress: false,
+              history: false,
+              keyboard: false
+          }]);
+        }
+    }
+    //#endregion
+
+    // #region Storage
+    function supportsLocalStorage() {
+        try {
+          localStorage.setItem("test", "test");
+          localStorage.removeItem("test");
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+//#endregion
+    </script>
+    <script type="module" src="lib/slideSync_SpeakerView_Browser.js"></script> 
+  </body>
+</html>

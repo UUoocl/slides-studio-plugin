@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slides Studio (OBS View)</title>
+    <link rel="stylesheet" href="../css/iframe_positioins.css">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: transparent;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+    </style>
+    <script>
+        window.onIframeLoad = function() {
+            const iframe = document.getElementById("revealIframe");
+            if (!iframe) return;
+            const url = iframe.src;
+            if (url && url !== "about:blank" && !url.includes("slides_studio_slide_view.html")) {
+                // Deck loaded
+            }
+        }
+
+        window.onIframeError = function() {
+            console.error("[SlideView] Iframe failed to load!");
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <iframe id="revealIframe" class="slide-position full-screen" src="about:blank" onload="onIframeLoad()" onerror="onIframeError()" allow="autoplay; fullscreen"></iframe>
+    </div>
+    
+    <!-- SocketCluster Scripts -->
+    <script type="module" src="../lib/sc-connection.js"></script>
+    <script type="module" src="../lib/slideSync_OBS.js"></script>
+
+    <script type="module">
+        const broadcastChannels = {}; 
+
+        (async () => {
+            while (!window.scSocket) {
+                await new Promise(r => setTimeout(r, 100));
+            }
+
+            // Connection listener loop
+            (async () => {
+                for await (let event of window.scSocket.listener('connect')) {
+                    // Connected
+                }
+            })();
+
+            // Disconnection listener loop
+            (async () => {
+                for await (let event of window.scSocket.listener('disconnect')) {
+                    // Disconnected
+                }
+            })();
+
+            // Subscribe specifically to the broadcast navigation channel
+            const channel = window.scSocket.subscribe('slides_navigation');
+            for await (let data of channel) {
+                try {
+                    const { eventName, msgParam } = data;
+                    
+                    // CSS Updates
+                    let slidePosClass = msgParam ? msgParam.slidePosition : null;
+                    if (!slidePosClass && msgParam && msgParam.scene) {
+                        const sceneName = msgParam.scene;
+                        if (sceneName.includes("slides ")) {
+                            slidePosClass = sceneName.split("slides ")[1];
+                        }
+                    }
+                    if (slidePosClass) setSlidePositionCSS(slidePosClass);
+
+                    // Camera Shape
+                    if (msgParam && msgParam.cameraShape && broadcastChannels.cameraShapes) {
+                        broadcastChannels.cameraShapes.postMessage(msgParam.cameraShape);
+                    }
+        
+                    // Dispatch for slideSync_OBS.js internal listeners (if any still use CustomEvents)
+                    window.dispatchEvent(new CustomEvent(eventName, { 
+                        detail: { webSocketMessage: JSON.stringify(msgParam) } 
+                    }));
+                } catch (err) {
+                    console.error("[SlideView] Error processing SC message:", err);
+                }
+            }
+        })();
+
+        window.addEventListener('DOMContentLoaded', () => {
+            broadcastChannels.cameraShapes = new BroadcastChannel("cameraShapes_channel");
+        });
+        
+        function setSlidePositionCSS(className) {
+            const iframe = document.getElementById("revealIframe");
+            if (iframe) {
+                iframe.className = "slide-position " + className;
+            }
+        }
+    </script>
+</body>
+</html>
