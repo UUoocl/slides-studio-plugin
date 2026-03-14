@@ -6,16 +6,17 @@
 - [x] Task: Setup connectivity UI (Communication mode selector and connection status indicator). [546146a]
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Project Setup & UI Skeleton' (Protocol in workflow.md) [f484016]
 
-## Phase 2: Core MIDI Logic (TDD)
+## Phase 2: Core MIDI Logic (TDD) [checkpoint: 1d54ed9]
 - [x] Task: Write TDD tests for standard LED behavior messages (Solid, Pulse, Blink). [a91f1b3]
 - [x] Task: Implement `apcMiniCore.js` for standard LED message encoding. [57bd45a]
 - [x] Task: Write TDD tests for "Introduction Message" and "Version Enquiry" SysEx. [3afbeb6]
 - [x] Task: Implement SysEx initialization logic in `apcMiniCore.js`. [7a9b547]
 - [x] Task: Write TDD tests for 24-bit Custom RGB SysEx encoding. [876f8e1]
 - [x] Task: Implement Custom RGB encoding in `apcMiniCore.js`. [3cc9c9d]
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Core MIDI Logic (TDD)' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Core MIDI Logic (TDD)' (Protocol in workflow.md) [1d54ed9]
 
 ## Phase 3: Hardware Interaction & Sync
+- [ ] Task: Implement MIDI device scanning and dropdown selection for Direct WebMIDI.
 - [ ] Task: Implement WebMIDI and SocketCluster connection lifecycle management.
 - [ ] Task: Map physical fader CC (0x30-0x38) to UI animated bars.
 - [ ] Task: Implement bidirectional pad matrix synchronization (Click-to-Device / Press-to-UI).
