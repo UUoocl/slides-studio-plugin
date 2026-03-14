@@ -1,4 +1,4 @@
-export class FireAppLogic {
+class FireAppLogic {
   constructor() {
     this.grid = new Array(64).fill(null).map(() => ({ r: 0, g: 0, b: 0 }));
     this.selectedColor = { r: 127, g: 0, b: 0 }; // Default Red
@@ -22,7 +22,6 @@ export class FireAppLogic {
     return { index, r, g, b };
   }
 
-  // Sequencer Logic
   startSequencer() {
     this.isSequencing = true;
     this.currentStep = 0;
@@ -34,19 +33,15 @@ export class FireAppLogic {
 
   tick() {
     if (!this.isSequencing) return null;
-    
     const prevStep = (this.currentStep + 15) % 16;
     const activeStep = this.currentStep;
-    
-    // Advance
     this.currentStep = (this.currentStep + 1) % 16;
-
-    // Return what needs updating: 
-    // - Clear highlight from prevStep
-    // - Add highlight to activeStep
     return {
       clearIndices: [0, 1, 2, 3].map(row => row * 16 + prevStep),
       highlightIndices: [0, 1, 2, 3].map(row => row * 16 + activeStep)
     };
   }
 }
+
+if (typeof window !== 'undefined') window.FireAppLogic = FireAppLogic;
+export { FireAppLogic };

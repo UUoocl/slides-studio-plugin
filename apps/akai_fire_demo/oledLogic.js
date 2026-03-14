@@ -1,11 +1,8 @@
-export class FireOledLogic {
+class FireOledLogic {
   constructor() {
     this.width = 128;
     this.height = 64;
-    // For a full display update, Akai Fire uses 1171 bytes of packed data
     this.buffer = new Uint8Array(1171);
-    
-    // Bit mutation table from hardware documentation
     this.bitMutate = [
       [13, 19, 25, 31, 37, 43, 49],
       [0, 20, 26, 32, 38, 44, 50],
@@ -24,25 +21,15 @@ export class FireOledLogic {
 
   setPixel(x, y, on = true) {
     if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
-
-    // 1. Linearize to a 1024x8 strip
     const stripX = x + 128 * Math.floor(y / 8);
     const stripY = y % 8;
-
-    // 2. Divide into 7-column blocks
     const blockIdx = Math.floor(stripX / 7);
     const colInBlock = stripX % 7;
-
-    // 3. Get bit index from mutation table
     const bitIdx = this.bitMutate[stripY][colInBlock];
-
-    // 4. Map bit index to MIDI bytes (7 bits each)
     const byteOffsetInBlock = Math.floor(bitIdx / 7);
     const bitInByte = bitIdx % 7;
     const byteIndex = (blockIdx * 8) + byteOffsetInBlock;
-
     if (byteIndex >= this.buffer.length) return;
-
     if (on) {
       this.buffer[byteIndex] |= (1 << bitInByte);
     } else {
@@ -90,7 +77,6 @@ export class FireOledLogic {
       '8': [0x36, 0x49, 0x49, 0x49, 0x36],
       '9': [0x06, 0x49, 0x49, 0x29, 0x1E],
     };
-
     const bitmap = font[char.toUpperCase()] || [0x7F, 0x7F, 0x7F, 0x7F, 0x7F];
     for (let i = 0; i < 5; i++) {
       for (let bit = 0; bit < 8; bit++) {
@@ -113,16 +99,17 @@ export class FireOledLogic {
   createOledMessage() {
     const header = [
       0xF0, 0x47, 0x7F, 0x43, 0x0E,
-      0x09, 0x17, // Length: 1175 bytes total (payload + range bytes)
-      0x00, 0x07, // Start/End Band
-      0x00, 0x7F  // Start/End Column
+      0x09, 0x17,
+      0x00, 0x07,
+      0x00, 0x7F
     ];
-
     const message = new Uint8Array(header.length + this.buffer.length + 1);
     message.set(header);
     message.set(this.buffer, header.length);
     message[message.length - 1] = 0xF7;
-    
     return message;
   }
 }
+
+if (typeof window !== 'undefined') window.FireOledLogic = FireOledLogic;
+export { FireOledLogic };

@@ -1,7 +1,4 @@
-import { FireConnectionManager } from './connectionManager.js';
-import { FireMidiLogic } from './midiLogic.js';
-import { FireAppLogic } from './appLogic.js';
-import { FireOledLogic } from './oledLogic.js';
+/* global FireConnectionManager, FireMidiLogic, FireAppLogic, FireOledLogic */
 
 const padMatrix = document.getElementById('pad-matrix');
 const statusText = document.getElementById('status-text');
@@ -53,7 +50,6 @@ async function init() {
     midiDeviceSelect.appendChild(option);
   });
 
-  // Attempt to fetch plugin devices if SC is chosen or available
   setupSocketDiscovery();
 }
 
@@ -70,25 +66,25 @@ function setupCommModeListener() {
 }
 
 async function setupSocketDiscovery() {
-  // We need a temporary socket to listen for serverState
   if (connection.mode === 'socket' || true) {
-    await connection.connectSocketCluster(); // This initializes connection.socket
+    await connection.connectSocketCluster();
     if (connection.socket) {
       const channel = connection.socket.subscribe('serverState');
-      for await (const data of channel) {
-        if (data && data.clients) {
-          const internal = data.clients.find(c => c.id === 'plugin-internal');
-          if (internal && internal.channels) {
-            populateSCDeviceList(internal.channels);
+      (async () => {
+        for await (const data of channel) {
+          if (data && data.clients) {
+            const internal = data.clients.find(c => c.id === 'plugin-internal');
+            if (internal && internal.channels) {
+              populateSCDeviceList(internal.channels);
+            }
           }
         }
-      }
+      })();
     }
   }
 }
 
 function populateSCDeviceList(channels) {
-  // Extract names from midi_out_NAME channels
   const midiNames = channels
     .filter(c => c.startsWith('midi_out_'))
     .map(c => c.replace('midi_out_', ''));
@@ -142,7 +138,7 @@ function setupModeListener() {
   appModeSelect.addEventListener('change', () => {
     if (appModeSelect.value === 'sequencer') {
       appLogic.startSequencer();
-      sequencerInterval = setInterval(tickSequencer, 125); // 120 BPM 16th notes
+      sequencerInterval = setInterval(tickSequencer, 125);
     } else {
       appLogic.stopSequencer();
       if (sequencerInterval) clearInterval(sequencerInterval);
@@ -163,8 +159,6 @@ function sendOLEDData(text) {
   oledLogic.drawText(text, 0, 0);
   const msg = oledLogic.createOledMessage();
   connection.send(msg);
-
-  // Update Virtual OLED
   oledDisplay.textContent = text;
 }
 
@@ -172,7 +166,6 @@ function tickSequencer() {
   const updates = appLogic.tick();
   if (!updates) return;
 
-  // Clear previous column
   updates.clearIndices.forEach(index => {
     const pad = document.getElementById(`pad-${Math.floor(index / 16)}-${index % 16}`);
     const color = appLogic.getPadColor(index);
@@ -183,7 +176,6 @@ function tickSequencer() {
     connection.send(FireMidiLogic.createRGBMessage(index, color.r, color.g, color.b));
   });
 
-  // Highlight current column
   updates.highlightIndices.forEach(index => {
     const pad = document.getElementById(`pad-${Math.floor(index / 16)}-${index % 16}`);
     if (pad) {

@@ -1,6 +1,6 @@
 /* global socketClusterClient */
 
-export class FireConnectionManager {
+class FireConnectionManager {
   constructor(options = {}) {
     this.mode = options.mode || 'direct'; // 'direct' or 'socket'
     this.onStatusChange = options.onStatusChange || (() => {});
@@ -35,9 +35,7 @@ export class FireConnectionManager {
     if (!this.midiAccess) return;
     this.input = null;
     this.output = null;
-
     if (!deviceId) return;
-
     for (const output of this.midiAccess.outputs.values()) {
       if (output.id === deviceId || output.name === deviceId) {
         this.output = output;
@@ -45,7 +43,6 @@ export class FireConnectionManager {
         break;
       }
     }
-
     if (this.output) {
       for (const input of this.midiAccess.inputs.values()) {
         if (input.name === this.output.name) {
@@ -73,7 +70,6 @@ export class FireConnectionManager {
       this.onStatusChange('error', 'Please select a device first');
       return false;
     }
-
     try {
       this.input.onmidimessage = (msg) => this.onMidiMessage(msg.data);
       this.isConnected = true;
@@ -90,30 +86,25 @@ export class FireConnectionManager {
       if (!this.socket) {
         this.socket = socketClusterClient.create({
           hostname: '127.0.0.1',
-          port: 8080 // Default Slides-Studio port
+          port: 8080
         });
-
         void (async () => {
           for await (const { error } of this.socket.listener('error')) {
             console.error('Socket error:', error);
           }
         })();
       }
-
       this.onStatusChange('error', 'Connecting to SocketCluster...');
-
       for await (const status of this.socket.listener('connect')) {
         this.isConnected = true;
         this.onStatusChange('connected', `SocketCluster: ${this.deviceName}`);
         this.setupSocketChannels();
       }
-
       if (this.socket.state === 'open') {
         this.isConnected = true;
         this.onStatusChange('connected', `SocketCluster: ${this.deviceName}`);
         this.setupSocketChannels();
       }
-
       return true;
     } catch (err) {
       this.onStatusChange('error', `Socket Error: ${err.message}`);
@@ -140,3 +131,6 @@ export class FireConnectionManager {
     }
   }
 }
+
+if (typeof window !== 'undefined') window.FireConnectionManager = FireConnectionManager;
+export { FireConnectionManager };
