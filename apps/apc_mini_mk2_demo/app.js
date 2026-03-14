@@ -1,7 +1,8 @@
-/**
- * AKAI APC mini mk2 Demo App
- * Main Orchestrator
- */
+import { APCMiniCore } from './apcMiniCore.js';
+// socketcluster-client will be loaded via script tag in index.html for simplicity in this demo environment, 
+// similar to launchpad_mk1_demo if needed, but I'll use the module import if available.
+// Actually, looking at launchpad_mk1_demo/app.js, it uses: import { create } from '../lib/socketcluster-client.min.js';
+import { create } from '../lib/socketcluster-client.min.js';
 
 class APCMiniApp {
   constructor() {
@@ -15,9 +16,14 @@ class APCMiniApp {
     this.commModeSelect = document.getElementById('comm-mode');
     this.midiDeviceSelect = document.getElementById('midi-device-select');
     this.btnScan = document.getElementById('btn-scan');
+    this.btnConnect = document.getElementById('btn-connect');
     
     this.midiAccess = null;
-    this.availableDevices = [];
+    this.input = null;
+    this.output = null;
+    this.socket = null;
+    
+    this.isConnected = false;
     
     this.init();
   }
@@ -42,7 +48,6 @@ class APCMiniApp {
     try {
       this.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
       this.scanDevices();
-      
       this.midiAccess.onstatechange = () => this.scanDevices();
     } catch (err) {
       this.updateStatus(`MIDI Access Error: ${err.message}`, false);
@@ -51,14 +56,9 @@ class APCMiniApp {
 
   scanDevices() {
     this.midiDeviceSelect.innerHTML = '';
-    const inputs = Array.from(this.midiAccess.inputs.values());
     const outputs = Array.from(this.midiAccess.outputs.values());
 
-    // Group by name - we need both in/out for full functionality
-    const deviceNames = new Set();
-    outputs.forEach(out => deviceNames.add(out.name));
-
-    if (deviceNames.size === 0) {
+    if (outputs.length === 0) {
       const opt = document.createElement('option');
       opt.value = '';
       opt.innerText = 'No devices found';
@@ -66,22 +66,121 @@ class APCMiniApp {
       return;
     }
 
-    deviceNames.forEach(name => {
+    outputs.forEach(out => {
       const opt = document.createElement('option');
-      opt.value = name;
-      opt.innerText = name;
-      if (name.toLowerCase().includes('apc mini')) opt.selected = true;
+      opt.value = out.id;
+      opt.innerText = out.name;
+      if (out.name.toLowerCase().includes('apc mini')) opt.selected = true;
       this.midiDeviceSelect.appendChild(opt);
     });
   }
 
   updateStatus(message, isConnected) {
+    this.isConnected = isConnected;
     this.statusText.innerText = message;
     if (isConnected) {
       this.statusIndicator.classList.add('connected');
+      this.btnConnect.innerText = 'Disconnect';
     } else {
       this.statusIndicator.classList.remove('connected');
+      this.btnConnect.innerText = 'Connect';
     }
+  }
+
+  async toggleConnection() {
+    if (this.isConnected) {
+      await this.disconnect();
+    } else {
+      await this.connect();
+    }
+  }
+
+  async connect() {
+    const mode = this.commModeSelect.value;
+    const deviceId = this.midiDeviceSelect.value;
+    
+    if (mode === 'direct') {
+      await this.connectDirect(deviceId);
+    } else {
+      await this.connectSocket(deviceId);
+    }
+  }
+
+  async connectDirect(deviceId) {
+    this.input = this.midiAccess.inputs.get(deviceId);
+    this.output = this.midiAccess.outputs.get(deviceId);
+
+    if (this.input && this.output) {
+      this.input.onmidimessage = (msg) => this.handleMidiMessage(msg);
+      this.updateStatus(`Connected to ${this.output.name}`, true);
+      
+      // Send Intro Message
+      this.sendMidi(APCMiniCore.encodeIntroMessage());
+    } else {
+      this.updateStatus('Device not found', false);
+    }
+  }
+
+  async connectSocket(deviceId) {
+    try {
+      const deviceName = this.midiDeviceSelect.options[this.midiDeviceSelect.selectedIndex].text;
+      
+      this.socket = create({
+        hostname: window.location.hostname,
+        port: window.location.port || 8080,
+        path: '/socketcluster/'
+      });
+
+      for await (const {error} of this.socket.listener('error')) {
+        console.error('Socket error:', error);
+      }
+
+      for await (const {socket: s} of this.socket.listener('connect')) {
+        this.updateStatus(`Connected to Server (Remote: ${deviceName})`, true);
+        this.subscribeToRemoteMidi(deviceName);
+        this.sendMidi(APCMiniCore.encodeIntroMessage());
+      }
+    } catch (err) {
+      this.updateStatus(`Socket Error: ${err.message}`, false);
+    }
+  }
+
+  async subscribeToRemoteMidi(deviceName) {
+    const channel = this.socket.subscribe(`midi_in_${deviceName}`);
+    for await (const data of channel) {
+      if (this.commModeSelect.value === 'socket') {
+        this.handleMidiMessage({ data: new Uint8Array(Object.values(data.message)) });
+      }
+    }
+  }
+
+  async disconnect() {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+    if (this.input) {
+      this.input.onmidimessage = null;
+      this.input = null;
+    }
+    this.output = null;
+    this.updateStatus('Disconnected', false);
+  }
+
+  sendMidi(data) {
+    if (this.commModeSelect.value === 'direct') {
+      if (this.output) this.output.send(data);
+    } else {
+      if (this.socket && this.socket.state === 'open') {
+        const deviceName = this.midiDeviceSelect.options[this.midiDeviceSelect.selectedIndex].text;
+        this.socket.transmitPublish(`midi_out_${deviceName}`, { type: 'raw', data: Array.from(data) });
+      }
+    }
+  }
+
+  handleMidiMessage(msg) {
+    console.log('Incoming MIDI:', msg.data);
+    // Logic for updating UI based on input will be in Task 3/4
   }
 
   generatePads() {
@@ -144,16 +243,17 @@ class APCMiniApp {
   setupEventListeners() {
     this.padMatrix.addEventListener('mousedown', (e) => {
       if (e.target.classList.contains('pad')) {
-        console.log(`Pad pressed: ${e.target.dataset.note}`);
+        const note = parseInt(e.target.dataset.note);
+        const behavior = document.getElementById('led-behavior').value;
+        const color = parseInt(document.getElementById('palette-color').value);
+        
+        // Example: Solid 100% 
+        const msg = APCMiniCore.encodePadMessage(note, color, 'solid', 100);
+        this.sendMidi(msg);
       }
     });
 
-    document.getElementById('btn-connect').addEventListener('click', () => {
-      const mode = this.commModeSelect.value;
-      const deviceName = this.midiDeviceSelect.value;
-      this.updateStatus(`Connecting to ${deviceName} via ${mode}...`, false);
-      console.log(`Attempting connection: Mode=${mode}, Device=${deviceName}`);
-    });
+    this.btnConnect.addEventListener('click', () => this.toggleConnection());
 
     this.btnScan.addEventListener('click', () => {
       if (this.midiAccess) this.scanDevices();
