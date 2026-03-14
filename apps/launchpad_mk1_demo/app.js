@@ -12,6 +12,9 @@ class LaunchpadApp {
     
     this.pads = new Map(); // Key: 'row,col' or 'top,col'
     
+    this.sparkleInterval = null;
+    this.sparkleActive = false;
+    
     this.init();
   }
 
@@ -77,6 +80,8 @@ class LaunchpadApp {
     document.getElementById('btn-clear').addEventListener('click', () => this.clearLeds());
     document.getElementById('btn-test').addEventListener('click', () => this.testLeds());
     document.getElementById('btn-apply-manual').addEventListener('click', () => this.applyManualColor());
+    document.getElementById('btn-wave').addEventListener('click', () => this.startWaveAnimation());
+    document.getElementById('btn-sparkle').addEventListener('click', () => this.startSparkleAnimation());
   }
 
   async connectMidi() {
@@ -167,6 +172,8 @@ class LaunchpadApp {
     if (pad) {
       if (parsed.isPress) {
         pad.classList.add('active-glow');
+        // On press, light up the device with the current manual color
+        this.handlePadClick(pad);
       } else {
         pad.classList.remove('active-glow');
       }
@@ -174,6 +181,7 @@ class LaunchpadApp {
   }
 
   updateVirtualPad(pad, red, green) {
+    if (!pad) return;
     // Remove old LED classes
     pad.classList.remove('led-red-full', 'led-red-low', 'led-green-full', 'led-green-low', 'led-amber-full', 'led-amber-low', 'led-off');
     
@@ -196,28 +204,71 @@ class LaunchpadApp {
 
   clearLeds() {
     if (!this.output) return;
-    // Clear all by sending 0 velocity to all notes (slow but reliable for demo)
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 9; c++) {
-        const note = LaunchpadMk1Core.xyToNote(r, c);
-        this.output.send([0x90, note, 0x0C]);
-      }
-    }
-    for (let c = 0; c < 8; c++) {
-      const cc = LaunchpadMk1Core.getTopRowCC(c);
-      this.output.send([0xB0, cc, 0x0C]);
-    }
-    this.clearVirtualGrid();
+    this.resetDevice();
   }
 
   testLeds() {
     if (!this.output) return;
     this.output.send([0xB0, 0x00, 0x7F]); // All LEDs on (Full)
+    this.pads.forEach(pad => this.updateVirtualPad(pad, 3, 3));
   }
 
   applyManualColor() {
-    // Logic to apply manual color to entire grid could go here
-    console.log('Apply manual color to all');
+    if (!this.output) return;
+    const red = parseInt(document.getElementById('manual-red').value);
+    const green = parseInt(document.getElementById('manual-green').value);
+    const velocity = LaunchpadMk1Core.calculateColorVelocity(red, green);
+
+    // Apply to 8x8 grid and scene buttons
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 9; c++) {
+        const note = LaunchpadMk1Core.xyToNote(r, c);
+        this.output.send([0x90, note, velocity]);
+        this.updateVirtualPad(this.pads.get(`${r},${c}`), red, green);
+      }
+    }
+    // Apply to top row
+    for (let c = 0; c < 8; c++) {
+      const cc = LaunchpadMk1Core.getTopRowCC(c);
+      this.output.send([0xB0, cc, velocity]);
+      this.updateVirtualPad(this.pads.get(`top,${c}`), red, green);
+    }
+  }
+
+  async startWaveAnimation() {
+    if (!this.output) return;
+    this.clearLeds();
+    
+    for (let c = 0; c < 9; c++) {
+      for (let r = 0; r < 8; r++) {
+        const note = LaunchpadMk1Core.xyToNote(r, c);
+        const velocity = LaunchpadMk1Core.calculateColorVelocity(3, 3); // Amber
+        this.output.send([0x90, note, velocity]);
+        this.updateVirtualPad(this.pads.get(`${r},${c}`), 3, 3);
+      }
+      await new Promise(r => setTimeout(r, 80));
+    }
+  }
+
+  startSparkleAnimation() {
+    if (this.sparkleActive) {
+      clearInterval(this.sparkleInterval);
+      this.sparkleActive = false;
+      return;
+    }
+
+    this.sparkleActive = true;
+    this.sparkleInterval = setInterval(() => {
+      const r = Math.floor(Math.random() * 8);
+      const c = Math.floor(Math.random() * 9);
+      const red = Math.floor(Math.random() * 4);
+      const green = Math.floor(Math.random() * 4);
+      
+      const note = LaunchpadMk1Core.xyToNote(r, c);
+      const velocity = LaunchpadMk1Core.calculateColorVelocity(red, green);
+      this.output.send([0x90, note, velocity]);
+      this.updateVirtualPad(this.pads.get(`${r},${c}`), red, green);
+    }, 50);
   }
 
   clearVirtualGrid() {
