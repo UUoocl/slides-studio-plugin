@@ -51,9 +51,9 @@ Update the HTML app to use the new core module and redesign the editor UI.
 - [x] Task: Redesign the rule editor to support multiple `then` blocks (dynamic list). 55949f7
 - [x] Task: Add UI controls for `active` toggle and fix loading bug. 620631c
 - [x] Task: Add UI controls for `matchMode` selector and action `delay` inputs. ffc8676, 55949f7
-- [x] Task: Update Save/Load logic to handle the new hierarchical JSON schema. 02bb52f
-- [ ] Task: Final end-to-end manual verification in OBS/Obsidian.
-- [ ] Task: Conductor - User Manual Verification 'Phase 5' (Protocol in workflow.md)
+- [x] Task: Update Save/Load logic to handle the new hierarchical JSON schema. 8114b23
+- [x] Task: Final end-to-end manual verification in OBS/Obsidian. 9b48846
+- [x] Task: Conductor - User Manual Verification 'Phase 5' (Protocol in workflow.md) 9b48846
 
 ## Verification & Testing
 - **Automated**: Vitest suite for `ruleEngineCore.js` covering all matching modes, throttling, and sequential actions.
