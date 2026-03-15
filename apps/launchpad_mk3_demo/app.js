@@ -12,234 +12,293 @@ import {
   generateCC
 } from './launchpadCore.js';
 
-const gridContainer = document.getElementById('virtual-launchpad');
-const statusIndicator = document.getElementById('status-indicator');
-const statusText = document.getElementById('status-text');
-const deviceNameInput = document.getElementById('device-name');
-
-let socket = null;
-let currentPattern = null;
-let animationFrame = null;
-let patternStep = 0;
-
-/**
- * Generates the 9x9 virtual Launchpad grid.
- */
-function generateGrid() {
-  gridContainer.innerHTML = '';
-
-  for (let row = 0; row < 9; row++) {
-    for (let col = 0; col < 9; col++) {
-      const pad = document.createElement('div');
-      pad.className = 'pad';
-      
-      let id = null;
-      let label = '';
-
-      if (row === 0) {
-        if (col < 8) {
-          id = TOP_BUTTONS[col];
-          pad.classList.add('top-row', 'round');
-          label = `CC ${id}`;
-        } else {
-          id = LOGO_BUTTON;
-          pad.classList.add('logo');
-          label = 'LP';
-        }
-      } else {
-        if (col < 8) {
-          const gridIndex = (row - 1) * 8 + col;
-          id = GRID_PADS[gridIndex];
-          label = id;
-        } else {
-          id = RIGHT_BUTTONS[row - 1];
-          pad.classList.add('right-col', 'round');
-          label = `CC ${id}`;
-        }
-      }
-
-      pad.id = `pad-${id}`;
-      pad.textContent = label;
-      pad.dataset.id = id;
-      
-      gridContainer.appendChild(pad);
-    }
-  }
-}
-
-/**
- * Connects to the SocketCluster server.
- */
-async function connect() {
-  // Determine the server URL from the current window location
-  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  const host = window.location.host;
-  const url = `${protocol}://${host}/socketcluster/`;
-
-  console.log(`Connecting to SocketCluster at ${url}...`);
-
-  socket = create({
-    hostname: window.location.hostname,
-    port: window.location.port,
-    path: '/socketcluster/'
-  });
-
-  for await (const {error} of socket.listener('error')) {
-    console.error('Socket error:', error);
-  }
-
-  for await (const {socket: s} of socket.listener('connect')) {
-    console.log('Socket connected:', s.id);
-    statusIndicator.classList.add('connected');
-    statusText.textContent = 'Connected to Server';
+export class LaunchpadApp {
+  constructor() {
+    this.gridContainer = document.getElementById('virtual-launchpad');
+    this.statusIndicator = document.getElementById('status-indicator');
+    this.statusText = document.getElementById('status-text');
+    this.deviceNameInput = document.getElementById('device-name');
     
-    // Auto-enter Programmer Mode
-    enterProgrammerMode();
+    // Connectivity UI
+    this.commModeSelect = document.getElementById('comm-mode');
+    this.midiDeviceSelect = document.getElementById('midi-device-select');
+    this.btnScan = document.getElementById('btn-scan');
+    this.btnConnect = document.getElementById('btn-connect');
+    
+    this.socket = null;
+    this.midiAccess = null;
+    this.input = null;
+    this.output = null;
+    this.isConnected = false;
+    
+    this.currentPattern = null;
+    this.animationFrame = null;
+    this.patternStep = 0;
+
+    this.init();
   }
 
-  for await (const {code, reason} of socket.listener('close')) {
-    console.log('Socket closed:', code, reason);
-    statusIndicator.classList.remove('connected');
-    statusText.textContent = 'Disconnected';
-  }
-}
-
-/**
- * Sends a MIDI message via the SocketCluster bridge.
- */
-function sendMidi(payload) {
-  if (!socket || socket.state !== 'open') {
-    console.warn('Socket not connected. Cannot send MIDI.');
-    return;
+  async init() {
+    this.generateGrid();
+    this.setupEventListeners();
+    this.updateStatus('Disconnected', false);
+    
+    // We request MIDI access, but it shouldn't block SC from working
+    // This will be implemented in Phase 2
+    // this.requestMidiAccess();
+    
+    // Set initial display states
+    this.updateCommModeDisplay();
   }
 
-  const deviceName = deviceNameInput.value || 'Launchpad';
-  const channel = `midi_out_${deviceName}`;
-  socket.transmitPublish(channel, payload);
-  
-  // Also update virtual grid
-  updateVirtualGrid(payload);
-}
+  updateCommModeDisplay() {
+    if (!this.commModeSelect) return;
+    const isDirect = this.commModeSelect.value === 'direct';
+    const midiSelect = document.getElementById('midi-select-container');
+    const scSelect = document.getElementById('sc-select-container');
+    if (midiSelect) midiSelect.style.display = isDirect ? 'block' : 'none';
+    if (scSelect) scSelect.style.display = isDirect ? 'none' : 'block';
+  }
 
-/**
- * Updates the virtual grid based on outgoing MIDI messages.
- */
-function updateVirtualGrid(payload) {
-  if (payload.type === 'sysex' || payload.type === 'raw') {
-    const data = payload.data;
-    if (data && data[6] === 0x03) { // Bulk LED
-      // [Header] 03h <type> <index> <data> ...
-      const payloadData = data.slice(7, data.length - 1);
-      for (let i = 0; i < payloadData.length; ) {
-        const type = payloadData[i++];
-        const index = payloadData[i++];
-        const val = payloadData[i++]; // Static palette index
+  generateGrid() {
+    if (!this.gridContainer) return;
+    this.gridContainer.innerHTML = '';
+
+    for (let row = 0; row < 9; row++) {
+      for (let col = 0; col < 9; col++) {
+        const pad = document.createElement('div');
+        pad.className = 'pad';
         
-        const pad = document.getElementById(`pad-${index}`);
-        if (pad) {
-          pad.style.backgroundColor = val > 0 ? getPaletteColor(val) : '';
-          pad.style.boxShadow = val > 0 ? `0 0 10px ${getPaletteColor(val)}` : '';
+        let id = null;
+        let label = '';
+
+        if (row === 0) {
+          if (col < 8) {
+            id = TOP_BUTTONS[col];
+            pad.classList.add('top-row', 'round');
+            label = `CC ${id}`;
+          } else {
+            id = LOGO_BUTTON;
+            pad.classList.add('logo');
+            label = 'LP';
+          }
+        } else {
+          if (col < 8) {
+            const gridIndex = (row - 1) * 8 + col;
+            id = GRID_PADS[gridIndex];
+            label = id;
+          } else {
+            id = RIGHT_BUTTONS[row - 1];
+            pad.classList.add('right-col', 'round');
+            label = `CC ${id}`;
+          }
+        }
+
+        pad.id = `pad-${id}`;
+        pad.textContent = label;
+        pad.dataset.id = id;
+        
+        this.gridContainer.appendChild(pad);
+      }
+    }
+  }
+
+  updateStatus(message, isConnected) {
+    this.isConnected = isConnected;
+    if (this.statusText) this.statusText.textContent = message;
+    if (this.statusIndicator) {
+      if (isConnected) {
+        this.statusIndicator.classList.add('connected');
+      } else {
+        this.statusIndicator.classList.remove('connected');
+      }
+    }
+    if (this.btnConnect) {
+      this.btnConnect.innerText = isConnected ? 'Disconnect' : 'Connect';
+    }
+  }
+
+  setupEventListeners() {
+    if (document.getElementById('btn-programmer')) {
+      document.getElementById('btn-programmer').addEventListener('click', () => this.enterProgrammerMode());
+    }
+    if (document.getElementById('btn-clear')) {
+      document.getElementById('btn-clear').addEventListener('click', () => this.clearAll());
+    }
+
+    if (document.getElementById('btn-fill')) {
+      document.getElementById('btn-fill').addEventListener('click', () => {
+        this.stopPatterns();
+        const colorInput = document.getElementById('fill-color');
+        const color = colorInput ? parseInt(colorInput.value) : 5;
+        const msg = generateSolidFill(color);
+        this.sendMidi({ type: 'sysex', data: msg });
+      });
+    }
+
+    if (document.getElementById('btn-rainbow')) {
+      document.getElementById('btn-rainbow').addEventListener('click', () => {
+        this.startPatterns(generateRainbowWave);
+      });
+    }
+
+    if (document.getElementById('btn-sparkle')) {
+      document.getElementById('btn-sparkle').addEventListener('click', () => {
+        this.startPatterns(() => generateRandomSparkle(5));
+      });
+    }
+
+    if (document.getElementById('btn-scroll')) {
+      document.getElementById('btn-scroll').addEventListener('click', () => {
+        this.stopPatterns();
+        const textInput = document.getElementById('scroll-text');
+        const colorInput = document.getElementById('scroll-color');
+        const text = textInput ? textInput.value || 'Hello!' : 'Hello!';
+        const color = colorInput ? parseInt(colorInput.value) : 13;
+        const msg = generateTextScroll(text, color);
+        this.sendMidi({ type: 'sysex', data: msg });
+      });
+    }
+
+    if (this.commModeSelect) {
+      this.commModeSelect.addEventListener('change', () => this.updateCommModeDisplay());
+    }
+
+    if (this.btnConnect) {
+      this.btnConnect.addEventListener('click', () => this.toggleConnection());
+    }
+  }
+
+  async toggleConnection() {
+    if (this.isConnected) {
+      await this.disconnect();
+    } else {
+      await this.connect();
+    }
+  }
+
+  async connect() {
+    // Basic SocketCluster connection for now (mimicking old logic)
+    // Detailed implementation in Phase 2/3
+    const mode = this.commModeSelect ? this.commModeSelect.value : 'socket';
+    if (mode === 'socket') {
+      const deviceName = this.deviceNameInput ? this.deviceNameInput.value || 'Launchpad' : 'Launchpad';
+      await this.connectSocket(deviceName);
+    }
+  }
+
+  async connectSocket(deviceName) {
+    try {
+      this.socket = create({
+        hostname: window.location.hostname,
+        port: window.location.port || 8080,
+        path: '/socketcluster/'
+      });
+
+      // Handle connection success
+      (async () => {
+        for await (const {socket: s} of this.socket.listener('connect')) {
+          this.updateStatus(`Connected to Server (Remote: ${deviceName})`, true);
+          this.enterProgrammerMode();
+        }
+      })();
+    } catch (err) {
+      this.updateStatus(`Socket Error: ${err.message}`, false);
+    }
+  }
+
+  async disconnect() {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+    this.updateStatus('Disconnected', false);
+  }
+
+  sendMidi(payload) {
+    if (this.socket && this.socket.state === 'open') {
+      const deviceName = this.deviceNameInput ? this.deviceNameInput.value || 'Launchpad' : 'Launchpad';
+      const channel = `midi_out_${deviceName}`;
+      this.socket.transmitPublish(channel, payload);
+    }
+    
+    // Also update virtual grid
+    this.updateVirtualGrid(payload);
+  }
+
+  updateVirtualGrid(payload) {
+    if (payload.type === 'sysex' || payload.type === 'raw') {
+      const data = payload.data;
+      if (data && data[6] === 0x03) { // Bulk LED
+        const payloadData = data.slice(7, data.length - 1);
+        for (let i = 0; i < payloadData.length; ) {
+          const type = payloadData[i++];
+          const index = payloadData[i++];
+          const val = payloadData[i++]; 
+          
+          const pad = document.getElementById(`pad-${index}`);
+          if (pad) {
+            pad.style.backgroundColor = val > 0 ? this.getPaletteColor(val) : '';
+            pad.style.boxShadow = val > 0 ? `0 0 10px ${this.getPaletteColor(val)}` : '';
+          }
         }
       }
     }
   }
-  // Note: Standard NoteOn/CC updates can be added here
-}
 
-/**
- * Returns a CSS color for a Launchpad palette index.
- * (Simplified mapping for demo)
- */
-function getPaletteColor(index) {
-  const colors = {
-    5: '#ff0000',   // Red
-    9: '#ff8000',   // Orange
-    13: '#ffff00',  // Yellow
-    21: '#00ff00',  // Green
-    45: '#0000ff',  // Blue
-    53: '#8000ff',  // Purple
-    1: '#ffffff',   // White
-    0: 'transparent'
-  };
-  return colors[index] || `hsl(${index * 2.8}, 100%, 50%)`;
-}
-
-/**
- * System Commands
- */
-function enterProgrammerMode() {
-  const msg = generateProgrammerModeMsg();
-  sendMidi({ type: 'sysex', data: msg });
-  console.log('Sent Programmer Mode command');
-}
-
-function clearAll() {
-  stopPatterns();
-  const msg = generateSolidFill(0);
-  sendMidi({ type: 'sysex', data: msg });
-}
-
-/**
- * Animation Loop
- */
-function startPatterns(patternFn) {
-  stopPatterns();
-  currentPattern = patternFn;
-  patternStep = 0;
-  
-  const loop = () => {
-    const msg = currentPattern(patternStep++);
-    sendMidi({ type: 'sysex', data: msg });
-    animationFrame = requestAnimationFrame(() => {
-      // Throttling animations for demo
-      setTimeout(loop, 50);
-    });
-  };
-  loop();
-}
-
-function stopPatterns() {
-  if (animationFrame) {
-    cancelAnimationFrame(animationFrame);
-    animationFrame = null;
+  getPaletteColor(index) {
+    const colors = {
+      5: '#ff0000',   // Red
+      9: '#ff8000',   // Orange
+      13: '#ffff00',  // Yellow
+      21: '#00ff00',  // Green
+      45: '#0000ff',  // Blue
+      53: '#8000ff',  // Purple
+      1: '#ffffff',   // White
+      0: 'transparent'
+    };
+    return colors[index] || `hsl(${index * 2.8}, 100%, 50%)`;
   }
-  currentPattern = null;
-}
 
-/**
- * UI Event Listeners
- */
-function setupEventListeners() {
-  document.getElementById('btn-programmer').addEventListener('click', enterProgrammerMode);
-  document.getElementById('btn-clear').addEventListener('click', clearAll);
+  enterProgrammerMode() {
+    const msg = generateProgrammerModeMsg();
+    this.sendMidi({ type: 'sysex', data: msg });
+  }
 
-  document.getElementById('btn-fill').addEventListener('click', () => {
-    stopPatterns();
-    const color = parseInt(document.getElementById('fill-color').value);
-    const msg = generateSolidFill(color);
-    sendMidi({ type: 'sysex', data: msg });
-  });
+  clearAll() {
+    this.stopPatterns();
+    const msg = generateSolidFill(0);
+    this.sendMidi({ type: 'sysex', data: msg });
+  }
 
-  document.getElementById('btn-rainbow').addEventListener('click', () => {
-    startPatterns(generateRainbowWave);
-  });
+  startPatterns(patternFn) {
+    this.stopPatterns();
+    this.currentPattern = patternFn;
+    this.patternStep = 0;
+    
+    const loop = () => {
+      if (!this.currentPattern) return;
+      const msg = this.currentPattern(this.patternStep++);
+      this.sendMidi({ type: 'sysex', data: msg });
+      this.animationFrame = requestAnimationFrame(() => {
+        setTimeout(loop, 50);
+      });
+    };
+    loop();
+  }
 
-  document.getElementById('btn-sparkle').addEventListener('click', () => {
-    startPatterns(() => generateRandomSparkle(5));
-  });
-
-  document.getElementById('btn-scroll').addEventListener('click', () => {
-    stopPatterns();
-    const text = document.getElementById('scroll-text').value || 'Hello!';
-    const color = parseInt(document.getElementById('scroll-color').value);
-    const msg = generateTextScroll(text, color);
-    sendMidi({ type: 'sysex', data: msg });
-  });
+  stopPatterns() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
+    }
+    this.currentPattern = null;
+  }
 }
 
 // Initialization
-document.addEventListener('DOMContentLoaded', () => {
-  generateGrid();
-  setupEventListeners();
-  connect();
-});
+if (typeof window !== 'undefined') {
+  window.addEventListener('DOMContentLoaded', () => {
+    new LaunchpadApp();
+  });
+}
