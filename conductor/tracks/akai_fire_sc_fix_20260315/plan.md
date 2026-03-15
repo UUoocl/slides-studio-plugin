@@ -1,19 +1,19 @@
 # Implementation Plan: AKAI Fire SocketCluster Bug Fix & UI Sync
 
-## Phase 1: UI Alignment & CSS Synchronization
+## Phase 1: UI Alignment & CSS Synchronization [checkpoint: fa81966]
 Goal: Replicate the connectivity UI and styling from the APC Mini mk2 app.
 
-- [ ] Task: Synchronize CSS styles
-    - [ ] Copy relevant connectivity and status bar styles from `apps/apc_mini_mk2_demo/styles.css` to `apps/akai_fire_demo/index.html` (within `<style>` tag).
-- [ ] Task: Update HTML structure
-    - [ ] Replace the existing "System" control group in `apps/akai_fire_demo/index.html` with the "Connectivity" structure from `apps/apc_mini_mk2_demo/index.html`.
-    - [ ] Ensure all IDs (`comm-mode`, `sc-select-container`, `midi-select-container`, `btn-scan`, `btn-connect`, etc.) match those used in the APC app.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
+- [x] Task: Synchronize CSS styles
+    - [x] Copy relevant connectivity and status bar styles from `apps/apc_mini_mk2_demo/styles.css` to `apps/akai_fire_demo/index.html` (within `<style>` tag).
+- [x] Task: Update HTML structure
+    - [x] Replace the existing "System" control group in `apps/akai_fire_demo/index.html` with the "Connectivity" structure from `apps/apc_mini_mk2_demo/index.html`.
+    - [x] Ensure all IDs (`comm-mode`, `sc-select-container`, `midi-select-container`, `btn-scan`, `btn-connect`, etc.) match those used in the APC app.
+- [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md) fa81966
 
 ## Phase 2: Logic Refactoring & TDD Setup
 Goal: Move connection logic into `app.js` and set up failing tests for the new structure.
 
-- [ ] Task: Create initial test suite for `app.js`
+...
     - [ ] Create `apps/akai_fire_demo/app.test.js`.
     - [ ] Write tests for UI state updates (e.g., `updateCommModeDisplay`).
     - [ ] Write tests for MIDI message handling (mocking `socket` and `midiAccess`).
