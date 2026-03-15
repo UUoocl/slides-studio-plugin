@@ -110,14 +110,17 @@ describe('LaunchpadApp', () => {
         expect(mockElements['btn-connect'].innerText).toBe('Connect');
     });
 
-    it('should update communication mode display', () => {
+    it('should update communication mode display on change event', () => {
+        const changeHandler = mockElements['comm-mode'].addEventListener.mock.calls.find(call => call[0] === 'change')[1];
+        expect(changeHandler).toBeDefined();
+
         mockElements['comm-mode'].value = 'direct';
-        app.updateCommModeDisplay();
+        changeHandler();
         expect(mockElements['midi-select-container'].style.display).toBe('block');
         expect(mockElements['sc-select-container'].style.display).toBe('none');
 
         mockElements['comm-mode'].value = 'socket';
-        app.updateCommModeDisplay();
+        changeHandler();
         expect(mockElements['midi-select-container'].style.display).toBe('none');
         expect(mockElements['sc-select-container'].style.display).toBe('block');
     });
