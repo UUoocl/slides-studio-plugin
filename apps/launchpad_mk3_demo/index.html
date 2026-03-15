@@ -182,9 +182,33 @@
 
     <div class="controls">
       <div class="control-group">
+        <h3>Connectivity</h3>
+        <label for="comm-mode">Mode:</label>
+        <select id="comm-mode">
+          <option value="direct">Direct WebMIDI</option>
+          <option value="socket" selected>SocketCluster Bridge</option>
+        </select>
+        
+        <div id="sc-select-container">
+          <label for="device-name">Plugin MIDI Alias:</label>
+          <input type="text" id="device-name" value="Launchpad MK3">
+        </div>
+
+        <div id="midi-select-container" style="display: none;">
+          <label for="midi-device-select">Local MIDI Device:</label>
+          <div style="display: flex; gap: 5px;">
+            <select id="midi-device-select" style="flex-grow: 1; margin-bottom: 0;">
+              <option value="">Scan for devices...</option>
+            </select>
+            <button id="btn-scan" style="width: auto; margin-bottom: 0; padding: 5px 10px;">Scan</button>
+          </div>
+        </div>
+
+        <button id="btn-connect" style="margin-top: 10px;">Connect</button>
+      </div>
+
+      <div class="control-group">
         <h3>System</h3>
-        <label for="device-name">MIDI Device Alias:</label>
-        <input type="text" id="device-name" value="Launchpad">
         <button id="btn-programmer">Enter Programmer Mode</button>
         <button id="btn-clear">Clear All LEDs</button>
       </div>

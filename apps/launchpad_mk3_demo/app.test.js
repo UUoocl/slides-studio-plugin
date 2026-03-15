@@ -17,7 +17,7 @@ const mockElements = {
     'virtual-launchpad': createBaseMock(),
     'status-indicator': createBaseMock(),
     'status-text': createBaseMock(),
-    'device-name': { ...createBaseMock(), value: 'Launchpad' },
+    'device-name': { ...createBaseMock(), value: 'Launchpad MK3' },
     'comm-mode': { ...createBaseMock(), value: 'socket' },
     'midi-device-select': { ...createBaseMock(), parentElement: createBaseMock() },
     'sc-select-container': createBaseMock(),
