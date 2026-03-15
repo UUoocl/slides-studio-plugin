@@ -356,8 +356,37 @@ export class LaunchpadApp {
   }
 
   handleMidiMessage(msg) {
-    // This will be implemented in Phase 3
-    console.log('MIDI message received:', msg.data);
+    if (!msg || !msg.data || msg.data.length < 3) return;
+    const [status, data1, data2] = msg.data;
+    const type = status & 0xF0;
+
+    // Handle NoteOn (Pads) or CC (Buttons)
+    if (type === 0x90 || type === 0xB0) {
+      const isPress = (type === 0x90) ? data2 > 0 : data2 > 0;
+      const velocity = data2;
+      
+      const pad = document.getElementById(`pad-${data1}`);
+      if (pad) {
+        if (isPress) {
+          pad.classList.add('active-glow');
+          // If it's a note on with velocity, we can try to guess the color or just use a default
+          // Programmer mode often sends back the color index as velocity
+          pad.style.backgroundColor = this.getPaletteColor(velocity);
+          pad.style.boxShadow = `0 0 15px ${this.getPaletteColor(velocity)}`;
+        } else {
+          pad.classList.remove('active-glow');
+          pad.style.backgroundColor = '';
+          pad.style.boxShadow = '';
+        }
+      }
+    } else if (type === 0x80) { // NoteOff
+      const pad = document.getElementById(`pad-${data1}`);
+      if (pad) {
+        pad.classList.remove('active-glow');
+        pad.style.backgroundColor = '';
+        pad.style.boxShadow = '';
+      }
+    }
   }
 
   enterProgrammerMode() {

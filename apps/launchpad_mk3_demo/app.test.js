@@ -174,14 +174,20 @@ describe('LaunchpadApp', () => {
         expect(enterProgrammerModeSpy).toHaveBeenCalled();
     });
 
-    it('should send MIDI in direct mode', () => {
-        const mockOutput = { send: vi.fn() };
-        app.output = mockOutput;
-        mockElements['comm-mode'].value = 'direct';
+    it('should update virtual UI when MIDI message is received', () => {
+        const padId = 60;
+        const mockPad = createBaseMock();
+        mockElements[`pad-${padId}`] = mockPad;
 
-        const payload = { type: 'noteon', data: [0x90, 60, 127] };
-        app.sendMidi(payload);
+        // Note On, Velocity 5 (Red)
+        app.handleMidiMessage({ data: new Uint8Array([0x90, padId, 5]) });
 
-        expect(mockOutput.send).toHaveBeenCalledWith(payload.data);
+        expect(mockPad.classList.add).toHaveBeenCalledWith('active-glow');
+        expect(mockPad.style.backgroundColor).toBe('#ff0000'); // Palette 5 is Red
+
+        // Note Off
+        app.handleMidiMessage({ data: new Uint8Array([0x80, padId, 0]) });
+        expect(mockPad.classList.remove).toHaveBeenCalledWith('active-glow');
+        expect(mockPad.style.backgroundColor).toBe('');
     });
 });
