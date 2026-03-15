@@ -171,6 +171,24 @@ export class LaunchpadApp {
   }
 
   setupEventListeners() {
+    // Pad clicks
+    if (this.gridContainer) {
+      this.gridContainer.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('pad')) {
+          const note = parseInt(e.target.dataset.id);
+          this.sendPadLED(note);
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        document.querySelectorAll('.pad.active-glow').forEach(p => {
+          // We don't necessarily want to turn them off on mouseup if they are 'solid' 
+          // but for temporary highlight we can. 
+          // Programmer mode behavior: we just send the message, hardware state handles it.
+        });
+      });
+    }
+
     if (document.getElementById('btn-programmer')) {
       document.getElementById('btn-programmer').addEventListener('click', () => this.enterProgrammerMode());
     }
@@ -414,6 +432,32 @@ export class LaunchpadApp {
       });
     };
     loop();
+  }
+
+  sendPadLED(note) {
+    if (isNaN(note)) return;
+
+    const useCustom = document.getElementById('use-custom-rgb') ? document.getElementById('use-custom-rgb').checked : false;
+    
+    if (useCustom) {
+      // Custom RGB SysEx handling (requires core support for Launchpad MK3 RGB SysEx)
+      const r = parseInt(document.getElementById('rgb-r').value);
+      const g = parseInt(document.getElementById('rgb-g').value);
+      const b = parseInt(document.getElementById('rgb-b').value);
+      
+      // Note: core might need update for MK3 RGB, but for now we follow the existing pattern
+      // Standard MK3 RGB SysEx: [Header] 03h 03h <index> <r> <g> <b>
+      const header = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x0D];
+      const msg = [...header, 0x03, 0x03, note, Math.floor(r/2), Math.floor(g/2), Math.floor(b/2), 0xF7];
+      this.sendMidi({ type: 'sysex', data: msg });
+    } else {
+      const color = parseInt(document.getElementById('palette-color').value);
+      // For Programmer Mode, we send NoteOn with color as velocity
+      this.sendMidi({ type: 'noteon', data: [0x90, note, color] });
+    }
+    
+    // Optimistically update virtual UI
+    this.handleMidiMessage({ data: [0x90, note, useCustom ? 127 : parseInt(document.getElementById('palette-color').value)] });
   }
 
   stopPatterns() {
