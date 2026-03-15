@@ -71,8 +71,9 @@ class FireMidiLogic {
 
 // Global attachment for browser, export for Vitest
 if (typeof window !== 'undefined') window.FireMidiLogic = FireMidiLogic;
-if (typeof export !== 'undefined') {
-  // This might still trigger errors in browser if reached
+if (typeof exports !== 'undefined') {
+  module.exports = { FireMidiLogic };
 }
+
 // Using simple export for vitest compatibility
 export { FireMidiLogic };

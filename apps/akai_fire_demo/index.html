@@ -33,12 +33,23 @@
       margin-bottom: 20px;
     }
 
+    .status-bar {
+      background: #1e1e1e;
+      padding: 10px 20px;
+      border-radius: 8px;
+      display: flex;
+      gap: 30px;
+      margin-bottom: 30px;
+      align-items: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      border: 1px solid #333;
+    }
+
     .status {
-      margin-bottom: 20px;
-      font-weight: bold;
       display: flex;
       align-items: center;
       gap: 10px;
+      font-weight: bold;
     }
 
     .status-indicator {
@@ -50,6 +61,7 @@
 
     .status-indicator.connected {
       background-color: #00e676;
+      box-shadow: 0 0 8px #00e676;
     }
 
     .container {
@@ -213,44 +225,52 @@
 
     .control-group {
       background: #1e1e1e;
-      padding: 15px;
+      padding: 20px;
       border-radius: 8px;
       border: 1px solid #333;
     }
 
-    button {
-      background-color: #333;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 4px;
-      cursor: pointer;
-      width: 100%;
-      margin-bottom: 10px;
-      font-weight: bold;
+    .control-group h3 {
+      margin-top: 0;
+      margin-bottom: 15px;
+      color: var(--accent-color);
+      font-size: 1.1em;
+      border-bottom: 1px solid #444;
+      padding-bottom: 5px;
     }
 
-    button:hover {
-      background-color: #444;
-    }
-
-    select {
+    input, select, button {
       width: 100%;
-      padding: 8px;
-      margin-bottom: 10px;
+      padding: 10px;
+      margin-bottom: 15px;
       background: #222;
       border: 1px solid #444;
       color: white;
       border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: var(--accent-color);
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      transition: filter 0.2s;
+    }
+
+    button:hover {
+      filter: brightness(1.1);
     }
   </style>
 </head>
 <body>
   <h1>AKAI Fire Demo</h1>
 
-  <div class="status">
-    <div id="status-indicator" class="status-indicator"></div>
-    <span id="status-text">Disconnected</span>
+  <div class="status-bar">
+    <div class="status">
+      <div id="status-indicator" class="status-indicator"></div>
+      <span id="status-text">Disconnected</span>
+    </div>
   </div>
 
   <div class="container">
@@ -284,26 +304,26 @@
 
     <div class="controls">
       <div class="control-group">
-        <h3>System</h3>
-        <label for="comm-mode">Communication Mode:</label>
+        <h3>Connectivity</h3>
+        <label for="comm-mode">Mode:</label>
         <select id="comm-mode">
           <option value="direct">Direct WebMIDI</option>
-          <option value="socket">SocketCluster Bridge</option>
+          <option value="socket" selected>SocketCluster Bridge</option>
         </select>
-
-        <div id="midi-select-container">
-          <label for="midi-device">MIDI Device (WebMIDI):</label>
-          <select id="midi-device">
-            <option value="">(Scan for devices...)</option>
-          </select>
+        
+        <div id="sc-select-container" style="display: none; margin-bottom: 10px;">
+          <label for="device-name">Plugin MIDI Alias:</label>
+          <input type="text" id="device-name" value="AKAI Fire" style="width: 100%; padding: 8px; background: #222; border: 1px solid #444; color: white; border-radius: 4px; box-sizing: border-box;">
         </div>
 
-        <div id="sc-select-container" style="display: none;">
-          <label for="sc-device-name">Plugin MIDI Alias:</label>
-          <input type="text" id="sc-device-name" placeholder="e.g. Fire1" style="width: 100%; padding: 8px; background: #222; border: 1px solid #444; color: white; border-radius: 4px; box-sizing: border-box; margin-bottom: 5px;">
-          <select id="sc-device-list" style="margin-top: 5px;">
-            <option value="">(Waiting for plugin...)</option>
-          </select>
+        <div id="midi-select-container" style="margin-bottom: 10px;">
+          <label for="midi-device-select">Local MIDI Device:</label>
+          <div style="display: flex; gap: 5px;">
+            <select id="midi-device-select" style="flex-grow: 1; margin-bottom: 0;">
+              <option value="">Scan for devices...</option>
+            </select>
+            <button id="btn-scan" style="width: auto; margin-bottom: 0; padding: 5px 10px;">Scan</button>
+          </div>
         </div>
 
         <button id="btn-connect">Connect</button>
