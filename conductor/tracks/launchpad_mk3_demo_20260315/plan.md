@@ -7,7 +7,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: UI & Structure Refactoring' (Protocol in workflow.md) [a2f3a69]
 
 ## Phase 2: WebMIDI Integration (TDD)
-- [ ] Task: Write TDD tests for WebMIDI lifecycle (scanning, connecting, and message parsing).
+- [x] Task: Write TDD tests for WebMIDI lifecycle (scanning, connecting, and message parsing). [88d078e]
 - [ ] Task: Implement `requestMidiAccess` and `scanDevices` in `LaunchpadApp`.
 - [ ] Task: Implement `connectDirect` for hardware communication.
 - [ ] Task: Implement the Programmer Mode SysEx handshake on successful direct connection.
