@@ -1,284 +1,365 @@
-/* global FireConnectionManager, FireMidiLogic, FireAppLogic, FireOledLogic */
+import { FireAppLogic } from './appLogic.js';
+import { FireMidiLogic } from './midiLogic.js';
+import { FireOledLogic } from './oledLogic.js';
+import { create } from '../lib/socketcluster-client.min.js';
 
-const padMatrix = document.getElementById('pad-matrix');
-const statusText = document.getElementById('status-text');
-const statusIndicator = document.getElementById('status-indicator');
-const btnConnect = document.getElementById('btn-connect');
-const commMode = document.getElementById('comm-mode');
-const midiDeviceSelect = document.getElementById('midi-device');
-const appModeSelect = document.getElementById('app-mode');
-const colorSwatches = document.querySelectorAll('.color-swatch');
-const btnSendOled = document.getElementById('btn-send-oled');
-const oledTextInput = document.getElementById('oled-text-input');
-const oledDisplay = document.getElementById('oled-display');
+class FireApp {
+  constructor() {
+    this.padMatrix = document.getElementById('pad-matrix');
+    this.statusText = document.getElementById('status-text');
+    this.statusIndicator = document.getElementById('status-indicator');
+    this.btnConnect = document.getElementById('btn-connect');
+    this.btnScan = document.getElementById('btn-scan');
+    this.commModeSelect = document.getElementById('comm-mode');
+    this.midiDeviceSelect = document.getElementById('midi-device-select');
+    this.appModeSelect = document.getElementById('app-mode');
+    this.colorSwatches = document.querySelectorAll('.color-swatch');
+    this.btnSendOled = document.getElementById('btn-send-oled');
+    this.oledTextInput = document.getElementById('oled-text-input');
+    this.oledDisplay = document.getElementById('oled-display');
+    this.deviceAliasInput = document.getElementById('device-name');
+    this.scSelectContainer = document.getElementById('sc-select-container');
+    this.midiSelectContainer = document.getElementById('midi-select-container');
 
-const midiSelectContainer = document.getElementById('midi-select-container');
-const scSelectContainer = document.getElementById('sc-select-container');
-const scDeviceInput = document.getElementById('sc-device-name');
-const scDeviceList = document.getElementById('sc-device-list');
+    this.appLogic = new FireAppLogic();
+    this.oledLogic = new FireOledLogic();
+    
+    this.midiAccess = null;
+    this.input = null;
+    this.output = null;
+    this.socket = null;
+    this.isConnected = false;
+    this.mode = 'socket'; // Default to socket matching APC app
 
-let connection = new FireConnectionManager({
-  onStatusChange: handleStatusChange,
-  onMidiMessage: (data) => handleMidiInput(data)
-});
+    this.buttonStates = {};
+    this.sequencerInterval = null;
 
-const appLogic = new FireAppLogic();
-const oledLogic = new FireOledLogic();
-
-// State for toggling button LEDs
-const buttonStates = {};
-let sequencerInterval = null;
-
-async function init() {
-  renderMatrix();
-  setupButtonListeners();
-  setupPaintControls();
-  setupModeListener();
-  setupOledControls();
-  setupCommModeListener();
-  
-  const devices = await connection.listDevices();
-  
-  devices.forEach(device => {
-    const option = document.createElement('option');
-    option.value = device.id;
-    option.textContent = device.name;
-    if (device.name.toLowerCase().includes('fire')) {
-      option.selected = true;
-      connection.setDevice(device.id);
+    if (this.padMatrix) {
+      this.init();
     }
-    midiDeviceSelect.appendChild(option);
-  });
+  }
 
-  setupSocketDiscovery();
-}
+  async init() {
+    this.renderMatrix();
+    this.setupEventListeners();
+    this.updateStatus('Disconnected', false);
+    
+    await this.requestMidiAccess();
+    this.updateCommModeDisplay();
+  }
 
-function setupCommModeListener() {
-  commMode.addEventListener('change', () => {
-    if (commMode.value === 'direct') {
-      midiSelectContainer.style.display = 'block';
-      scSelectContainer.style.display = 'none';
+  updateCommModeDisplay() {
+    const isDirect = this.commModeSelect.value === 'direct';
+    this.midiSelectContainer.style.display = isDirect ? 'block' : 'none';
+    this.scSelectContainer.style.display = isDirect ? 'none' : 'block';
+  }
+
+  async requestMidiAccess() {
+    if (!navigator.requestMIDIAccess) {
+      console.warn('WebMIDI not supported');
+      return;
+    }
+    try {
+      this.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+      this.scanDevices();
+      this.midiAccess.onstatechange = () => this.scanDevices();
+    } catch (err) {
+      console.warn(`MIDI Access Error: ${err.message}`);
+    }
+  }
+
+  scanDevices() {
+    if (!this.midiDeviceSelect) return;
+    this.midiDeviceSelect.innerHTML = '';
+    const outputs = Array.from(this.midiAccess.outputs.values());
+
+    if (outputs.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.innerText = 'No devices found';
+      this.midiDeviceSelect.appendChild(opt);
+      return;
+    }
+
+    outputs.forEach(out => {
+      const opt = document.createElement('option');
+      opt.value = out.id;
+      opt.innerText = out.name;
+      if (out.name.toLowerCase().includes('fire')) opt.selected = true;
+      this.midiDeviceSelect.appendChild(opt);
+    });
+  }
+
+  updateStatus(message, isConnected) {
+    this.isConnected = isConnected;
+    if (this.statusText) this.statusText.textContent = message;
+    if (this.statusIndicator) {
+      if (isConnected) {
+        this.statusIndicator.classList.add('connected');
+      } else {
+        this.statusIndicator.classList.remove('connected');
+      }
+    }
+    if (this.btnConnect) {
+      this.btnConnect.textContent = isConnected ? 'Disconnect' : 'Connect';
+    }
+  }
+
+  async toggleConnection() {
+    if (this.isConnected) {
+      await this.disconnect();
     } else {
-      midiSelectContainer.style.display = 'none';
-      scSelectContainer.style.display = 'block';
+      await this.connect();
     }
-  });
-}
+  }
 
-async function setupSocketDiscovery() {
-  if (connection.mode === 'socket' || true) {
-    await connection.connectSocketCluster();
-    if (connection.socket) {
-      const channel = connection.socket.subscribe('serverState');
+  async connect() {
+    this.mode = this.commModeSelect.value;
+    if (this.mode === 'direct') {
+      await this.connectDirect(this.midiDeviceSelect.value);
+    } else {
+      await this.connectSocket(this.deviceAliasInput.value || 'AKAI Fire');
+    }
+  }
+
+  async connectDirect(deviceId) {
+    this.output = this.midiAccess.outputs.get(deviceId);
+    this.input = Array.from(this.midiAccess.inputs.values()).find(i => i.name === this.output?.name);
+
+    if (this.input && this.output) {
+      this.input.onmidimessage = (msg) => this.handleMidiInput(msg.data);
+      this.updateStatus(`Connected to ${this.output.name}`, true);
+    } else {
+      this.updateStatus('Device not found', false);
+    }
+  }
+
+  async connectSocket(deviceName) {
+    try {
+      this.socket = create({
+        hostname: window.location.hostname,
+        port: window.location.port || 8080,
+        path: '/socketcluster/'
+      });
+
       (async () => {
-        for await (const data of channel) {
-          if (data && data.clients) {
-            const internal = data.clients.find(c => c.id === 'plugin-internal');
-            if (internal && internal.channels) {
-              populateSCDeviceList(internal.channels);
-            }
-          }
+        for await (const {error} of this.socket.listener('error')) {
+          console.error('Socket error:', error);
+          this.updateStatus(`Socket Error: ${error.message}`, false);
         }
       })();
-    }
-  }
-}
 
-function populateSCDeviceList(channels) {
-  const midiNames = channels
-    .filter(c => c.startsWith('midi_out_'))
-    .map(c => c.replace('midi_out_', ''));
-
-  scDeviceList.innerHTML = '<option value="">(Select from Plugin...)</option>';
-  midiNames.forEach(name => {
-    const option = document.createElement('option');
-    option.value = name;
-    option.textContent = name;
-    scDeviceList.appendChild(option);
-  });
-
-  scDeviceList.onchange = (e) => {
-    scDeviceInput.value = e.target.value;
-    connection.setSCDeviceName(e.target.value);
-  };
-}
-
-function setupButtonListeners() {
-  const buttons = document.querySelectorAll('.btn-fire');
-  buttons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.id.replace('btn-', '');
-      const cc = FireMidiLogic.getButtonCC(id);
-      if (!cc) return;
-
-      buttonStates[id] = buttonStates[id] === 0x02 ? 0x00 : 0x02;
-      const msg = FireMidiLogic.createButtonMessage(cc, buttonStates[id]);
-      connection.send(msg);
-
-      btn.style.backgroundColor = buttonStates[id] > 0 ? '#ff5252' : '#2a2a2a';
-      btn.style.color = buttonStates[id] > 0 ? '#fff' : '#ccc';
-    });
-  });
-}
-
-function setupPaintControls() {
-  colorSwatches.forEach(swatch => {
-    swatch.addEventListener('click', () => {
-      colorSwatches.forEach(s => s.style.border = '1px solid #444');
-      swatch.style.border = '2px solid #fff';
-      const r = parseInt(swatch.dataset.r);
-      const g = parseInt(swatch.dataset.g);
-      const b = parseInt(swatch.dataset.b);
-      appLogic.setSelectedColor(r, g, b);
-    });
-  });
-}
-
-function setupModeListener() {
-  appModeSelect.addEventListener('change', () => {
-    if (appModeSelect.value === 'sequencer') {
-      appLogic.startSequencer();
-      sequencerInterval = setInterval(tickSequencer, 125);
-    } else {
-      appLogic.stopSequencer();
-      if (sequencerInterval) clearInterval(sequencerInterval);
-      sequencerInterval = null;
-      clearGridUI();
-    }
-  });
-}
-
-function setupOledControls() {
-  btnSendOled.addEventListener('click', () => {
-    sendOLEDData(oledTextInput.value || 'AKAI FIRE');
-  });
-}
-
-function sendOLEDData(text) {
-  oledLogic.clear();
-  oledLogic.drawText(text, 0, 0);
-  const msg = oledLogic.createOledMessage();
-  connection.send(msg);
-  oledDisplay.textContent = text;
-}
-
-function tickSequencer() {
-  const updates = appLogic.tick();
-  if (!updates) return;
-
-  updates.clearIndices.forEach(index => {
-    const pad = document.getElementById(`pad-${Math.floor(index / 16)}-${index % 16}`);
-    const color = appLogic.getPadColor(index);
-    if (pad) {
-      pad.style.backgroundColor = (color.r || color.g || color.b) ? `rgb(${color.r * 2}, ${color.g * 2}, ${color.b * 2})` : '';
-      pad.style.boxShadow = 'none';
-    }
-    connection.send(FireMidiLogic.createRGBMessage(index, color.r, color.g, color.b));
-  });
-
-  updates.highlightIndices.forEach(index => {
-    const pad = document.getElementById(`pad-${Math.floor(index / 16)}-${index % 16}`);
-    if (pad) {
-      pad.style.backgroundColor = '#ffffff';
-      pad.style.boxShadow = '0 0 15px #ffffff';
-    }
-    connection.send(FireMidiLogic.createRGBMessage(index, 127, 127, 127));
-  });
-}
-
-function clearGridUI() {
-  for (let i = 0; i < 64; i++) {
-    const pad = document.getElementById(`pad-${Math.floor(i / 16)}-${i % 16}`);
-    const color = appLogic.getPadColor(i);
-    if (pad) {
-      pad.style.backgroundColor = (color.r || color.g || color.b) ? `rgb(${color.r * 2}, ${color.g * 2}, ${color.b * 2})` : '';
-      pad.style.boxShadow = 'none';
-    }
-  }
-}
-
-function renderMatrix() {
-  for (let row = 0; row < 4; row++) {
-    const rowEl = document.createElement('div');
-    rowEl.className = 'matrix-row';
-    for (let col = 0; col < 16; col++) {
-      const pad = document.createElement('div');
-      pad.className = 'pad';
-      pad.id = `pad-${row}-${col}`;
-      pad.dataset.row = row;
-      pad.dataset.col = col;
-      
-      pad.addEventListener('click', () => {
-        if (appModeSelect.value === 'paint') {
-          const index = row * 16 + col;
-          const { r, g, b } = appLogic.paintPad(index);
-          const msg = FireMidiLogic.createRGBMessage(index, r, g, b);
-          connection.send(msg);
-          pad.style.backgroundColor = `rgb(${r * 2}, ${g * 2}, ${b * 2})`;
-          pad.style.boxShadow = (r+g+b > 0) ? `0 0 10px rgb(${r * 2}, ${g * 2}, ${b * 2})` : 'none';
+      (async () => {
+        for await (const {socket: s} of this.socket.listener('connect')) {
+          this.updateStatus(`Connected to Server (Remote: ${deviceName})`, true);
+          this.subscribeToRemoteMidi(deviceName);
         }
+      })();
+
+      if (this.socket.state === 'open') {
+        this.updateStatus(`Connected to Server (Remote: ${deviceName})`, true);
+        this.subscribeToRemoteMidi(deviceName);
+      }
+    } catch (err) {
+      this.updateStatus(`Socket Error: ${err.message}`, false);
+    }
+  }
+
+  async subscribeToRemoteMidi(deviceName) {
+    const handleChannel = async (channelName) => {
+      const channel = this.socket.subscribe(channelName);
+      for await (const data of channel) {
+        if (this.mode === 'socket') {
+          let midiData = data.message?.data || data.message || data.data || data;
+          if (midiData) {
+            const bytes = (midiData instanceof Uint8Array) ? midiData : new Uint8Array(Object.values(midiData));
+            this.handleMidiInput(bytes);
+          }
+        }
+      }
+    };
+    handleChannel(`midi_in_${deviceName}`);
+    handleChannel(`midi_out_${deviceName}`);
+  }
+
+  async disconnect() {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+    if (this.input) {
+      this.input.onmidimessage = null;
+      this.input = null;
+    }
+    this.output = null;
+    this.updateStatus('Disconnected', false);
+  }
+
+  sendMidi(data) {
+    if (this.mode === 'direct') {
+      if (this.output) this.output.send(data);
+    } else if (this.socket && this.socket.state === 'open') {
+      const deviceName = this.deviceAliasInput.value || 'AKAI Fire';
+      this.socket.transmitPublish(`midi_out_${deviceName}`, { 
+        type: 'raw', 
+        data: Array.from(data),
+        message: Array.from(data) // Backward compatibility
       });
-      rowEl.appendChild(pad);
     }
-    padMatrix.appendChild(rowEl);
   }
-}
 
-function handleStatusChange(status, message) {
-  statusText.textContent = message;
-  statusIndicator.className = 'status-indicator ' + (status === 'connected' ? 'connected' : 'error');
-}
+  setupEventListeners() {
+    this.btnConnect.addEventListener('click', () => this.toggleConnection());
+    this.btnScan.addEventListener('click', () => this.midiAccess ? this.scanDevices() : this.requestMidiAccess());
+    this.commModeSelect.addEventListener('change', () => this.updateCommModeDisplay());
 
-function handleMidiInput(data) {
-  const input = FireMidiLogic.parseInput(data);
-  if (!input) return;
+    this.appModeSelect.addEventListener('change', () => {
+      if (this.appModeSelect.value === 'sequencer') {
+        this.appLogic.startSequencer();
+        this.sequencerInterval = setInterval(() => this.tickSequencer(), 125);
+      } else {
+        this.appLogic.stopSequencer();
+        if (this.sequencerInterval) clearInterval(this.sequencerInterval);
+        this.sequencerInterval = null;
+        this.clearGridUI();
+      }
+    });
 
-  if (input.type === 'note') {
-    const padCoords = FireMidiLogic.getPadFromNote(input.note);
-    if (padCoords) {
-      const pad = document.getElementById(`pad-${padCoords.row}-${padCoords.col}`);
+    this.colorSwatches.forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        this.colorSwatches.forEach(s => s.style.border = '1px solid #444');
+        swatch.style.border = '2px solid #fff';
+        this.appLogic.setSelectedColor(
+          parseInt(swatch.dataset.r),
+          parseInt(swatch.dataset.g),
+          parseInt(swatch.dataset.b)
+        );
+      });
+    });
+
+    this.btnSendOled.addEventListener('click', () => {
+      const text = this.oledTextInput.value || 'AKAI FIRE';
+      this.oledLogic.clear();
+      this.oledLogic.drawText(text, 0, 0);
+      this.sendMidi(this.oledLogic.createOledMessage());
+      this.oledDisplay.textContent = text;
+    });
+
+    // Side buttons (Solo 1-4)
+    document.querySelectorAll('.btn-fire').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.id.replace('btn-', '');
+        const cc = FireMidiLogic.getButtonCC(id);
+        if (!cc) return;
+        this.buttonStates[id] = this.buttonStates[id] === 0x02 ? 0x00 : 0x02;
+        this.sendMidi(FireMidiLogic.createButtonMessage(cc, this.buttonStates[id]));
+        btn.style.backgroundColor = this.buttonStates[id] > 0 ? '#ff5252' : '#2a2a2a';
+        btn.style.color = this.buttonStates[id] > 0 ? '#fff' : '#ccc';
+      });
+    });
+  }
+
+  renderMatrix() {
+    this.padMatrix.innerHTML = '';
+    for (let row = 0; row < 4; row++) {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'matrix-row';
+      for (let col = 0; col < 16; col++) {
+        const pad = document.createElement('div');
+        pad.className = 'pad';
+        pad.id = `pad-${row}-${col}`;
+        pad.dataset.row = row;
+        pad.dataset.col = col;
+        pad.addEventListener('click', () => {
+          if (this.appModeSelect.value === 'paint') {
+            const index = row * 16 + col;
+            const { r, g, b } = this.appLogic.paintPad(index);
+            this.sendMidi(FireMidiLogic.createRGBMessage(index, r, g, b));
+            pad.style.backgroundColor = `rgb(${r * 2}, ${g * 2}, ${b * 2})`;
+            pad.style.boxShadow = (r+g+b > 0) ? `0 0 10px rgb(${r * 2}, ${g * 2}, ${b * 2})` : 'none';
+          }
+        });
+        rowEl.appendChild(pad);
+      }
+      this.padMatrix.appendChild(rowEl);
+    }
+  }
+
+  tickSequencer() {
+    const updates = this.appLogic.tick();
+    if (!updates) return;
+    updates.clearIndices.forEach(index => {
+      const pad = document.getElementById(`pad-${Math.floor(index / 16)}-${index % 16}`);
+      const color = this.appLogic.getPadColor(index);
       if (pad) {
-        if (input.isPress) {
-          pad.classList.add('active');
-          pad.style.backgroundColor = '#ff5252';
-        } else {
-          pad.classList.remove('active');
-          pad.style.backgroundColor = '';
+        pad.style.backgroundColor = (color.r || color.g || color.b) ? `rgb(${color.r * 2}, ${color.g * 2}, ${color.b * 2})` : '';
+        pad.style.boxShadow = 'none';
+      }
+      this.sendMidi(FireMidiLogic.createRGBMessage(index, color.r, color.g, color.b));
+    });
+    updates.highlightIndices.forEach(index => {
+      const pad = document.getElementById(`pad-${Math.floor(index / 16)}-${index % 16}`);
+      if (pad) {
+        pad.style.backgroundColor = '#ffffff';
+        pad.style.boxShadow = '0 0 15px #ffffff';
+      }
+      this.sendMidi(FireMidiLogic.createRGBMessage(index, 127, 127, 127));
+    });
+  }
+
+  clearGridUI() {
+    for (let i = 0; i < 64; i++) {
+      const pad = document.getElementById(`pad-${Math.floor(i / 16)}-${i % 16}`);
+      const color = this.appLogic.getPadColor(i);
+      if (pad) {
+        pad.style.backgroundColor = (color.r || color.g || color.b) ? `rgb(${color.r * 2}, ${color.g * 2}, ${color.b * 2})` : '';
+        pad.style.boxShadow = 'none';
+      }
+    }
+  }
+
+  handleMidiInput(data) {
+    const input = FireMidiLogic.parseInput(data);
+    if (!input) return;
+    if (input.type === 'note') {
+      const padCoords = FireMidiLogic.getPadFromNote(input.note);
+      if (padCoords) {
+        const pad = document.getElementById(`pad-${padCoords.row}-${padCoords.col}`);
+        if (pad) {
+          if (input.isPress) {
+            pad.classList.add('active');
+            pad.style.backgroundColor = '#ff5252';
+          } else {
+            pad.classList.remove('active');
+            pad.style.backgroundColor = '';
+          }
+        }
+      }
+    } else if (input.type === 'cc') {
+      const knobName = FireMidiLogic.getKnobFromCC(input.cc);
+      if (knobName) {
+        const knobEl = document.getElementById(`knob-${knobName}`);
+        if (knobEl) {
+          const rotation = (input.value <= 0x3F) ? input.value * 5 : (input.value - 0x80) * 5;
+          const currentRotation = parseInt(knobEl.dataset.rotation || 0);
+          const newRotation = currentRotation + rotation;
+          knobEl.style.transform = `rotate(${newRotation}deg)`;
+          knobEl.dataset.rotation = newRotation;
         }
       }
     }
-  } else if (input.type === 'cc') {
-    const knobName = FireMidiLogic.getKnobFromCC(input.cc);
-    if (knobName) {
-      const knobEl = document.getElementById(`knob-${knobName}`);
-      if (knobEl) {
-        const rotation = (input.value <= 0x3F) ? input.value * 5 : (input.value - 0x80) * 5;
-        const currentRotation = parseInt(knobEl.dataset.rotation || 0);
-        const newRotation = currentRotation + rotation;
-        knobEl.style.transform = `rotate(${newRotation}deg)`;
-        knobEl.dataset.rotation = newRotation;
-      }
-    }
   }
 }
 
-midiDeviceSelect.addEventListener('change', (e) => {
-  connection.setDevice(e.target.value);
-});
-
-btnConnect.addEventListener('click', async () => {
-  connection.mode = commMode.value;
-  if (connection.mode === 'direct') {
-    if (!connection.output && midiDeviceSelect.value) {
-      connection.setDevice(midiDeviceSelect.value);
-    }
-  } else {
-    if (scDeviceInput.value) {
-      connection.setSCDeviceName(scDeviceInput.value);
-    }
+// Global attachment and export
+if (typeof window !== 'undefined') {
+  window.FireApp = FireApp;
+  // Auto-init only if not in a test environment (e.g. check for Vitest)
+  if (!window.__vitest_worker__) {
+    window.addEventListener('DOMContentLoaded', () => {
+      new FireApp();
+    });
   }
-  await connection.connect();
-});
+}
 
-init();
-console.log('AKAI Fire Demo Ready');
+export { FireApp };
