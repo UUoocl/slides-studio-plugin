@@ -21,8 +21,8 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Bidirectional Synchronization' (Protocol in workflow.md) [0d2f414]
 
 
-## Phase 4: Refinement & Polish
+## Phase 4: Refinement & Polish [checkpoint: 036f5ef]
 - [x] Task: Update the "Patterns" (Rainbow, Sparkle) to work seamlessly with the new connectivity layer. [766b75c]
 - [x] Task: Final UI polish for consistency with the APC mini demo. [15e0e91]
 - [x] Task: Update the `apps/launchpad_mk3_demo/README.md` with technical details. [0e44cc3]
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Refinement & Polish' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Refinement & Polish' (Protocol in workflow.md) [036f5ef]
