@@ -214,12 +214,43 @@ export class LaunchpadApp {
   }
 
   async connect() {
-    // Basic SocketCluster connection for now (mimicking old logic)
-    // Detailed implementation in Phase 2/3
     const mode = this.commModeSelect ? this.commModeSelect.value : 'socket';
     if (mode === 'socket') {
       const deviceName = this.deviceNameInput ? this.deviceNameInput.value || 'Launchpad' : 'Launchpad';
       await this.connectSocket(deviceName);
+    } else {
+      const deviceId = this.midiDeviceSelect ? this.midiDeviceSelect.value : '';
+      if (deviceId) {
+        await this.connectDirect(deviceId);
+      } else {
+        this.updateStatus('No device selected', false);
+      }
+    }
+  }
+
+  async connectDirect(deviceId) {
+    if (!this.midiAccess) return;
+    
+    console.log(`Attempting Direct WebMIDI connection to ID: ${deviceId}`);
+    this.output = this.midiAccess.outputs.get(deviceId);
+    
+    // Try to find matching input
+    this.input = this.midiAccess.inputs.get(deviceId);
+    if (!this.input && this.output) {
+      for (const input of this.midiAccess.inputs.values()) {
+        if (input.name === this.output.name) {
+          this.input = input;
+          break;
+        }
+      }
+    }
+
+    if (this.input && this.output) {
+      this.input.onmidimessage = (msg) => this.handleMidiMessage(msg);
+      this.updateStatus(`Connected to ${this.output.name}`, true);
+      this.enterProgrammerMode();
+    } else {
+      this.updateStatus('Device not found', false);
     }
   }
 
