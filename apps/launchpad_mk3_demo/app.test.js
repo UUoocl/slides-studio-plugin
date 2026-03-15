@@ -125,16 +125,47 @@ describe('LaunchpadApp', () => {
         expect(mockElements['sc-select-container'].style.display).toBe('block');
     });
 
-    it('should toggle connection', async () => {
-        const disconnectSpy = vi.spyOn(app, 'disconnect');
-        const connectSpy = vi.spyOn(app, 'connect');
+    it('should request MIDI access', async () => {
+        const midiAccess = { outputs: new Map(), inputs: new Map() };
+        navigator.requestMIDIAccess.mockResolvedValue(midiAccess);
+        
+        await app.requestMidiAccess();
+        
+        expect(navigator.requestMIDIAccess).toHaveBeenCalledWith({ sysex: true });
+        expect(app.midiAccess).toBe(midiAccess);
+    });
 
-        app.isConnected = true;
-        await app.toggleConnection();
-        expect(disconnectSpy).toHaveBeenCalled();
+    it('should scan and list MIDI devices', () => {
+        const mockOutput = { id: 'lp1', name: 'Launchpad MK3' };
+        app.midiAccess = {
+            outputs: new Map([['lp1', mockOutput]]),
+            inputs: new Map()
+        };
 
-        app.isConnected = false;
-        await app.toggleConnection();
-        expect(connectSpy).toHaveBeenCalled();
+        app.scanDevices();
+
+        expect(mockElements['midi-device-select'].innerHTML).toBe('');
+        expect(document.createElement).toHaveBeenCalledWith('option');
+    });
+
+    it('should connect to a direct MIDI device', async () => {
+        const mockOutput = { id: 'lp1', name: 'Launchpad MK3', send: vi.fn() };
+        const mockInput = { id: 'lp1', name: 'Launchpad MK3', onmidimessage: null };
+        
+        app.midiAccess = {
+            outputs: new Map([['lp1', mockOutput]]),
+            inputs: new Map([['lp1', mockInput]])
+        };
+
+        const updateStatusSpy = vi.spyOn(app, 'updateStatus');
+        const enterProgrammerModeSpy = vi.spyOn(app, 'enterProgrammerMode');
+
+        await app.connectDirect('lp1');
+
+        expect(app.output).toBe(mockOutput);
+        expect(app.input).toBe(mockInput);
+        expect(mockInput.onmidimessage).toBeDefined();
+        expect(updateStatusSpy).toHaveBeenCalledWith('Connected to Launchpad MK3', true);
+        expect(enterProgrammerModeSpy).toHaveBeenCalled();
     });
 });
