@@ -1,50 +1,43 @@
 # Launchpad Mini [MK3] LED Controller Demo
 
 ## Description
-A standalone HTML application designed to demonstrate real-time LED control of the Novation Launchpad Mini [MK3] MIDI controller. The application bridges user interactions from the web browser to the physical device using the Slides Studio SocketCluster server, serving as a reference implementation for high-frequency hardware synchronization.
+A standalone HTML application designed to demonstrate real-time LED control of the Novation Launchpad Mini [MK3] MIDI controller. The application supports both direct browser-to-hardware communication via **WebMIDI** and networked control via the **Slides Studio SocketCluster server**.
 
 ## Features
-- **Virtual Launchpad Grid**: A 9x9 interactive UI that mirrors the physical layout of the Launchpad Mini [MK3], providing visual feedback for outgoing MIDI messages.
-- **Real-time Hardware Sync**: Bidirectional communication via SocketCluster channels, allowing for low-latency control of hardware LEDs.
-- **System Commands**:
-    - **Programmer Mode**: Automatically switches the device to Programmer Mode upon connection.
-    - **Clear All**: Instantly turns off all LEDs on the device.
+- **Connectivity Menu**: Unified control for switching between Direct WebMIDI and SocketCluster Bridge modes.
+- **Bi-directional WebMIDI**: Support for connecting directly to physical hardware with independent selection of MIDI Input and Output ports.
+- **Virtual Launchpad Grid**: A 9x9 interactive UI that mirrors the physical layout of the Launchpad Mini [MK3], providing visual feedback for both incoming and outgoing MIDI messages.
+- **Programmer Mode Support**: Automatic SysEx handshake to switch the device into Programmer Mode for direct LED control.
 - **Lighting Controls**:
-    - **Solid Fill**: Fills the entire 8x8 grid with a selectable palette color.
-    - **Scrolling Text**: Sends ASCII text to the device for real-time scrolling display with custom colors.
+    - **Palette Control**: Select from the internal Launchpad color palette (0-127) and different LED behaviors (Solid, Pulsing, Blinking).
+    - **Custom RGB**: Support for 24-bit RGB control via custom SysEx messages.
+    - **Solid Fill**: Fills the entire 8x8 grid with a single command.
+    - **Scrolling Text**: Sends ASCII text to the device for real-time scrolling display.
 - **Dynamic Animations**:
     - **Rainbow Wave**: A smooth, row-based color shifting animation.
     - **Random Sparkle**: A high-frequency "twinkling" effect with randomized colors.
 
 ## Usage
-1. **Connection**: Ensure the Slides Studio plugin is running and the SocketCluster server is active.
-2. **Access**: Open `index.html` in a modern web browser. The app will automatically attempt to connect to the server at the current host.
-3. **Configuration**: 
-    - Enter the **MIDI Device Alias** (default is "Launchpad") that matches your configured device in the Slides Studio settings.
-4. **Interaction**:
-    - Use the **Solid Fill** or **Scrolling Text** groups to send static commands.
-    - Toggle **Dynamic Patterns** to start or stop continuous animations.
-    - Use **Enter Programmer Mode** if the device needs to be manually reset to the correct mode.
+1. **Access**: Open `index.html` in a WebMIDI-capable browser (Chrome, Edge, Opera).
+2. **Connection**:
+    - **Direct WebMIDI**:
+        - Select **Direct WebMIDI** from the Mode dropdown.
+        - Select your device's **Input** and **Output** ports (e.g., "LPM MIDI" or "Launchpad MK3 MIDI In/Out").
+        - Click **Connect**. The hardware should enter Programmer Mode immediately.
+    - **SocketCluster Bridge**:
+        - Select **SocketCluster Bridge** from the Mode dropdown.
+        - Enter the **Plugin MIDI Alias** that matches your configured device in Slides Studio.
+        - Click **Connect**.
+3. **Interaction**:
+    - **UI -> Hardware**: Click pads in the virtual grid or use the pattern buttons to send MIDI to the device.
+    - **Hardware -> UI**: Press physical pads on the Launchpad to see real-time visual feedback in the browser.
 
 ## Developer Overview
-- **`index.html`**: Defines the UI layout, including the virtual grid container and the control panels. Uses CSS Grid for the hardware-style interface.
-- **`app.js`**: Manages the application lifecycle, including:
-    - Initializing the SocketCluster client.
-    - Handling UI events and the animation loop.
-    - Throttling high-frequency animation frames to ensure system stability.
-    - Updating the virtual UI state based on transmitted MIDI payloads.
-- **`launchpadCore.js`**: A specialized utility module containing Launchpad Mini [MK3] specific constants and message generators:
-    - **Constants**: Maps the non-linear pad indices used in Programmer Mode (8x8 grid, top row, and right column).
-    - **MIDI Generators**: Functions for creating Note On and Control Change messages.
-    - **SysEx Generators**: Sophisticated functions for generating Launchpad-specific SysEx payloads, including bulk LED updates and text scrolling commands.
+- **`app.js`**: Refactored into a class-based `LaunchpadApp` that manages the bidirectional state machine and unified communication layer.
+- **`launchpadCore.js`**: Core MIDI constants and SysEx generation logic specific to the MK3 series.
+- **`app.test.js`**: Comprehensive unit tests covering initialization, connectivity logic, and message parsing using Vitest and DOM mocking.
 
-### Communication Protocol
-The app communicates over SocketCluster using a specific channel naming convention:
-- **Outgoing**: Publishes to `midi_out_<Device Alias>`.
-- **Payload Format**: 
-  ```json
-  {
-    "type": "raw" | "sysex",
-    "data": [byte1, byte2, ...]
-  }
-  ```
+### Technical Implementation
+- **Programmer Mode Handshake**: `F0 00 20 29 02 0D 0E 01 F7`
+- **RGB SysEx Format**: `[Header] 03h 03h <index> <r> <g> <b>` (where r, g, b are 7-bit values 0-127).
+- **SocketCluster Channels**: Listens on `midi_in_<alias>` and `midi_out_<alias>`, publishes to `midi_out_<alias>`.
