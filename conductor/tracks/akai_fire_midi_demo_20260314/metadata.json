@@ -1,8 +1,0 @@
-{
-  "track_id": "akai_fire_midi_demo_20260314",
-  "type": "feature",
-  "status": "new",
-  "created_at": "2026-03-14T12:00:00Z",
-  "updated_at": "2026-03-14T12:00:00Z",
-  "description": "create new app to demonstrate controlling the LEDs of the MIDI controller AKAI Fire FL . Technical documentation for the device is @notes/AKAI Fire FL.md . Create an UI similiar to @apps/launchpad_mk1_demo . the UI should have an illustration of the device that reacts to device input  . Allow the user to choose to connect to MIDI via the browser or socketcluster server."
-}

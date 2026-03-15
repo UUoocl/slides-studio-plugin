@@ -15,14 +15,30 @@ describe('APCMiniCore - Standard LED Behaviors', () => {
       expect(result).toEqual(new Uint8Array([0x97, 0x0A, 0x15]));
     });
 
-    it('should encode a Blinking Blue (1/2) message for Pad 63', () => {
+    it('should encode a Blinking blue (1/2) message for Pad 63', () => {
       // Channel 0x9F (Blink 1/2), Note 0x3F, Color 45 (Blue)
       const result = APCMiniCore.encodePadMessage(63, 45, 'blink', '1/2');
       expect(result).toEqual(new Uint8Array([0x9F, 0x3F, 45]));
     });
+
+    it('should use default 100% Solid if speed is invalid', () => {
+      const result = APCMiniCore.encodePadMessage(0, 5, 'solid', 'invalid');
+      expect(result).toEqual(new Uint8Array([0x96, 0x00, 0x05]));
+    });
+
+    it('should use default 0x90 channel if behavior is unknown', () => {
+      const result = APCMiniCore.encodePadMessage(0, 5, 'unknown');
+      expect(result).toEqual(new Uint8Array([0x90, 0x00, 0x05]));
+    });
   });
 
   describe('encodeButtonMessage', () => {
+    it('should encode a Solid Off message for Track Button 1', () => {
+      // Channel 0x90, Note 0x64, Velocity 0x00
+      const result = APCMiniCore.encodeButtonMessage(0x64, 'off');
+      expect(result).toEqual(new Uint8Array([0x90, 0x64, 0x00]));
+    });
+
     it('should encode a Solid On message for Track Button 1', () => {
       // Channel 0x90, Note 0x64, Velocity 0x01
       const result = APCMiniCore.encodeButtonMessage(0x64, 'on');

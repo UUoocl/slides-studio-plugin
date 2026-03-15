@@ -148,11 +148,26 @@ class APCMiniApp {
         path: '/socketcluster/'
       });
 
-      for await (const {error} of this.socket.listener('error')) {
-        console.error('Socket error:', error);
-      }
+      // Handle connection errors
+      (async () => {
+        for await (const {error} of this.socket.listener('error')) {
+          console.error('Socket error:', error);
+          this.updateStatus(`Socket Error: ${error.message}`, false);
+        }
+      })();
 
-      for await (const {socket: s} of this.socket.listener('connect')) {
+      // Handle connection success
+      (async () => {
+        for await (const {socket: s} of this.socket.listener('connect')) {
+          console.log('SocketCluster connected');
+          this.updateStatus(`Connected to Server (Remote: ${deviceName})`, true);
+          this.subscribeToRemoteMidi(deviceName);
+          this.sendMidi(APCMiniCore.encodeIntroMessage());
+        }
+      })();
+
+      // If already connected (can happen if creation is very fast)
+      if (this.socket.state === 'open') {
         this.updateStatus(`Connected to Server (Remote: ${deviceName})`, true);
         this.subscribeToRemoteMidi(deviceName);
         this.sendMidi(APCMiniCore.encodeIntroMessage());
@@ -164,9 +179,11 @@ class APCMiniApp {
 
   async subscribeToRemoteMidi(deviceName) {
     const handleChannel = async (channelName) => {
+      console.log(`Subscribing to: ${channelName}`);
       const channel = this.socket.subscribe(channelName);
       for await (const data of channel) {
         if (this.commModeSelect.value === 'socket') {
+          console.log(`Received on ${channelName}:`, data);
           let midiData = null;
           if (data.message) {
             midiData = data.message.data || data.message;
