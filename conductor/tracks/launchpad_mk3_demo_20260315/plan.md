@@ -23,6 +23,6 @@
 
 ## Phase 4: Refinement & Polish
 - [x] Task: Update the "Patterns" (Rainbow, Sparkle) to work seamlessly with the new connectivity layer. [766b75c]
-- [ ] Task: Final UI polish for consistency with the APC mini demo.
+- [x] Task: Final UI polish for consistency with the APC mini demo. [15e0e91]
 - [ ] Task: Update the `apps/launchpad_mk3_demo/README.md` with technical details.
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Refinement & Polish' (Protocol in workflow.md)
