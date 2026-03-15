@@ -25,16 +25,16 @@ Goal: Move connection logic into `app.js` and set up failing tests for the new s
     - [x] Integrate existing `oledLogic.js` and `midiLogic.js` with the new flattened `FireApp` class.
 - [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md) c74478b
 
-## Phase 3: SocketCluster Connection Fix & Final Verification
+## Phase 3: SocketCluster Connection Fix & Final Verification [checkpoint: 3378bb0]
 Goal: Implement the dynamic connection parameters and verify the fix.
 
+- [x] Task: Implement dynamic SocketCluster connection
+    - [x] Update `connectSocket` in `app.js` to use `window.location.hostname`, `window.location.port`, and `path: '/socketcluster/'`.
+    - [x] Update connection listeners to handle the `{socket}` object correctly.
+- [x] Task: Verify TDD tests pass
+    - [x] Run `npm test apps/akai_fire_demo/app.test.js` and ensure all tests pass (Green phase).
+- [x] Task: Final Cleanup
+    - [x] Remove `apps/akai_fire_demo/connectionManager.js` if it's no longer used.
+    - [x] Ensure all files pass linting.
+- [x] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md) 3378bb0
 
-- [ ] Task: Implement dynamic SocketCluster connection
-    - [ ] Update `connectSocket` in `app.js` to use `window.location.hostname`, `window.location.port`, and `path: '/socketcluster/'`.
-    - [ ] Update connection listeners to handle the `{socket}` object correctly.
-- [ ] Task: Verify TDD tests pass
-    - [ ] Run `npm test apps/akai_fire_demo/app.test.js` and ensure all tests pass (Green phase).
-- [ ] Task: Final Cleanup
-    - [ ] Remove `apps/akai_fire_demo/connectionManager.js` if it's no longer used.
-    - [ ] Ensure all files pass linting.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
