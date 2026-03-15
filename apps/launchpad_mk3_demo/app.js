@@ -283,10 +283,19 @@ export class LaunchpadApp {
   }
 
   sendMidi(payload) {
-    if (this.socket && this.socket.state === 'open') {
-      const deviceName = this.deviceNameInput ? this.deviceNameInput.value || 'Launchpad' : 'Launchpad';
-      const channel = `midi_out_${deviceName}`;
-      this.socket.transmitPublish(channel, payload);
+    const mode = this.commModeSelect ? this.commModeSelect.value : 'socket';
+    
+    if (mode === 'direct') {
+      if (this.output) {
+        // payload.data might be number[] or Uint8Array
+        this.output.send(payload.data);
+      }
+    } else {
+      if (this.socket && this.socket.state === 'open') {
+        const deviceName = this.deviceNameInput ? this.deviceNameInput.value || 'Launchpad' : 'Launchpad';
+        const channel = `midi_out_${deviceName}`;
+        this.socket.transmitPublish(channel, payload);
+      }
     }
     
     // Also update virtual grid

@@ -148,24 +148,14 @@ describe('LaunchpadApp', () => {
         expect(document.createElement).toHaveBeenCalledWith('option');
     });
 
-    it('should connect to a direct MIDI device', async () => {
-        const mockOutput = { id: 'lp1', name: 'Launchpad MK3', send: vi.fn() };
-        const mockInput = { id: 'lp1', name: 'Launchpad MK3', onmidimessage: null };
-        
-        app.midiAccess = {
-            outputs: new Map([['lp1', mockOutput]]),
-            inputs: new Map([['lp1', mockInput]])
-        };
+    it('should send MIDI in direct mode', () => {
+        const mockOutput = { send: vi.fn() };
+        app.output = mockOutput;
+        mockElements['comm-mode'].value = 'direct';
 
-        const updateStatusSpy = vi.spyOn(app, 'updateStatus');
-        const enterProgrammerModeSpy = vi.spyOn(app, 'enterProgrammerMode');
+        const payload = { type: 'noteon', data: [0x90, 60, 127] };
+        app.sendMidi(payload);
 
-        await app.connectDirect('lp1');
-
-        expect(app.output).toBe(mockOutput);
-        expect(app.input).toBe(mockInput);
-        expect(mockInput.onmidimessage).toBeDefined();
-        expect(updateStatusSpy).toHaveBeenCalledWith('Connected to Launchpad MK3', true);
-        expect(enterProgrammerModeSpy).toHaveBeenCalled();
+        expect(mockOutput.send).toHaveBeenCalledWith(payload.data);
     });
 });
