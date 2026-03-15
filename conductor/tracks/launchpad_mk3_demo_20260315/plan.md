@@ -10,8 +10,9 @@
 - [x] Task: Write TDD tests for WebMIDI lifecycle (scanning, connecting, and message parsing). [88d078e]
 - [x] Task: Implement `requestMidiAccess` and `scanDevices` in `LaunchpadApp`. [46835b0]
 - [x] Task: Implement `connectDirect` for hardware communication. [aa257cb]
-- [x] Task: Implement the Programmer Mode SysEx handshake on successful direct connection. [96bdfb1]
+- [x] Task: Implement the Programmer Mode SysEx handshake on successful direct connection. [c156e93]
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: WebMIDI Integration (TDD)' (Protocol in workflow.md)
+
 
 ## Phase 3: Bidirectional Synchronization
 - [ ] Task: Map physical pad/button MIDI messages (NoteOn/CC) to virtual UI highlights.
