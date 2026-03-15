@@ -6,12 +6,12 @@
 - [x] Task: Implement the connectivity UI toggle logic (Direct vs Socket display) in `app.js`. [75358ae]
 - [x] Task: Conductor - User Manual Verification 'Phase 1: UI & Structure Refactoring' (Protocol in workflow.md) [a2f3a69]
 
-## Phase 2: WebMIDI Integration (TDD)
+## Phase 2: WebMIDI Integration (TDD) [checkpoint: bf73682]
 - [x] Task: Write TDD tests for WebMIDI lifecycle (scanning, connecting, and message parsing). [88d078e]
 - [x] Task: Implement `requestMidiAccess` and `scanDevices` in `LaunchpadApp`. [46835b0]
 - [x] Task: Implement `connectDirect` for hardware communication. [aa257cb]
 - [x] Task: Implement the Programmer Mode SysEx handshake on successful direct connection. [c156e93]
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: WebMIDI Integration (TDD)' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: WebMIDI Integration (TDD)' (Protocol in workflow.md) [bf73682]
 
 
 ## Phase 3: Bidirectional Synchronization
