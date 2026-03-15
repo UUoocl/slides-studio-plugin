@@ -241,6 +241,26 @@ export class LaunchpadApp {
     if (this.btnScan) {
       this.btnScan.addEventListener('click', () => this.scanDevices());
     }
+
+    // Custom RGB UI Handlers
+    const useCustomRgb = document.getElementById('use-custom-rgb');
+    const rgbControls = document.getElementById('custom-rgb-controls');
+    if (useCustomRgb && rgbControls) {
+      useCustomRgb.addEventListener('change', () => {
+        rgbControls.style.opacity = useCustomRgb.checked ? '1' : '0.5';
+        rgbControls.style.pointerEvents = useCustomRgb.checked ? 'all' : 'none';
+      });
+    }
+
+    ['r', 'g', 'b'].forEach(c => {
+      const slider = document.getElementById(`rgb-${c}`);
+      const valDisplay = document.getElementById(`val-${c}`);
+      if (slider && valDisplay) {
+        slider.addEventListener('input', () => {
+          valDisplay.innerText = slider.value;
+        });
+      }
+    });
   }
 
   async toggleConnection() {

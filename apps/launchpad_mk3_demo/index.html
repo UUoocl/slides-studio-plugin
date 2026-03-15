@@ -216,6 +216,34 @@
       </div>
 
       <div class="control-group">
+        <h3>LED Control</h3>
+        <label for="palette-color">Color Index (0-127):</label>
+        <input type="number" id="palette-color" value="5" min="0" max="127">
+        
+        <label for="led-behavior">Behavior:</label>
+        <select id="led-behavior">
+          <option value="90">Solid (10%)</option>
+          <option value="96" selected>Solid (100%)</option>
+          <option value="97">Pulsing (1/16)</option>
+          <option value="9A">Pulsing (1/2)</option>
+          <option value="9B">Blinking (1/24)</option>
+          <option value="9F">Blinking (1/2)</option>
+        </select>
+        
+        <div class="custom-rgb-section" style="margin-top: 20px; border-top: 1px solid #444; padding-top: 15px;">
+          <label><input type="checkbox" id="use-custom-rgb" style="width: auto; margin-bottom: 0;"> Use Custom 24-bit RGB (SysEx)</label>
+          <div id="custom-rgb-controls" style="margin-top: 10px; opacity: 0.5; pointer-events: none;">
+            <label>Red: <span id="val-r">255</span></label>
+            <input type="range" id="rgb-r" min="0" max="255" value="255">
+            <label>Green: <span id="val-g">0</span></label>
+            <input type="range" id="rgb-g" min="0" max="255" value="0">
+            <label>Blue: <span id="val-b">0</span></label>
+            <input type="range" id="rgb-b" min="0" max="255" value="0">
+          </div>
+        </div>
+      </div>
+
+      <div class="control-group">
         <h3>System</h3>
         <button id="btn-programmer">Enter Programmer Mode</button>
         <button id="btn-clear">Clear All LEDs</button>
