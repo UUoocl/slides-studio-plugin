@@ -64,7 +64,7 @@ vi.stubGlobal('window', {
 });
 
 vi.stubGlobal('navigator', {
-    requestMIDIAccess: vi.fn()
+    requestMIDIAccess: vi.fn().mockResolvedValue({ outputs: new Map(), inputs: new Map() })
 });
 
 // Mock socketcluster-client

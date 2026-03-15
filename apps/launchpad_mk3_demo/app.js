@@ -44,11 +44,47 @@ export class LaunchpadApp {
     this.updateStatus('Disconnected', false);
     
     // We request MIDI access, but it shouldn't block SC from working
-    // This will be implemented in Phase 2
-    // this.requestMidiAccess();
+    this.requestMidiAccess();
     
     // Set initial display states
     this.updateCommModeDisplay();
+  }
+
+  async requestMidiAccess() {
+    if (!navigator.requestMIDIAccess) {
+      console.warn('WebMIDI not supported in this browser.');
+      return;
+    }
+
+    try {
+      this.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+      this.scanDevices();
+      this.midiAccess.onstatechange = () => this.scanDevices();
+    } catch (err) {
+      console.warn(`MIDI Access Error: ${err.message}`);
+    }
+  }
+
+  scanDevices() {
+    if (!this.midiDeviceSelect) return;
+    this.midiDeviceSelect.innerHTML = '';
+    const outputs = Array.from(this.midiAccess.outputs.values());
+
+    if (outputs.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.innerText = 'No devices found';
+      this.midiDeviceSelect.appendChild(opt);
+      return;
+    }
+
+    outputs.forEach(out => {
+      const opt = document.createElement('option');
+      opt.value = out.id;
+      opt.innerText = out.name;
+      if (out.name.toLowerCase().includes('launchpad')) opt.selected = true;
+      this.midiDeviceSelect.appendChild(opt);
+    });
   }
 
   updateCommModeDisplay() {
