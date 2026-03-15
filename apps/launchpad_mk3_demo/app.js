@@ -21,7 +21,8 @@ export class LaunchpadApp {
     
     // Connectivity UI
     this.commModeSelect = document.getElementById('comm-mode');
-    this.midiDeviceSelect = document.getElementById('midi-device-select');
+    this.midiInputSelect = document.getElementById('midi-input-select');
+    this.midiOutputSelect = document.getElementById('midi-output-select');
     this.btnScan = document.getElementById('btn-scan');
     this.btnConnect = document.getElementById('btn-connect');
     
@@ -66,25 +67,40 @@ export class LaunchpadApp {
   }
 
   scanDevices() {
-    if (!this.midiDeviceSelect) return;
-    this.midiDeviceSelect.innerHTML = '';
-    const outputs = Array.from(this.midiAccess.outputs.values());
-
-    if (outputs.length === 0) {
-      const opt = document.createElement('option');
-      opt.value = '';
-      opt.innerText = 'No devices found';
-      this.midiDeviceSelect.appendChild(opt);
-      return;
+    if (!this.midiInputSelect || !this.midiOutputSelect) return;
+    
+    // Populate Inputs
+    this.midiInputSelect.innerHTML = '';
+    const inputs = Array.from(this.midiAccess.inputs.values());
+    if (inputs.length === 0) {
+      this.midiInputSelect.appendChild(this.createOption('', 'No inputs found'));
+    } else {
+      inputs.forEach(input => {
+        const opt = this.createOption(input.id, input.name);
+        if (input.name.toLowerCase().includes('launchpad') && input.name.toLowerCase().includes('midi')) opt.selected = true;
+        this.midiInputSelect.appendChild(opt);
+      });
     }
 
-    outputs.forEach(out => {
-      const opt = document.createElement('option');
-      opt.value = out.id;
-      opt.innerText = out.name;
-      if (out.name.toLowerCase().includes('launchpad')) opt.selected = true;
-      this.midiDeviceSelect.appendChild(opt);
-    });
+    // Populate Outputs
+    this.midiOutputSelect.innerHTML = '';
+    const outputs = Array.from(this.midiAccess.outputs.values());
+    if (outputs.length === 0) {
+      this.midiOutputSelect.appendChild(this.createOption('', 'No outputs found'));
+    } else {
+      outputs.forEach(out => {
+        const opt = this.createOption(out.id, out.name);
+        if (out.name.toLowerCase().includes('launchpad') && out.name.toLowerCase().includes('midi')) opt.selected = true;
+        this.midiOutputSelect.appendChild(opt);
+      });
+    }
+  }
+
+  createOption(value, text) {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.innerText = text;
+    return opt;
   }
 
   updateCommModeDisplay() {
@@ -203,6 +219,10 @@ export class LaunchpadApp {
     if (this.btnConnect) {
       this.btnConnect.addEventListener('click', () => this.toggleConnection());
     }
+
+    if (this.btnScan) {
+      this.btnScan.addEventListener('click', () => this.scanDevices());
+    }
   }
 
   async toggleConnection() {
@@ -219,37 +239,32 @@ export class LaunchpadApp {
       const deviceName = this.deviceNameInput ? this.deviceNameInput.value || 'Launchpad' : 'Launchpad';
       await this.connectSocket(deviceName);
     } else {
-      const deviceId = this.midiDeviceSelect ? this.midiDeviceSelect.value : '';
-      if (deviceId) {
-        await this.connectDirect(deviceId);
+      const inputId = this.midiInputSelect ? this.midiInputSelect.value : '';
+      const outputId = this.midiOutputSelect ? this.midiOutputSelect.value : '';
+      
+      if (inputId && outputId) {
+        await this.connectDirect(inputId, outputId);
       } else {
-        this.updateStatus('No device selected', false);
+        this.updateStatus('Input or Output not selected', false);
       }
     }
   }
 
-  async connectDirect(deviceId) {
+  async connectDirect(inputId, outputId) {
     if (!this.midiAccess) return;
     
-    console.log(`Attempting Direct WebMIDI connection to ID: ${deviceId}`);
-    this.output = this.midiAccess.outputs.get(deviceId);
+    console.log(`Attempting Direct WebMIDI connection. Input: ${inputId}, Output: ${outputId}`);
     
-    // Try to find matching input
-    this.input = this.midiAccess.inputs.get(deviceId);
-    if (!this.input && this.output) {
-      for (const input of this.midiAccess.inputs.values()) {
-        if (input.name === this.output.name) {
-          this.input = input;
-          break;
-        }
-      }
-    }
+    this.input = this.midiAccess.inputs.get(inputId);
+    this.output = this.midiAccess.outputs.get(outputId);
 
     if (this.input && this.output) {
       this.input.onmidimessage = (msg) => this.handleMidiMessage(msg);
-      this.updateStatus(`Connected to ${this.output.name}`, true);
+      this.updateStatus(`Connected: ${this.output.name}`, true);
       this.enterProgrammerMode();
     } else {
+      console.error('Failed to establish bidirectional connection.');
+      console.log('Input found:', !!this.input, 'Output found:', !!this.output);
       this.updateStatus('Device not found', false);
     }
   }
@@ -279,6 +294,11 @@ export class LaunchpadApp {
       this.socket.disconnect();
       this.socket = null;
     }
+    if (this.input) {
+      this.input.onmidimessage = null;
+      this.input = null;
+    }
+    this.output = null;
     this.updateStatus('Disconnected', false);
   }
 
@@ -287,7 +307,6 @@ export class LaunchpadApp {
     
     if (mode === 'direct') {
       if (this.output) {
-        // payload.data might be number[] or Uint8Array
         this.output.send(payload.data);
       }
     } else {
@@ -334,6 +353,11 @@ export class LaunchpadApp {
       0: 'transparent'
     };
     return colors[index] || `hsl(${index * 2.8}, 100%, 50%)`;
+  }
+
+  handleMidiMessage(msg) {
+    // This will be implemented in Phase 3
+    console.log('MIDI message received:', msg.data);
   }
 
   enterProgrammerMode() {

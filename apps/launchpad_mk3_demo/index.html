@@ -195,13 +195,21 @@
         </div>
 
         <div id="midi-select-container" style="display: none;">
-          <label for="midi-device-select">Local MIDI Device:</label>
-          <div style="display: flex; gap: 5px;">
-            <select id="midi-device-select" style="flex-grow: 1; margin-bottom: 0;">
-              <option value="">Scan for devices...</option>
+          <label for="midi-input-select">Local MIDI Input:</label>
+          <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+            <select id="midi-input-select" style="flex-grow: 1; margin-bottom: 0;">
+              <option value="">Scan for inputs...</option>
             </select>
-            <button id="btn-scan" style="width: auto; margin-bottom: 0; padding: 5px 10px;">Scan</button>
           </div>
+
+          <label for="midi-output-select">Local MIDI Output:</label>
+          <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+            <select id="midi-output-select" style="flex-grow: 1; margin-bottom: 0;">
+              <option value="">Scan for outputs...</option>
+            </select>
+          </div>
+          
+          <button id="btn-scan" style="width: auto; padding: 5px 10px;">Rescan Devices</button>
         </div>
 
         <button id="btn-connect" style="margin-top: 10px;">Connect</button>

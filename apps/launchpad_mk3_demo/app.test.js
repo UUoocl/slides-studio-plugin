@@ -19,14 +19,15 @@ const mockElements = {
     'status-text': createBaseMock(),
     'device-name': { ...createBaseMock(), value: 'Launchpad MK3' },
     'comm-mode': { ...createBaseMock(), value: 'socket' },
-    'midi-device-select': { ...createBaseMock(), parentElement: createBaseMock() },
+    'midi-input-select': createBaseMock(),
+    'midi-output-select': createBaseMock(),
     'sc-select-container': createBaseMock(),
     'midi-select-container': createBaseMock(),
     'btn-connect': { ...createBaseMock(), innerText: 'Connect' },
     'btn-scan': createBaseMock(),
     'btn-programmer': createBaseMock(),
     'btn-clear': createBaseMock(),
-    'btn-fill': { ...createBaseMock(), value: '5' }, // button might not have value but color-input does
+    'btn-fill': { ...createBaseMock(), value: '5' },
     'fill-color': { ...createBaseMock(), value: '5' },
     'btn-rainbow': createBaseMock(),
     'btn-sparkle': createBaseMock(),
@@ -135,17 +136,42 @@ describe('LaunchpadApp', () => {
         expect(app.midiAccess).toBe(midiAccess);
     });
 
-    it('should scan and list MIDI devices', () => {
-        const mockOutput = { id: 'lp1', name: 'Launchpad MK3' };
+    it('should scan and list MIDI devices in separate dropdowns', () => {
+        const mockOutput = { id: 'out1', name: 'Launchpad Output' };
+        const mockInput = { id: 'in1', name: 'Launchpad Input' };
         app.midiAccess = {
-            outputs: new Map([['lp1', mockOutput]]),
-            inputs: new Map()
+            outputs: new Map([['out1', mockOutput]]),
+            inputs: new Map([['in1', mockInput]])
         };
 
         app.scanDevices();
 
-        expect(mockElements['midi-device-select'].innerHTML).toBe('');
+        expect(mockElements['midi-input-select'].innerHTML).toBe('');
+        expect(mockElements['midi-output-select'].innerHTML).toBe('');
         expect(document.createElement).toHaveBeenCalledWith('option');
+    });
+
+    it('should connect to direct MIDI using separate Input and Output IDs', async () => {
+        const inputId = 'in1';
+        const outputId = 'out1';
+        const mockOutput = { id: outputId, name: 'Launchpad Output', send: vi.fn() };
+        const mockInput = { id: inputId, name: 'Launchpad Input', onmidimessage: null };
+        
+        app.midiAccess = {
+            outputs: new Map([[outputId, mockOutput]]),
+            inputs: new Map([[inputId, mockInput]])
+        };
+
+        const updateStatusSpy = vi.spyOn(app, 'updateStatus');
+        const enterProgrammerModeSpy = vi.spyOn(app, 'enterProgrammerMode');
+
+        await app.connectDirect(inputId, outputId);
+
+        expect(app.output).toBe(mockOutput);
+        expect(app.input).toBe(mockInput);
+        expect(mockInput.onmidimessage).toBeDefined();
+        expect(updateStatusSpy).toHaveBeenCalledWith(`Connected: ${mockOutput.name}`, true);
+        expect(enterProgrammerModeSpy).toHaveBeenCalled();
     });
 
     it('should send MIDI in direct mode', () => {
