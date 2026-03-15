@@ -1,0 +1,8 @@
+{
+  "track_id": "launchpad_mk3_demo_20260315",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-03-15T09:56:00Z",
+  "updated_at": "2026-03-15T09:56:00Z",
+  "description": "enhance @apps/launchpad_mk3_demo to support direct midi conneciton, allow the user to select the midi device or enter a socketcluster channel name, add a connect button to start midi or socketcluster connection.  The launchpad_mk3_demo app should have a connection menu like @apps/apc_mini_mk2_demo"
+}
