@@ -83,6 +83,9 @@ vi.mock('../lib/socketcluster-client.min.js', () => ({
     }))
 }));
 
+vi.stubGlobal('requestAnimationFrame', vi.fn((cb) => setTimeout(cb, 0)));
+vi.stubGlobal('cancelAnimationFrame', vi.fn((id) => clearTimeout(id)));
+
 import { LaunchpadApp } from './app.js';
 
 describe('LaunchpadApp', () => {
@@ -213,5 +216,25 @@ describe('LaunchpadApp', () => {
             type: 'noteon',
             data: [0x90, padId, 5]
         });
+    });
+
+    it('should start patterns and send MIDI messages', async () => {
+        vi.useFakeTimers();
+        const sendMidiSpy = vi.spyOn(app, 'sendMidi');
+        const mockPattern = vi.fn().mockReturnValue([0xF0, 0x00, 0xF7]);
+
+        app.startPatterns(mockPattern);
+        
+        // Wait for first tick
+        await vi.advanceTimersByTimeAsync(100);
+
+        expect(mockPattern).toHaveBeenCalled();
+        expect(sendMidiSpy).toHaveBeenCalledWith({
+            type: 'sysex',
+            data: expect.any(Array)
+        });
+        
+        app.stopPatterns();
+        vi.useRealTimers();
     });
 });
