@@ -3,7 +3,7 @@
 ## Phase 1: UI & Structure Refactoring
 - [x] Task: Refactor `apps/launchpad_mk3_demo/app.js` into a class-based structure (`LaunchpadApp`) for better state management. [8fc4e7d]
 - [x] Task: Implement the "Connectivity" HTML/CSS in `index.html` (mirrored from APC mini). [a903d17]
-- [ ] Task: Implement the connectivity UI toggle logic (Direct vs Socket display) in `app.js`.
+- [x] Task: Implement the connectivity UI toggle logic (Direct vs Socket display) in `app.js`. [75358ae]
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: UI & Structure Refactoring' (Protocol in workflow.md)
 
 ## Phase 2: WebMIDI Integration (TDD)
