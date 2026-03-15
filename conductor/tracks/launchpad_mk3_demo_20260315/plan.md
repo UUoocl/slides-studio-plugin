@@ -8,7 +8,7 @@
 
 ## Phase 2: WebMIDI Integration (TDD)
 - [x] Task: Write TDD tests for WebMIDI lifecycle (scanning, connecting, and message parsing). [88d078e]
-- [ ] Task: Implement `requestMidiAccess` and `scanDevices` in `LaunchpadApp`.
+- [x] Task: Implement `requestMidiAccess` and `scanDevices` in `LaunchpadApp`. [46835b0]
 - [ ] Task: Implement `connectDirect` for hardware communication.
 - [ ] Task: Implement the Programmer Mode SysEx handshake on successful direct connection.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: WebMIDI Integration (TDD)' (Protocol in workflow.md)
