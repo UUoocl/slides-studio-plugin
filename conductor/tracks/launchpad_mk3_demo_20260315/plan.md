@@ -15,7 +15,7 @@
 
 
 ## Phase 3: Bidirectional Synchronization
-- [ ] Task: Map physical pad/button MIDI messages (NoteOn/CC) to virtual UI highlights.
+- [x] Task: Map physical pad/button MIDI messages (NoteOn/CC) to virtual UI highlights. [882ddfd]
 - [ ] Task: Map virtual UI pad/button clicks to outgoing MIDI messages (Direct or Socket).
 - [ ] Task: Implement unified `sendMidi` and `handleMidiMessage` methods that respect the active communication mode.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Bidirectional Synchronization' (Protocol in workflow.md)
