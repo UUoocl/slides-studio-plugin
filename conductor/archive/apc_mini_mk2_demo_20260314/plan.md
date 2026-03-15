@@ -1,0 +1,35 @@
+# Implementation Plan: AKAI Professional APC mini mk2 Demo App
+
+## Phase 1: Project Setup & UI Skeleton [checkpoint: f484016]
+- [x] Task: Create directory structure in `apps/apc_mini_mk2_demo/`. [da095eb]
+- [x] Task: Implement HTML/CSS for the virtual APC mini mk2 (8x8 grid, 9 faders, 17 buttons). [8ddff8a]
+- [x] Task: Setup connectivity UI (Communication mode selector and connection status indicator). [546146a]
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Project Setup & UI Skeleton' (Protocol in workflow.md) [f484016]
+
+## Phase 2: Core MIDI Logic (TDD) [checkpoint: 1d54ed9]
+- [x] Task: Write TDD tests for standard LED behavior messages (Solid, Pulse, Blink). [a91f1b3]
+- [x] Task: Implement `apcMiniCore.js` for standard LED message encoding. [57bd45a]
+- [x] Task: Write TDD tests for "Introduction Message" and "Version Enquiry" SysEx. [3afbeb6]
+- [x] Task: Implement SysEx initialization logic in `apcMiniCore.js`. [7a9b547]
+- [x] Task: Write TDD tests for 24-bit Custom RGB SysEx encoding. [876f8e1]
+- [x] Task: Implement Custom RGB encoding in `apcMiniCore.js`. [3cc9c9d]
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Core MIDI Logic (TDD)' (Protocol in workflow.md) [1d54ed9]
+
+## Phase 3: Hardware Interaction & Sync [checkpoint: 873fc61]
+- [x] Task: Implement MIDI device scanning and dropdown selection for Direct WebMIDI. [d4f3566]
+- [x] Task: Implement WebMIDI and SocketCluster connection lifecycle management. [dbff2a1]
+- [x] Task: Map physical fader CC (0x30-0x38) to UI animated bars. [0887bf6]
+- [x] Task: Implement bidirectional pad matrix synchronization (Click-to-Device / Press-to-UI). [0645025]
+- [x] Task: Implement peripheral button sync (Track 1-8 / Scene 1-8). [196863d]
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Hardware Interaction & Sync' (Protocol in workflow.md) [873fc61]
+
+## Phase 4: Mode Handling & Advanced Features [checkpoint: dd763ec]
+- [x] Task: Implement multi-mode support (Session View, Drum Mode, Note Mode). [8cd95d1]
+- [x] Task: Implement the "Intro Message" trigger on connection to fetch initial hardware fader states. [0421d81]
+- [x] Task: Implement a "Custom RGB Mode" UI toggle to demonstrate 24-bit SysEx control. [d3c248d]
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Mode Handling & Advanced Features' (Protocol in workflow.md) [dd763ec]
+
+## Phase 5: Refinement & Verification [checkpoint: 8658fe5]
+- [x] Task: Final UI polish, responsiveness check, and mobile-friendly touch targets. [7789adc]
+- [x] Task: Create `README.md` with technical implementation details and MIDI mapping tables. [aefc65b]
+- [x] Task: Conductor - User Manual Verification 'Phase 5: Refinement & Verification' (Protocol in workflow.md) [8658fe5]
