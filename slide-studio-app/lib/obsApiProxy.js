@@ -21,12 +21,16 @@ class ObsApiProxy {
         this.connectionPromise = (async () => {
             try {
                 if (!this.socket) {
-                    this.socket = create({
-                        hostname: window.location.hostname,
-                        port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-                        path: '/socketcluster/',
-                        authToken: { name: 'Slide-Studio-App (OBS-Proxy)' }
-                    });
+                    if (window.scSocket) {
+                        this.socket = window.scSocket;
+                    } else {
+                        this.socket = create({
+                            hostname: window.location.hostname,
+                            port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
+                            path: '/socketcluster/',
+                            authToken: { name: 'Slide-Studio-App (OBS-Proxy)' }
+                        });
+                    }
 
                     this.setupPersistentListeners();
                 }
