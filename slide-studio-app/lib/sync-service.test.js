@@ -26,9 +26,46 @@ describe('SyncService', () => {
         expect(SyncService.CHANNEL).toBe('slides_sync');
     });
 
+    it('should wait for scSocket if not present before publishing', async () => {
+        delete global.window.scSocket;
+        const state = { url: 'deck.html' };
+
+        // Start publishing (async)
+        const publishPromise = SyncService.publishSync(state);
+
+        // Simulate scSocket appearing after a delay
+        setTimeout(() => {
+            global.window.scSocket = mockSocket;
+        }, 50);
+
+        await publishPromise;
+        expect(mockSocket.transmitPublish).toHaveBeenCalledWith('slides_sync', {
+            eventName: 'sync-state',
+            msgParam: state
+        });
+    });
+
+    it('should wait for scSocket to be open before publishing', async () => {
+        mockSocket.state = 'closed';
+        mockSocket.listener = vi.fn().mockReturnValue({
+            once: vi.fn().mockResolvedValue({ status: 'connected' })
+        });
+
+        const publishPromise = SyncService.publishSync({ url: 'test.html' });
+
+        // Simulate connection opening
+        setTimeout(() => {
+            mockSocket.state = 'open';
+        }, 50);
+
+        await publishPromise;
+        expect(mockSocket.listener).toHaveBeenCalledWith('connect');
+    });
+
     it('should publish deck state', async () => {
         const state = { url: 'deck.html', indexh: 1, indexv: 2 };
-        SyncService.publishSync(state);
+        mockSocket.state = 'open';
+        await SyncService.publishSync(state);
         expect(mockSocket.transmitPublish).toHaveBeenCalledWith('slides_sync', {
             eventName: 'sync-state',
             msgParam: state
