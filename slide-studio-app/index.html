@@ -297,12 +297,10 @@
 
         function checkAllReadyAndInitialize() {
             if (readyState.studio && readyState.teleprompter && readyState.sc && !readyState.initSent) {
-                console.log("[Viewer Host] All systems READY. Initializing data broadcast.");
                 readyState.initSent = true;
                 window.broadcastSlidesCommand("set-slides-studio-url", {url: slideDeck});
                 window.broadcastSlidesCommand("set-deck-id", { deckId: currentDeckId });
             } else {
-                console.log("[Viewer Host] Readiness status:", JSON.stringify(readyState));
             }
         }
 
@@ -359,7 +357,6 @@
               // Fallback: If frames don't report ready within 5 seconds, force init anyway
               setTimeout(() => {
                   if (!readyState.initSent) {
-                      console.warn("[Viewer Host] Readiness timeout reached. Forcing initialization.");
                       readyState.studio = true;
                       readyState.teleprompter = true;
                       readyState.sc = true; // Assume SC is ready if we're here
@@ -380,7 +377,6 @@
           // Listen for refresh requests from other frames
           obsWss.on('slidesCommands', (data) => {
               if (data.eventName === 'request-init-data') {
-                  console.log("[Viewer Host] Received request-init-data. Re-broadcasting initialization.");
                   window.broadcastSlidesCommand("set-slides-studio-url", {url: slideDeck});
                   window.broadcastSlidesCommand("set-deck-id", { deckId: currentDeckId });
               }
@@ -427,28 +423,23 @@
           const data = JSON.parse(event.data);
           
           if (data.namespace === 'slides-studio' && data.eventName === 'frameReady') {
-              console.log(`[Viewer Host] Frame reported READY: ${data.frame}`);
               readyState[data.frame] = true;
               checkAllReadyAndInitialize();
               return;
           }
 
           if (data.namespace === 'reveal') {
-            console.log(`[Viewer Host] Received Reveal event: ${data.eventName}`, data);
             if (typeof window.broadcastSlidesCommand === 'function') {
                 if (data.eventName === 'slidechanged') {
-                    console.log("[Viewer Host] Slide changed, requesting notes...");
                     // Request notes for the teleprompter
                     window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes' }), "*");
                 } else if (['overviewhidden', 'overviewshown'].includes(data.eventName)) {
-                    console.log(`[Viewer Host] Overview toggled: ${data.state.overview}`);
                     window.obsWss.publish('studio_to_currentSlide', 'overview-toggled', data.state);
                 }
                 
                 // Attach slide attributes before publishing to studio
                 const attributes = window.getSlideAttributes();
                 data.attributes = attributes;
-                console.log("[Viewer Host] Publishing reveal-event to studio with attributes:", data);
                 
                 // Publish reveal events specifically to the Studio "brain" to prevent loops
                 obsWss.publish('currentSlide_to_studio', 'reveal-event', data);
