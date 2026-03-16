@@ -8,7 +8,7 @@ import {
   generateRainbowWave,
   generateRandomSparkle,
   generateTextScroll,
-} from '../../apps/midi_controller_demo/launchpadCore.js';
+} from '../../apps/launchpad_mk3_demo/launchpadCore.js';
 
 describe('Launchpad MIDI Message Helpers', () => {
   describe('generateNoteOn', () => {

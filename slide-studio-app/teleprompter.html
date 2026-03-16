@@ -77,7 +77,7 @@
         })();
 
         const customChannel = window.scSocket.subscribe('custom_slidesCommands');
-        const studioChannel = window.scSocket.subscribe('currentSlide_to_studio');
+        const teleprompterChannel = window.scSocket.subscribe('viewer_to_teleprompter');
         
         const handleMessage = (data, channelName) => {
             try {
@@ -115,8 +115,8 @@
         })();
 
         (async () => {
-          for await (let data of studioChannel) {
-            handleMessage(data, 'currentSlide_to_studio');
+          for await (let data of teleprompterChannel) {
+            handleMessage(data, 'viewer_to_teleprompter');
           }
         })();
 

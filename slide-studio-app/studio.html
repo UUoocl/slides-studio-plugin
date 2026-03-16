@@ -68,22 +68,28 @@
             let selectedRowNumber = 0;
             let slidesLoaded = false;
             let tableLoaded = false;
+            let isIndexing = false;
 
             // --- Function Definitions ---
 
             // --- broadcastSlidesCommand (Centralized command handler & broadcaster) ---
-            window.broadcastSlidesCommand = async function(eventName, msgParam) {
+            // eventName: the command/event name
+            // msgParam: payload
+            // origin: 'viewer', 'studio', or 'other' (to prevent loops)
+            window.broadcastSlidesCommand = async function(eventName, msgParam, origin = 'studio') {
                 // Handle OBS-specific tags in the Studio brain
                 if (eventName === "slide-changed") {
                     await processTags(msgParam);
                 }
 
                 try {
-                    // Send navigation commands specifically to the viewer host
-                    await obsWss.publish('studio_to_currentSlide', eventName, msgParam);
+                    // Send to viewer only if NOT originating from viewer
+                    if (origin !== 'viewer') {
+                        await obsWss.publish('studio_to_viewer', eventName, msgParam);
+                    }
                     
-                    // Also broadcast to the general navigation channel for other overlays
-                    await obsWss.publish('slides_navigation', eventName, msgParam);
+                    // Always broadcast to the general channel for other overlays
+                    await obsWss.publish('slides_broadcast', eventName, msgParam);
                     
                     // Legacy support for custom_slidesCommands
                     await obsWss.publish('custom_slidesCommands', eventName, msgParam);
@@ -213,7 +219,7 @@
 
             window.triggerIframeMethod = function(method, args = []) {
                 // If navigation is triggered manually in Studio, update the viewer
-                obsWss.publish('studio_to_currentSlide', 'navigate', { method, args });
+                obsWss.publish('studio_to_viewer', 'navigate', { method, args });
             }
 
             window.updateSlideName = function() {
@@ -285,17 +291,22 @@
                     if (rows.length > 0) {
                         const targetRow = rows[0];
                         const selectedRows = window.table.getSelectedRows();
+                        
+                        // Only update selection if it's actually different to avoid triggering loops
                         if (selectedRows.length === 0 || selectedRows[0].getIndex() !== targetRow.getIndex()) {
                             window.table.deselectRow();
                             targetRow.select();
                             window.table.scrollToRow(targetRow, "center", false);
+                            
+                            // NOTE: We DO NOT call filterRowData here because it would trigger a slide change
+                            // from an OBS scene change, which can be ambiguous and loop-prone.
                         }
                     }
                 }
             });
 
-            // Listen for global setup commands
-            obsWss.on('slidesCommands', async (data) => {
+            // Listen for setup commands from the Viewer Host
+            obsWss.on('slides_broadcast', (data) => {
                 const eventName = data.eventName;
                 const payload = data.msgParam;
 
@@ -326,8 +337,13 @@
                 }
             });
 
+            // Legacy support for slidesCommands
+            obsWss.on('slidesCommands', async (data) => {
+                if (data.eventName === 'request-init-data') return; // Handled by viewer host
+            });
+
             // Listen specifically for viewer reporting its state
-            obsWss.on('currentSlide_to_studio', async (data) => {
+            obsWss.on('viewer_to_studio', async (data) => {
                 try {
                     const eventName = data.eventName;
                     const payload = data.msgParam;
@@ -342,6 +358,7 @@
                                                    (revealData.eventName === 'callback' && (revealData.method === 'slide' || revealData.method === 'getState') && window.slidesArray.length === 0);
 
                             if (isStartingEvent) {
+                                isIndexing = true;
                                 window.slidesArray = [];
                                 revealData.state = revealData.state || revealData.result || { indexh: 0, indexv: 0 };
                                 addSlideToIndexedArray(revealData);
@@ -354,10 +371,11 @@
                                 if (revealData.result === 1) {
                                     slidesLoaded = true;
                                     tableLoaded = true;
+                                    isIndexing = false;
                                     window.triggerIframeMethod('slide', [0, 0]);
                                     loadTable(dropDownOptions);
                                     // Notify other views
-                                    obsWss.publish('slides_navigation', 'indexing-complete', {});
+                                    obsWss.publish('slides_broadcast', 'indexing-complete', {});
                                 } else {
                                     window.triggerIframeMethod('next');
                                 }
@@ -382,7 +400,7 @@
                         }
 
                         // Navigation Sync (After indexing)
-                        if (revealData.state) {
+                        if (revealData.state && !isIndexing) {
                             let stateString = `${revealData.state.indexh},${revealData.state.indexv}`;
                             if (revealData.state.indexf !== undefined && revealData.state.indexf > -1) {
                                 stateString += `,${revealData.state.indexf}`;
@@ -401,7 +419,8 @@
                                         window.table.scrollToRow(targetRow, "center", false);
                                         
                                         // Broadcast the master message only to broadcast navigation
-                                        window.broadcastSlidesCommand('slide-changed', targetRow.getData());
+                                        // Pass 'viewer' as origin to prevent echoing back to the viewer
+                                        window.broadcastSlidesCommand('slide-changed', targetRow.getData(), 'viewer');
                                     }
                                 }
                             }

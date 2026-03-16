@@ -9,24 +9,28 @@
     }
 
     // Subscribe to commands specifically for this viewer instance
-    const channel = window.scSocket.subscribe('studio_to_currentSlide');
+    const channel = window.scSocket.subscribe('studio_to_viewer');
     
     for await (let data of channel) {
         try {
             if (data.eventName === "slide-changed" || data.eventName === "navigate") {
                 const msgParam = data.msgParam;
-                let slidesState;
+                let method = msgParam.method || 'slide';
+                let args = msgParam.args || [];
                 
-                if (msgParam.slideState) {
-                    slidesState = msgParam.slideState.split(",").map(value => Number(value));
-                } else if (msgParam.args) {
-                    slidesState = msgParam.args;
-                } else if (typeof msgParam.indexh !== 'undefined') {
-                    slidesState = [msgParam.indexh, msgParam.indexv, msgParam.indexf || 0];
+                if (data.eventName === "slide-changed") {
+                    method = 'slide';
+                    if (msgParam.slideState) {
+                        args = msgParam.slideState.split(",").map(value => Number(value));
+                    } else if (typeof msgParam.indexh !== 'undefined') {
+                        args = [msgParam.indexh, msgParam.indexv, msgParam.indexf || 0];
+                    }
                 }
 
-                if (slidesState && window.currentSlide && window.currentSlide.contentWindow) {
-                    window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: slidesState }), "*");
+                if (window.currentSlide && window.currentSlide.contentWindow) {
+                    window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: method, args: args }), "*");
+                    
+                    // Always try to get notes after a slide change or navigation
                     window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes' }), "*");
                 }
             } else if (data.eventName === "overview-toggled") {

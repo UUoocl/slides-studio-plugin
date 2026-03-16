@@ -97,9 +97,11 @@ class ObsApiProxy {
             'custom_slidesCommands',
             'obsEvents',
             'keyboardPress',
-            'currentSlide_to_studio',
             'slides_navigation',
-            'studio_to_currentSlide'
+            'slides_broadcast',
+            'viewer_to_studio',
+            'viewer_to_teleprompter',
+            'studio_to_viewer'
         ];
 
         appChannels.forEach(chanName => {

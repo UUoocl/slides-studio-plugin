@@ -39,8 +39,8 @@ describe('slideSync_SpeakerView_Browser', () => {
         await new Promise(r => setTimeout(r, 50));
     });
 
-    it('should subscribe to studio_to_currentSlide channel', () => {
-        expect(mockWindow.scSocket.subscribe).toHaveBeenCalledWith('studio_to_currentSlide');
+    it('should subscribe to studio_to_viewer channel', () => {
+        expect(mockWindow.scSocket.subscribe).toHaveBeenCalledWith('studio_to_viewer');
     });
 
     it('should send postMessage to currentSlide on slide-changed', () => {

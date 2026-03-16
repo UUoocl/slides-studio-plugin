@@ -298,8 +298,8 @@
         function checkAllReadyAndInitialize() {
             if (readyState.studio && readyState.teleprompter && readyState.sc && !readyState.initSent) {
                 readyState.initSent = true;
-                window.broadcastSlidesCommand("set-slides-studio-url", {url: slideDeck});
-                window.broadcastSlidesCommand("set-deck-id", { deckId: currentDeckId });
+                obsWss.publish('slides_broadcast', "set-slides-studio-url", {url: slideDeck});
+                obsWss.publish('slides_broadcast', "set-deck-id", { deckId: currentDeckId });
             } else {
             }
         }
@@ -377,8 +377,8 @@
           // Listen for refresh requests from other frames
           obsWss.on('slidesCommands', (data) => {
               if (data.eventName === 'request-init-data') {
-                  window.broadcastSlidesCommand("set-slides-studio-url", {url: slideDeck});
-                  window.broadcastSlidesCommand("set-deck-id", { deckId: currentDeckId });
+                  obsWss.publish('slides_broadcast', "set-slides-studio-url", {url: slideDeck});
+                  obsWss.publish('slides_broadcast', "set-deck-id", { deckId: currentDeckId });
               }
           });
         }
@@ -434,15 +434,20 @@
                     // Request notes for the teleprompter
                     window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes' }), "*");
                 } else if (['overviewhidden', 'overviewshown'].includes(data.eventName)) {
-                    window.obsWss.publish('studio_to_currentSlide', 'overview-toggled', data.state);
+                    window.obsWss.publish('studio_to_viewer', 'overview-toggled', data.state);
                 }
                 
                 // Attach slide attributes before publishing to studio
                 const attributes = window.getSlideAttributes();
                 data.attributes = attributes;
                 
+                // Handle speaker notes specifically for the teleprompter
+                if (data.eventName === 'callback' && data.method === 'getSlideNotes') {
+                    obsWss.publish('viewer_to_teleprompter', 'reveal-event', data);
+                }
+                
                 // Publish reveal events specifically to the Studio "brain" to prevent loops
-                obsWss.publish('currentSlide_to_studio', 'reveal-event', data);
+                obsWss.publish('viewer_to_studio', 'reveal-event', data);
             }
           }
         } catch (e) {
