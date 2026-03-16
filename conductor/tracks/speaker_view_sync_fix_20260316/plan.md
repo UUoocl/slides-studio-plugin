@@ -1,15 +1,15 @@
 # Implementation Plan: Speaker-View to Slide-View Sync Fix
 
 ## Phase 1: Analysis & Setup
-- [ ] Task: Analyze current `speaker-view` (`slide-studio-app/index.html`) and `studio.html` logic for deck loading and navigation.
-- [ ] Task: Analyze current `slide-view` (`slide-studio-app/slide_view/slides_studio_slide_view.html`) logic for receiving state.
-- [ ] Task: Verify SocketCluster client is available and configured in both views.
-- [ ] Task: Conductor - User Manual Verification 'Analysis & Setup' (Protocol in workflow.md)
+- [x] Task: Analyze current `speaker-view` (`slide-studio-app/index.html`) and `studio.html` logic for deck loading and navigation.
+- [x] Task: Analyze current `slide-view` (`slide-studio-app/slide_view/slides_studio_slide_view.html`) logic for receiving state.
+- [x] Task: Verify SocketCluster client is available and configured in both views.
+- [x] Task: Conductor - User Manual Verification 'Analysis & Setup' (Protocol in workflow.md)
 
 ## Phase 2: SocketCluster Channel Implementation
-- [ ] Task: Define the SocketCluster channel name (e.g., `slides-studio:sync`).
-- [ ] Task: Write failing tests for a new `SyncService` (or similar) that handles publishing and subscribing to slide state.
-- [ ] Task: Implement `SyncService` to handle state broadcasting (URL, horizontal index, vertical index).
+- [x] Task: Define the SocketCluster channel name (e.g., `slides-studio:sync`). [ca4a8e5]
+- [x] Task: Write failing tests for a new `SyncService` (or similar) that handles publishing and subscribing to slide state. [ca4a8e5]
+- [x] Task: Implement `SyncService` to handle state broadcasting (URL, horizontal index, vertical index). [ca4a8e5]
 - [ ] Task: Conductor - User Manual Verification 'SocketCluster Channel Implementation' (Protocol in workflow.md)
 
 ## Phase 3: Speaker-View Updates
