@@ -393,13 +393,21 @@
           const data = JSON.parse(event.data);
           
           if (data.namespace === 'reveal') {
+            console.log(`[Viewer Host] Received Reveal event: ${data.eventName}`, data);
             if (typeof window.broadcastSlidesCommand === 'function') {
                 if (data.eventName === 'slidechanged') {
+                    console.log("[Viewer Host] Slide changed, requesting notes...");
                     // Request notes for the teleprompter
                     window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes' }), "*");
                 } else if (['overviewhidden', 'overviewshown'].includes(data.eventName)) {
+                    console.log(`[Viewer Host] Overview toggled: ${data.state.overview}`);
                     window.obsWss.publish('studio_to_currentSlide', 'overview-toggled', data.state);
                 }
+                
+                // Attach slide attributes before publishing to studio
+                const attributes = window.getSlideAttributes();
+                data.attributes = attributes;
+                console.log("[Viewer Host] Publishing reveal-event to studio with attributes:", data);
                 
                 // Publish reveal events specifically to the Studio "brain" to prevent loops
                 obsWss.publish('currentSlide_to_studio', 'reveal-event', data);

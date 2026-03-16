@@ -59,6 +59,7 @@
     <script type="module">
       // Initialize App
       window.onload = function() {
+        console.log("[Teleprompter] Initializing...");
         TelePrompter.init();
       };
 
@@ -68,18 +69,29 @@
             await new Promise(r => setTimeout(r, 100));
         }
 
-        console.log("[Teleprompter] Subscribing to custom_slidesCommands via SocketCluster...");
-        const channel = window.scSocket.subscribe('custom_slidesCommands');
+        console.log("[Teleprompter] SocketCluster client available. State:", window.scSocket.state);
+
+        // Listen for connection events
+        (async () => {
+          for await (let event of window.scSocket.listener('connect')) {
+            console.log("[Teleprompter] Connected to SocketCluster");
+          }
+        })();
+
+        console.log("[Teleprompter] Subscribing to custom_slidesCommands and currentSlide_to_studio...");
+        const customChannel = window.scSocket.subscribe('custom_slidesCommands');
+        const studioChannel = window.scSocket.subscribe('currentSlide_to_studio');
         
-        for await (let data of channel) {
+        const handleMessage = (data, channelName) => {
             try {
                 const eventName = data.eventName;
                 const payload = data.msgParam;
+                console.log(`[Teleprompter] Message on ${channelName}: ${eventName}`, payload);
 
                 if (eventName === 'reveal-event') {
                     if (payload.eventName === 'callback' && payload.method === 'getSlideNotes') {
-                        console.log("[Teleprompter] Received notes via SC callback");
-                        document.getElementById("teleprompter").innerHTML = payload.result;
+                        console.log("[Teleprompter] Received notes via SC callback. Length:", payload.result ? payload.result.length : 0);
+                        document.getElementById("teleprompter").innerHTML = payload.result || "No notes for this slide.";
                         TelePrompter.resetPageScroll();
                     }
                 }
@@ -99,9 +111,23 @@
                     }
                 }
             } catch (err) {
-                console.error("[Teleprompter] Error processing SC message:", err);
+                console.error(`[Teleprompter] Error processing message on ${channelName}:`, err);
             }
-        }
+        };
+
+        // Listen on both channels to debug which one is actually used
+        (async () => {
+          for await (let data of customChannel) {
+            handleMessage(data, 'custom_slidesCommands');
+          }
+        })();
+
+        (async () => {
+          for await (let data of studioChannel) {
+            handleMessage(data, 'currentSlide_to_studio');
+          }
+        })();
+
       })();
     </script>
   </body>

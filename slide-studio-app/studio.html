@@ -261,6 +261,7 @@
             
             // Unified SocketCluster listener via obsWss
             obsWss.on('keyboardPress', (eventData) => {
+                console.log("[Studio] keyboardPress received:", eventData);
                 if (eventData.key) {
                     window.handleKeyboardNavigation(eventData.keyCode || eventData.key);
                 }
@@ -268,6 +269,7 @@
 
             // Sync OBS scene changes back to the table
             obsWss.on('CurrentProgramSceneChanged', (data) => {
+                console.log("[Studio] OBS CurrentProgramSceneChanged:", data.sceneName);
                 if (window.table) {
                     const rows = window.table.searchRows("scene", "=", data.sceneName);
                     if (rows.length > 0) {
@@ -286,14 +288,17 @@
             obsWss.on('slidesCommands', async (data) => {
                 const eventName = data.eventName;
                 const payload = data.msgParam;
+                console.log(`[Studio] Received slidesCommands: ${eventName}`, payload);
 
                 if (eventName === 'set-deck-id') {
                     window.slideDeckId = payload.deckId;
                     document.getElementById("slideDeckId").value = window.slideDeckId;
                     
                     if (localStorage.getItem(window.slideDeckId)) {
+                        console.log(`[Studio] Loading existing table for deck: ${window.slideDeckId}`);
                         window.loadSavedTable();
                     } else if (!slidesLoaded) {
+                        console.log("[Studio] New deck detected, starting indexing...");
                         window.slidesArray = [];
                         window.triggerIframeMethod('slide', [0, 0]);
                         window.triggerIframeMethod('getState');
@@ -319,6 +324,7 @@
                 try {
                     const eventName = data.eventName;
                     const payload = data.msgParam;
+                    console.log(`[Studio] Received currentSlide_to_studio: ${eventName}`, payload);
 
                     if (eventName === 'reveal-event') {
                         const revealData = payload;
@@ -330,6 +336,7 @@
                                                    (revealData.eventName === 'callback' && (revealData.method === 'slide' || revealData.method === 'getState') && window.slidesArray.length === 0);
 
                             if (isStartingEvent) {
+                                console.log("[Studio] Indexing: Initial event received", revealData.eventName);
                                 window.slidesArray = [];
                                 revealData.state = revealData.state || revealData.result || { indexh: 0, indexv: 0 };
                                 addSlideToIndexedArray(revealData);
@@ -339,9 +346,11 @@
                             if (revealData.eventName === 'callback' && revealData.method === 'getSlideNotes') return;
 
                             if (revealData.eventName === 'callback' && revealData.method === 'getProgress') {
+                                console.log(`[Studio] Indexing progress: ${revealData.result * 100}%`);
                                 if (revealData.result === 1) {
                                     slidesLoaded = true;
                                     tableLoaded = true;
+                                    console.log("[Studio] Indexing COMPLETE. Loading table.");
                                     window.triggerIframeMethod('slide', [0, 0]);
                                     loadTable(dropDownOptions);
                                     // Notify other views
@@ -356,6 +365,7 @@
                                 if (!revealData.state) return;
                                 const state = `${revealData.state.indexh},${revealData.state.indexv}`;
                                 if (!window.slidesArray.find(s => s.slideState === state)) {
+                                    console.log(`[Studio] Indexing: New slide reached at ${state}`);
                                     addSlideToIndexedArray(revealData);
                                 } else {
                                     window.triggerIframeMethod('getProgress');
@@ -377,6 +387,7 @@
                             }
 
                             if (stateString !== slideStateStr) {
+                                console.log(`[Studio] Syncing table to state: ${stateString}`);
                                 slideStateStr = stateString;
                                 
                                 if (window.table) {
