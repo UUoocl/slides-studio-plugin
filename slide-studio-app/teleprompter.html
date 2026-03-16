@@ -74,7 +74,8 @@
         // Listen for connection events
         (async () => {
           for await (let event of window.scSocket.listener('connect')) {
-            console.log("[Teleprompter] Connected to SocketCluster");
+            console.log("[Teleprompter] Connected to SocketCluster. Sending ready signal to parent.");
+            window.parent.postMessage(JSON.stringify({ namespace: 'slides-studio', eventName: 'frameReady', frame: 'teleprompter' }), "*");
           }
         })();
 

@@ -79,8 +79,14 @@
                 }
 
                 try {
-                    // Default to navigation channel for broadcast consistency
+                    // Send navigation commands specifically to the viewer host
+                    await obsWss.publish('studio_to_currentSlide', eventName, msgParam);
+                    
+                    // Also broadcast to the general navigation channel for other overlays
                     await obsWss.publish('slides_navigation', eventName, msgParam);
+                    
+                    // Legacy support for custom_slidesCommands
+                    await obsWss.publish('custom_slidesCommands', eventName, msgParam);
                 } catch (e) {
                     console.error("[Studio] Failed to broadcast command", e);
                 }
@@ -255,8 +261,20 @@
                 document.getElementById("slideDeckIdLoadButton").addEventListener('click', window.loadSavedTable);
 
                 obsWss.connect().then(() => {
+                    console.log("[Studio] Connected to SocketCluster. Sending ready signal to parent.");
                     fetchOBSMetadata();
-                }).catch(e => { });
+                    window.sendMessageToParent({ namespace: 'slides-studio', eventName: 'frameReady', frame: 'studio' });
+
+                    // Robustness: If we haven't received a deck ID within 3 seconds, request it
+                    setTimeout(() => {
+                        if (!window.slideDeckId) {
+                            console.log("[Studio] No deck ID received yet. Requesting init data...");
+                            obsWss.publish('custom_slidesCommands', 'request-init-data', {});
+                        }
+                    }, 3000);
+                }).catch(e => { 
+                    console.error("[Studio] Failed to connect to SocketCluster", e);
+                });
             });
             
             // Unified SocketCluster listener via obsWss

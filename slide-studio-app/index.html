@@ -287,6 +287,24 @@
         slideDeckURL;
 
         let slidesLoaded = false;
+        let readyState = {
+            studio: false,
+            teleprompter: false,
+            sc: false,
+            initSent: false
+        };
+        let currentDeckId = null;
+
+        function checkAllReadyAndInitialize() {
+            if (readyState.studio && readyState.teleprompter && readyState.sc && !readyState.initSent) {
+                console.log("[Viewer Host] All systems READY. Initializing data broadcast.");
+                readyState.initSent = true;
+                window.broadcastSlidesCommand("set-slides-studio-url", {url: slideDeck});
+                window.broadcastSlidesCommand("set-deck-id", { deckId: currentDeckId });
+            } else {
+                console.log("[Viewer Host] Readiness status:", JSON.stringify(readyState));
+            }
+        }
 
         // Expose to window for other modules
         window.currentSlide = undefined;
@@ -309,6 +327,8 @@
           // Connect to OBS via proxy
           try {
               await obsWss.connect();
+              readyState.sc = true;
+              checkAllReadyAndInitialize();
           } catch (e) {
               console.warn("Continuing without OBS connection:", e);
           }
@@ -331,16 +351,21 @@
               slideDeck = `${locationValue}`
 
               // Extract a deck ID from the URL for storage purposes
-              const deckId = slideDeckURL.pathname.split('/').filter(p => p && p !== 'index.html').pop() || 'default-deck';
+              currentDeckId = slideDeckURL.pathname.split('/').filter(p => p && p !== 'index.html').pop() || 'default-deck';
 
               setupLayout();
               setupIframes();
 
-              // Send initialization data to other views (Studio, etc.) via SocketCluster
+              // Fallback: If frames don't report ready within 5 seconds, force init anyway
               setTimeout(() => {
-                  window.broadcastSlidesCommand("set-slides-studio-url", {url: slideDeck});
-                  window.broadcastSlidesCommand("set-deck-id", { deckId: deckId });
-              }, 1000);
+                  if (!readyState.initSent) {
+                      console.warn("[Viewer Host] Readiness timeout reached. Forcing initialization.");
+                      readyState.studio = true;
+                      readyState.teleprompter = true;
+                      readyState.sc = true; // Assume SC is ready if we're here
+                      checkAllReadyAndInitialize();
+                  }
+              }, 5000);
 
           } catch (e) {
               alert("Please enter a valid URL or deck path.");
@@ -351,6 +376,15 @@
 
           handleConnectMessage();
           window.document.getElementById("speaker-controls").focus();
+
+          // Listen for refresh requests from other frames
+          obsWss.on('slidesCommands', (data) => {
+              if (data.eventName === 'request-init-data') {
+                  console.log("[Viewer Host] Received request-init-data. Re-broadcasting initialization.");
+                  window.broadcastSlidesCommand("set-slides-studio-url", {url: slideDeck});
+                  window.broadcastSlidesCommand("set-deck-id", { deckId: currentDeckId });
+              }
+          });
         }
 
     // Helper to get attributes from the current slide in the iframe
@@ -392,6 +426,13 @@
         try {
           const data = JSON.parse(event.data);
           
+          if (data.namespace === 'slides-studio' && data.eventName === 'frameReady') {
+              console.log(`[Viewer Host] Frame reported READY: ${data.frame}`);
+              readyState[data.frame] = true;
+              checkAllReadyAndInitialize();
+              return;
+          }
+
           if (data.namespace === 'reveal') {
             console.log(`[Viewer Host] Received Reveal event: ${data.eventName}`, data);
             if (typeof window.broadcastSlidesCommand === 'function') {
