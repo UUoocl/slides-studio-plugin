@@ -59,6 +59,7 @@
         <script type="module">
             import './lib/obsApiProxy.js';
             import { loadTable } from './lib/setupTable.js';
+            import { SyncService } from './lib/sync-service.js';
 
             // --- Global Variables ---
             window.slideDeckId = undefined;
@@ -69,6 +70,7 @@
             let slidesLoaded = false;
             let tableLoaded = false;
             let isIndexing = false;
+            let currentDeckUrl = '';
 
             // --- Function Definitions ---
 
@@ -80,6 +82,21 @@
                 // Handle OBS-specific tags in the Studio brain
                 if (eventName === "slide-changed") {
                     await processTags(msgParam);
+
+                    // Sync to other slide-views
+                    SyncService.publishSync({
+                        url: currentDeckUrl,
+                        slideState: msgParam.slideState,
+                        indexh: msgParam.indexh,
+                        indexv: msgParam.indexv,
+                        indexf: msgParam.indexf
+                    });
+                }
+
+                if (eventName === 'set-slides-studio-url') {
+                    SyncService.publishSync({
+                        url: msgParam.url
+                    });
                 }
 
                 try {
@@ -324,6 +341,7 @@
                 }
 
                 if (eventName === 'set-slides-studio-url') {
+                    currentDeckUrl = payload.url;
                     // Relay the URL to the broadcast navigation channel so OBS views can load the deck
                     window.broadcastSlidesCommand('set-slides-studio-url', { url: payload.url });
                 }

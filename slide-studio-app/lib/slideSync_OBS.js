@@ -1,4 +1,34 @@
+import { SyncService } from './sync-service.js';
+
 let slideState = '';
+
+// Subscribe to SyncService for unified synchronization
+SyncService.subscribeSync((data) => {
+    const { url, slideState: newStateStr, indexh, indexv, indexf } = data;
+
+    // Handle URL change
+    if (url) {
+        const iframe = document.getElementById("revealIframe");
+        if (iframe && iframe.src !== url && url !== "about:blank") {
+            updateIframeUrl(url);
+        }
+    }
+
+    // Handle slide navigation
+    if (typeof indexh !== 'undefined') {
+        const slidesState = [indexh, indexv, indexf || 0];
+        const iframe = document.getElementById("revealIframe");
+        if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: slidesState }), '*');
+        }
+    } else if (newStateStr) {
+        const slidesState = newStateStr.split(",").map(v => Number(v));
+        const iframe = document.getElementById("revealIframe");
+        if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: slidesState }), '*');
+        }
+    }
+});
 
 async function broadcastSC(eventName, eventData) {
     if (window.scSocket && window.scSocket.state === 'open') {

@@ -276,6 +276,7 @@
       });
     </script>
     <script id="setupSpeakerView" type="module">
+        import { SyncService } from './lib/sync-service.js';
 
         let notesIframe,
         studioIframe,
@@ -300,6 +301,11 @@
                 readyState.initSent = true;
                 obsWss.publish('slides_broadcast', "set-slides-studio-url", {url: slideDeck});
                 obsWss.publish('slides_broadcast', "set-deck-id", { deckId: currentDeckId });
+                
+                // Sync to other slide-views
+                SyncService.publishSync({
+                    url: slideDeck
+                });
             } else {
             }
         }
