@@ -1,8 +1,0 @@
-{
-  "track_id": "fix_tabulator_table_20260315",
-  "type": "bug",
-  "status": "new",
-  "created_at": "2026-03-15T10:00:00Z",
-  "updated_at": "2026-03-15T10:00:00Z",
-  "description": "Fix Bug in the @slide-studio-app/studio.html where the tabulator table of slide data in the Obsidian web viewer is not loading . The tabulator table loads in a Chrome browser, but not in obsidian webview."
-}
