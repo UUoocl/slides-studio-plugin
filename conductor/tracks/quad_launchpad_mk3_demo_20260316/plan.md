@@ -28,8 +28,8 @@
 - [x] Task: Implement "Global Sparkle (16x16)" animation using the `GlobalCanvas`. 70f4bb3
 - [x] Task: Conductor - User Manual Verification 'Phase 4: Animations' (Protocol in workflow.md) d0e9820
 
-## Phase 5: Input Handling & UI Feedback
+## Phase 5: Input Handling & UI Feedback [checkpoint: f7b48e1]
 - [x] Task: Implement input routing from physical devices to their respective virtual UI grids. 2d907fe
 - [x] Task: Add "Local Input Feedback" toggle to allow/disallow hardware-side feedback. 2d907fe
 - [x] Task: Final UI polish (connection status indicators, animation speed controls). 2d907fe
-- [~] Task: Conductor - User Manual Verification 'Phase 5: Input Handling & UI Feedback' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 5: Input Handling & UI Feedback' (Protocol in workflow.md) f7b48e1
