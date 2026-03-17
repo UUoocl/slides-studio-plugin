@@ -8,7 +8,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Setup and Project Infrastructure' (Protocol in workflow.md) 55afaf5
 
 ## Phase 2: Device Discovery and Video Feed
-- [ ] Task: Implement `enumerateDevices()` in `app.js` to populate a camera selection dropdown.
+- [x] Task: Implement `enumerateDevices()` in `app.js` to populate a camera selection dropdown. 1f75af5
 - [ ] Task: Implement `getUserMedia()` logic to request access to the selected video input.
 - [ ] Task: Render the live video stream in a dedicated `<video>` element on the page.
 - [ ] Task: Add basic error handling for camera permission denials or connection failures.
