@@ -14,15 +14,15 @@
 - [x] Task: Verify programmer mode handshake works for all 4 devices simultaneously. 4cc3ae0
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Connectivity & Device Management' (Protocol in workflow.md) 07fa16d
 
-## Phase 3: Coordinate Transformation & Global Canvas
+## Phase 3: Coordinate Transformation & Global Canvas [checkpoint: aaaa6a3]
 - [x] Task: Implement a `CoordinateTransformer` utility to map global (x, y) coordinates to (device_id, local_x, local_y). 4fb3d65
 - [x] Task: Implement rotation logic within the transformer (0, 90, 180, 270 degrees). 4fb3d65
 - [x] Task: Create a `GlobalCanvas` class that uses the transformer to dispatch LED commands to the correct devices. 07c1160
 - [x] Task: Write unit tests for coordinate transformations and rotations. 4fb3d65
-- [~] Task: Conductor - User Manual Verification 'Phase 3: Coordinate Transformation & Global Canvas' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Coordinate Transformation & Global Canvas' (Protocol in workflow.md) aaaa6a3
 
 ## Phase 4: Animations
-- [ ] Task: Implement "Diagonal Wave (16x16)" animation using the `GlobalCanvas`.
+- [~] Task: Implement "Diagonal Wave (16x16)" animation using the `GlobalCanvas`.
 - [ ] Task: Implement "Center-out Expansion" animation using the `GlobalCanvas`.
 - [ ] Task: Implement "16x16 Scrolling Text" animation using the `GlobalCanvas`.
 - [ ] Task: Implement "Global Sparkle (16x16)" animation using the `GlobalCanvas`.
