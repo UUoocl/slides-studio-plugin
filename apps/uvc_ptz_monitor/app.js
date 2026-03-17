@@ -66,11 +66,75 @@ export class UVCPTZMonitor {
 
             this.updateStatus('Connected');
             
-            // Trigger PTZ detection (Phase 3)
-            // this.detectPTZCapabilities();
+            this.renderPTZControls();
         } catch (err) {
             console.error('Error connecting to camera:', err);
             this.updateStatus(`Error: ${err.name}`, true);
+        }
+    }
+
+    getPTZCapabilities() {
+        if (!this.track || typeof this.track.getCapabilities !== 'function') {
+            return {};
+        }
+        return this.track.getCapabilities();
+    }
+
+    renderPTZControls() {
+        if (!this.elements.controlsContainer) return;
+
+        const capabilities = this.getPTZCapabilities();
+        const settings = this.track ? this.track.getSettings() : {};
+        
+        const ptzProps = ['pan', 'tilt', 'zoom'];
+        const supportedProps = ptzProps.filter(prop => prop in capabilities);
+
+        if (supportedProps.length === 0) {
+            this.elements.controlsContainer.innerHTML = '<p class="placeholder-text">This camera does not support Pan, Tilt, or Zoom controls via the browser API.</p>';
+            return;
+        }
+
+        this.elements.controlsContainer.innerHTML = '';
+        supportedProps.forEach(prop => {
+            const cap = capabilities[prop];
+            const currentVal = settings[prop] !== undefined ? settings[prop] : cap.min;
+            
+            const controlDiv = document.createElement('div');
+            controlDiv.className = 'ptz-control';
+            controlDiv.innerHTML = `
+                <div class="ptz-header">
+                    <span class="ptz-label">${prop.toUpperCase()}</span>
+                    <span id="val-${prop}" class="ptz-value">${currentVal}</span>
+                </div>
+                <input type="range" 
+                    id="slider-${prop}" 
+                    class="ptz-slider" 
+                    min="${cap.min}" 
+                    max="${cap.max}" 
+                    step="${cap.step || 1}" 
+                    value="${currentVal}">
+            `;
+            this.elements.controlsContainer.appendChild(controlDiv);
+            
+            // Add listener for real-time updates (Phase 3 Task 3)
+            const slider = controlDiv.querySelector('input');
+            slider.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                document.getElementById(`val-${prop}`).textContent = val;
+                this.applyPTZConstraint(prop, val);
+            });
+        });
+    }
+
+    async applyPTZConstraint(prop, value) {
+        if (!this.track) return;
+        try {
+            const constraints = {
+                advanced: [{ [prop]: value }]
+            };
+            await this.track.applyConstraints(constraints);
+        } catch (err) {
+            console.error(`Error applying ${prop} constraint:`, err);
         }
     }
 

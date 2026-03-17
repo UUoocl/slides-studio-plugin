@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Helper to create a base mock element
-const createBaseMock = () => {
+const createBaseMock = (id = '') => {
     const el = {
+        id,
         addEventListener: vi.fn(),
         style: {},
         classList: { add: vi.fn(), remove: vi.fn() },
@@ -13,6 +14,15 @@ const createBaseMock = () => {
             if (child.textContent) {
                 el.innerHTML += `<option>${child.textContent}</option>`;
             }
+        }),
+        querySelector: vi.fn((selector) => {
+            // Simple mock for querySelector('input') or by ID
+            if (selector === 'input') return createBaseMock();
+            if (selector.startsWith('#')) {
+                const searchId = selector.substring(1);
+                return mockElements[searchId] || createBaseMock(searchId);
+            }
+            return createBaseMock();
         }),
         innerHTML: '',
         textContent: '',
@@ -96,6 +106,7 @@ describe('UVCPTZMonitor', () => {
             kind: 'video', 
             stop: vi.fn(),
             getCapabilities: vi.fn(() => ({})),
+            getSettings: vi.fn(() => ({})),
             applyConstraints: vi.fn().mockResolvedValue({})
         }];
         const mockStream = {
@@ -124,6 +135,49 @@ describe('UVCPTZMonitor', () => {
 
         expect(mockElements['status'].textContent).toBe('Error: NotAllowedError');
         expect(mockElements['status'].className).toBe('status-indicator error');
+    });
+
+    it('should detect PTZ capabilities from video track', async () => {
+        const mockCapabilities = {
+            pan: { min: -100, max: 100, step: 1 },
+            tilt: { min: -100, max: 100, step: 1 },
+            zoom: { min: 1, max: 10, step: 0.1 },
+        };
+        const mockTracks = [{ 
+            kind: 'video', 
+            stop: vi.fn(),
+            getCapabilities: vi.fn(() => mockCapabilities),
+            getSettings: vi.fn(() => ({ pan: 0, tilt: 0, zoom: 1 })),
+            applyConstraints: vi.fn().mockResolvedValue({})
+        }];
+        const mockStream = {
+            getTracks: vi.fn(() => mockTracks),
+            getVideoTracks: vi.fn(() => mockTracks)
+        };
+        navigator.mediaDevices.getUserMedia.mockResolvedValue(mockStream);
+        
+        await app.connectCamera('cam1');
+        const caps = app.getPTZCapabilities();
+
+        expect(caps).toEqual(mockCapabilities);
+        expect(app.track.getCapabilities).toHaveBeenCalled();
+    });
+
+    it('should apply PTZ constraints', async () => {
+        const mockTracks = [{ 
+            kind: 'video', 
+            stop: vi.fn(),
+            getCapabilities: vi.fn(() => ({ zoom: { min: 1, max: 10 } })),
+            getSettings: vi.fn(() => ({ zoom: 1 })),
+            applyConstraints: vi.fn().mockResolvedValue({})
+        }];
+        app.track = mockTracks[0];
+        
+        await app.applyPTZConstraint('zoom', 5);
+
+        expect(app.track.applyConstraints).toHaveBeenCalledWith({
+            advanced: [{ zoom: 5 }]
+        });
     });
 
     it('should update status correctly', () => {
