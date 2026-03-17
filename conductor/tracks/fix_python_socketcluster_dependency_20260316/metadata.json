@@ -1,8 +1,0 @@
-{
-  "track_id": "fix_python_socketcluster_dependency_20260316",
-  "type": "bug",
-  "status": "new",
-  "created_at": "2026-03-16T12:00:00Z",
-  "updated_at": "2026-03-16T12:00:00Z",
-  "description": "bug fix the @pythonScripts socketclusterclient. Obsidian console log error for Mouse, Keyboard and UVC ModuleNotFoundError: No module named 'socketclusterclient'"
-}
