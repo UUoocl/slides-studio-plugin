@@ -14,12 +14,12 @@
 - [x] Task: Add basic error handling for camera permission denials or connection failures. 595bb0b
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Device Discovery and Video Feed' (Protocol in workflow.md) 8e35554
 
-## Phase 3: PTZ Capability Detection and UI Implementation
+## Phase 3: PTZ Capability Detection and UI Implementation [checkpoint: b64a781]
 - [x] Task: Extract the `MediaStreamTrack` from the active stream and query its capabilities using `track.getCapabilities()`. 551ba80
 - [x] Task: Dynamically render sliders for `pan`, `tilt`, and `zoom` only if the hardware reports support for them. 551ba80
 - [x] Task: Implement the UI event listeners to update camera constraints in real-time using `track.applyConstraints()`. 551ba80
 - [x] Task: Display the current numeric values of PTZ settings next to the sliders. 551ba80
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: PTZ Capability Detection and UI Implementation' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: PTZ Capability Detection and UI Implementation' (Protocol in workflow.md) b64a781
 
 ## Phase 4: Final Polishing and Technical Styling
 - [ ] Task: Refine the CSS to ensure a professional, layout-responsive UI that fits the Slides Studio ecosystem.
