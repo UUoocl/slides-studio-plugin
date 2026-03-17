@@ -15,10 +15,10 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Connectivity & Device Management' (Protocol in workflow.md) 07fa16d
 
 ## Phase 3: Coordinate Transformation & Global Canvas
-- [~] Task: Implement a `CoordinateTransformer` utility to map global (x, y) coordinates to (device_id, local_x, local_y).
-- [ ] Task: Implement rotation logic within the transformer (0, 90, 180, 270 degrees).
-- [ ] Task: Create a `GlobalCanvas` class that uses the transformer to dispatch LED commands to the correct devices.
-- [ ] Task: Write unit tests for coordinate transformations and rotations.
+- [x] Task: Implement a `CoordinateTransformer` utility to map global (x, y) coordinates to (device_id, local_x, local_y). 4fb3d65
+- [x] Task: Implement rotation logic within the transformer (0, 90, 180, 270 degrees). 4fb3d65
+- [~] Task: Create a `GlobalCanvas` class that uses the transformer to dispatch LED commands to the correct devices.
+- [x] Task: Write unit tests for coordinate transformations and rotations. 4fb3d65
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Coordinate Transformation & Global Canvas' (Protocol in workflow.md)
 
 ## Phase 4: Animations
