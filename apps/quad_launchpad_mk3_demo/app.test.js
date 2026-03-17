@@ -37,6 +37,7 @@ const mockElements = {
   'device-1-1': { ...createBaseMock(), querySelector: vi.fn(() => createBaseMock()) },
   'pad-0,0-11': createBaseMock(),
   'btn-clear': createBaseMock(),
+  'btn-programmer': createBaseMock(),
   'local-feedback-toggle': { ...createBaseMock(), checked: false },
 };
 
@@ -99,5 +100,14 @@ describe('QuadLaunchpadApp', () => {
     // 0x80 Note Off
     app.handleMidiMessage('0,0', [0x80, 11, 0]);
     expect(pad.classList.remove).toHaveBeenCalledWith('active-glow');
+  });
+
+  it('should call enterProgrammerModeAll when programmer button is clicked', () => {
+    const btn = mockElements['btn-programmer'];
+    const clickHandler = btn.addEventListener.mock.calls.find(call => call[0] === 'click')[1];
+    expect(clickHandler).toBeDefined();
+    
+    clickHandler();
+    expect(app.manager.enterProgrammerModeAll).toHaveBeenCalled();
   });
 });

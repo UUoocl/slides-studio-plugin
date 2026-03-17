@@ -203,6 +203,13 @@ export class QuadLaunchpadApp {
         this.manager.sendToAll({ type: 'sysex', data: msg });
       });
     }
+
+    const btnProgrammer = document.getElementById('btn-programmer');
+    if (btnProgrammer) {
+      btnProgrammer.addEventListener('click', () => {
+        this.manager.enterProgrammerModeAll();
+      });
+    }
   }
 
   handleMidiMessage(deviceId, data) {
