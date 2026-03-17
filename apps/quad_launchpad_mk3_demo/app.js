@@ -1,5 +1,7 @@
 import { QuadLaunchpadManager } from './QuadLaunchpadManager.js';
 import { DEVICE_CONFIG } from './constants.js';
+import { GlobalCanvas } from './GlobalCanvas.js';
+import { renderDiagonalWave } from './animations.js';
 import {
   GRID_PADS,
   TOP_BUTTONS,
@@ -10,6 +12,10 @@ import {
 export class QuadLaunchpadApp {
   constructor() {
     this.manager = new QuadLaunchpadManager((deviceId, data) => this.handleMidiMessage(deviceId, data));
+    this.globalCanvas = new GlobalCanvas(this.manager);
+    this.animationFrame = null;
+    this.currentPattern = null;
+    this.patternStep = 0;
     this.init();
   }
 
@@ -210,6 +216,39 @@ export class QuadLaunchpadApp {
         this.manager.enterProgrammerModeAll();
       });
     }
+
+    const btnDiagWave = document.getElementById('btn-diag-wave');
+    if (btnDiagWave) {
+      btnDiagWave.addEventListener('click', () => {
+        this.startPatterns(renderDiagonalWave);
+      });
+    }
+  }
+
+  startPatterns(patternFn) {
+    this.stopPatterns();
+    this.currentPattern = patternFn;
+    this.patternStep = 0;
+    
+    const loop = () => {
+      if (!this.currentPattern) return;
+      this.currentPattern(this.globalCanvas, this.patternStep++);
+      this.globalCanvas.render();
+      this.animationFrame = requestAnimationFrame(() => {
+        setTimeout(loop, 100);
+      });
+    };
+    loop();
+  }
+
+  stopPatterns() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
+    }
+    this.currentPattern = null;
+    this.globalCanvas.clear();
+    this.globalCanvas.render();
   }
 
   handleMidiMessage(deviceId, data) {
