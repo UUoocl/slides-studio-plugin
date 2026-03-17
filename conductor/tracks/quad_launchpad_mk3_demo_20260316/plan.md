@@ -22,10 +22,10 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Coordinate Transformation & Global Canvas' (Protocol in workflow.md) aaaa6a3
 
 ## Phase 4: Animations
-- [~] Task: Implement "Diagonal Wave (16x16)" animation using the `GlobalCanvas`.
-- [ ] Task: Implement "Center-out Expansion" animation using the `GlobalCanvas`.
-- [ ] Task: Implement "16x16 Scrolling Text" animation using the `GlobalCanvas`.
-- [ ] Task: Implement "Global Sparkle (16x16)" animation using the `GlobalCanvas`.
+- [x] Task: Implement "Diagonal Wave (16x16)" animation using the `GlobalCanvas`. fbdd6fd
+- [~] Task: Implement "Center-out Expansion" animation using the `GlobalCanvas`.
+- [~] Task: Implement "16x16 Scrolling Text" animation using the `GlobalCanvas`.
+- [~] Task: Implement "Global Sparkle (16x16)" animation using the `GlobalCanvas`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Animations' (Protocol in workflow.md)
 
 ## Phase 5: Input Handling & UI Feedback
