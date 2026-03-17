@@ -1,0 +1,8 @@
+{
+  "track_id": "quad_launchpad_mk3_demo_20260316",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-03-16T12:00:00Z",
+  "updated_at": "2026-03-16T12:00:00Z",
+  "description": "new app create a new version of @apps/launchpad_mk3_demo that supports 4 launchpad_mk3 MIDI devices in a 2x2 grid with rotations."
+}

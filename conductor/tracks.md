@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: bug fix the @pythonScripts socketclusterclient. Obsidian console log error for Mouse, Keyboard and UVC ModuleNotFoundError: No module named 'socketclusterclient'**
-*Link: [./tracks/fix_python_socketcluster_dependency_20260316/](./tracks/fix_python_socketcluster_dependency_20260316/)*
+- [ ] **Track: new app create a new version of @apps/launchpad_mk3_demo that supports 4 launchpad_mk3 MIDI devices in a 2x2 grid with rotations.**
+*Link: [./tracks/quad_launchpad_mk3_demo_20260316/](./tracks/quad_launchpad_mk3_demo_20260316/)*
