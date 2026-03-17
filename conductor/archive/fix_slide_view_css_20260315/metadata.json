@@ -1,0 +1,8 @@
+{
+  "track_id": "fix_slide_view_css_20260315",
+  "type": "bug",
+  "status": "new",
+  "created_at": "2026-03-15T12:00:00Z",
+  "updated_at": "2026-03-15T12:00:00Z",
+  "description": "fix slide-view css changes on socketcluster channel message. Slide-view is run in an OBS Browser source. The OBS scenes contain 'slides' followed by slide-view css. The slides-view contains the slide deck in an iframe that is moved by CSS. The slides-view is used as an OBS overlay. changing css on scene change is not working."
+}
