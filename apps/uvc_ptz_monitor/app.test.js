@@ -115,6 +115,17 @@ describe('UVCPTZMonitor', () => {
         expect(mockElements['video-overlay'].style.display).toBe('none');
     });
 
+    it('should handle camera connection error', async () => {
+        const error = new Error('Permission denied');
+        error.name = 'NotAllowedError';
+        navigator.mediaDevices.getUserMedia.mockRejectedValue(error);
+        
+        await app.connectCamera('cam1');
+
+        expect(mockElements['status'].textContent).toBe('Error: NotAllowedError');
+        expect(mockElements['status'].className).toBe('status-indicator error');
+    });
+
     it('should update status correctly', () => {
         app.updateStatus('Connected', false);
         expect(mockElements['status'].textContent).toBe('Connected');
