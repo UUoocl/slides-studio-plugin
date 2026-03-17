@@ -23,10 +23,10 @@
 
 ## Phase 4: Animations
 - [x] Task: Implement "Diagonal Wave (16x16)" animation using the `GlobalCanvas`. fbdd6fd
-- [~] Task: Implement "Center-out Expansion" animation using the `GlobalCanvas`.
-- [~] Task: Implement "16x16 Scrolling Text" animation using the `GlobalCanvas`.
-- [~] Task: Implement "Global Sparkle (16x16)" animation using the `GlobalCanvas`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Animations' (Protocol in workflow.md)
+- [x] Task: Implement "Center-out Expansion" animation using the `GlobalCanvas`. 70f4bb3
+- [x] Task: Implement "16x16 Scrolling Text" animation using the `GlobalCanvas`. 70f4bb3
+- [x] Task: Implement "Global Sparkle (16x16)" animation using the `GlobalCanvas`. 70f4bb3
+- [~] Task: Conductor - User Manual Verification 'Phase 4: Animations' (Protocol in workflow.md)
 
 ## Phase 5: Input Handling & UI Feedback
 - [ ] Task: Implement input routing from physical devices to their respective virtual UI grids.
