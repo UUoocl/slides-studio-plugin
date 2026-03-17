@@ -31,6 +31,64 @@ export class UVCPTZMonitor {
         if (this.elements.refreshBtn) {
             this.elements.refreshBtn.addEventListener('click', () => this.listDevices());
         }
+
+        if (this.elements.cameraSelect) {
+            this.elements.cameraSelect.addEventListener('change', (e) => {
+                const deviceId = e.target.value;
+                if (deviceId) {
+                    this.connectCamera(deviceId);
+                } else {
+                    this.stopStream();
+                }
+            });
+        }
+    }
+
+    async connectCamera(deviceId) {
+        try {
+            this.stopStream();
+            this.updateStatus('Connecting...');
+
+            const constraints = {
+                video: { deviceId: { exact: deviceId } }
+            };
+
+            this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+            this.track = this.stream.getVideoTracks()[0];
+
+            if (this.elements.video) {
+                this.elements.video.srcObject = this.stream;
+            }
+
+            if (this.elements.videoOverlay) {
+                this.elements.videoOverlay.style.display = 'none';
+            }
+
+            this.updateStatus('Connected');
+            
+            // Trigger PTZ detection (Phase 3)
+            // this.detectPTZCapabilities();
+        } catch (err) {
+            console.error('Error connecting to camera:', err);
+            this.updateStatus(`Error: ${err.name}`, true);
+        }
+    }
+
+    stopStream() {
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
+            this.stream = null;
+        }
+        
+        if (this.elements.video) {
+            this.elements.video.srcObject = null;
+        }
+
+        if (this.elements.videoOverlay) {
+            this.elements.videoOverlay.style.display = 'block';
+        }
+
+        this.updateStatus('Ready');
     }
 
     async listDevices() {

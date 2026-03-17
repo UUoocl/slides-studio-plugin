@@ -91,6 +91,30 @@ describe('UVCPTZMonitor', () => {
         expect(mockElements['camera-select'].innerHTML).not.toContain('Microphone');
     });
 
+    it('should request camera access and set video source', async () => {
+        const mockTracks = [{ 
+            kind: 'video', 
+            stop: vi.fn(),
+            getCapabilities: vi.fn(() => ({})),
+            applyConstraints: vi.fn().mockResolvedValue({})
+        }];
+        const mockStream = {
+            getTracks: vi.fn(() => mockTracks),
+            getVideoTracks: vi.fn(() => mockTracks)
+        };
+        navigator.mediaDevices.getUserMedia.mockResolvedValue(mockStream);
+        
+        mockElements['camera-select'].value = 'cam1';
+        await app.connectCamera('cam1');
+
+        expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({
+            video: { deviceId: { exact: 'cam1' } }
+        });
+        expect(app.stream).toBe(mockStream);
+        expect(mockElements['preview'].srcObject).toBe(mockStream);
+        expect(mockElements['video-overlay'].style.display).toBe('none');
+    });
+
     it('should update status correctly', () => {
         app.updateStatus('Connected', false);
         expect(mockElements['status'].textContent).toBe('Connected');
