@@ -1,5 +1,5 @@
-import { LaunchpadConnection } from './LaunchpadConnection';
-import { DEVICE_CONFIG } from './constants';
+import { LaunchpadConnection } from './LaunchpadConnection.js';
+import { DEVICE_CONFIG } from './constants.js';
 
 export class QuadLaunchpadManager {
   constructor(onMessageCallback) {
