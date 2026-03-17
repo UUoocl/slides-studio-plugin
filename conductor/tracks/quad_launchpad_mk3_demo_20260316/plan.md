@@ -21,15 +21,15 @@
 - [x] Task: Write unit tests for coordinate transformations and rotations. 4fb3d65
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Coordinate Transformation & Global Canvas' (Protocol in workflow.md) aaaa6a3
 
-## Phase 4: Animations
+## Phase 4: Animations [checkpoint: d0e9820]
 - [x] Task: Implement "Diagonal Wave (16x16)" animation using the `GlobalCanvas`. fbdd6fd
 - [x] Task: Implement "Center-out Expansion" animation using the `GlobalCanvas`. 70f4bb3
 - [x] Task: Implement "16x16 Scrolling Text" animation using the `GlobalCanvas`. 70f4bb3
 - [x] Task: Implement "Global Sparkle (16x16)" animation using the `GlobalCanvas`. 70f4bb3
-- [~] Task: Conductor - User Manual Verification 'Phase 4: Animations' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Animations' (Protocol in workflow.md) d0e9820
 
 ## Phase 5: Input Handling & UI Feedback
-- [ ] Task: Implement input routing from physical devices to their respective virtual UI grids.
+- [~] Task: Implement input routing from physical devices to their respective virtual UI grids.
 - [ ] Task: Add "Local Input Feedback" toggle to allow/disallow hardware-side feedback.
 - [ ] Task: Final UI polish (connection status indicators, animation speed controls).
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Input Handling & UI Feedback' (Protocol in workflow.md)
