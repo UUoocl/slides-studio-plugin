@@ -119,7 +119,12 @@ describe('UVCPTZMonitor', () => {
         await app.connectCamera('cam1');
 
         expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({
-            video: { deviceId: { exact: 'cam1' } }
+            video: { 
+                deviceId: { exact: 'cam1' },
+                pan: true,
+                tilt: true,
+                zoom: true
+            }
         });
         expect(app.stream).toBe(mockStream);
         expect(mockElements['preview'].srcObject).toBe(mockStream);

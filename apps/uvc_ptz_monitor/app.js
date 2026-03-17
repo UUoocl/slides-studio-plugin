@@ -50,7 +50,12 @@ export class UVCPTZMonitor {
             this.updateStatus('Connecting...');
 
             const constraints = {
-                video: { deviceId: { exact: deviceId } }
+                video: { 
+                    deviceId: { exact: deviceId },
+                    pan: true,
+                    tilt: true,
+                    zoom: true
+                }
             };
 
             this.stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -75,9 +80,12 @@ export class UVCPTZMonitor {
 
     getPTZCapabilities() {
         if (!this.track || typeof this.track.getCapabilities !== 'function') {
+            console.log('Track does not support getCapabilities');
             return {};
         }
-        return this.track.getCapabilities();
+        const caps = this.track.getCapabilities();
+        console.log('Camera Capabilities:', caps);
+        return caps;
     }
 
     renderPTZControls() {
@@ -85,6 +93,7 @@ export class UVCPTZMonitor {
 
         const capabilities = this.getPTZCapabilities();
         const settings = this.track ? this.track.getSettings() : {};
+        console.log('Camera Settings:', settings);
         
         const ptzProps = ['pan', 'tilt', 'zoom'];
         const supportedProps = ptzProps.filter(prop => prop in capabilities);
