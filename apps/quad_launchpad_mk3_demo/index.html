@@ -45,7 +45,11 @@
         <button id="btn-center-exp">Center-out Expansion</button>
         <button id="btn-scroll-text">16x16 Scrolling Text</button>
         <button id="btn-global-sparkle">Global Sparkle</button>
-        <button id="btn-clear" class="secondary">Clear All</button>
+        <div style="margin-top: 10px;">
+          <label for="animation-speed">Speed (ms per frame): <span id="speed-val">100</span></label>
+          <input type="range" id="animation-speed" min="10" max="500" value="100" style="margin-bottom: 0;">
+        </div>
+        <button id="btn-clear" class="secondary" style="margin-top: 15px;">Clear All</button>
         <button id="btn-programmer" class="secondary">Re-enter Programmer Mode</button>
       </div>
       

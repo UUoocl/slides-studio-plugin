@@ -39,6 +39,8 @@ const mockElements = {
   'btn-clear': createBaseMock(),
   'btn-programmer': createBaseMock(),
   'local-feedback-toggle': { ...createBaseMock(), checked: false },
+  'animation-speed': { ...createBaseMock(), value: '100' },
+  'speed-val': createBaseMock(),
 };
 
 // Add connectivity UI elements

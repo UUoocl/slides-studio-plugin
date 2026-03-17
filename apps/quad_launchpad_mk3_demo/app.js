@@ -249,6 +249,14 @@ export class QuadLaunchpadApp {
         this.startPatterns(renderGlobalSparkle);
       });
     }
+
+    const speedSlider = document.getElementById('animation-speed');
+    const speedVal = document.getElementById('speed-val');
+    if (speedSlider && speedVal) {
+      speedSlider.addEventListener('input', () => {
+        speedVal.innerText = speedSlider.value;
+      });
+    }
   }
 
   startPatterns(patternFn) {
@@ -260,8 +268,12 @@ export class QuadLaunchpadApp {
       if (!this.currentPattern) return;
       this.currentPattern(this.globalCanvas, this.patternStep++);
       this.globalCanvas.render();
+      
+      const speedSlider = document.getElementById('animation-speed');
+      const delay = speedSlider ? parseInt(speedSlider.value, 10) : 100;
+
       this.animationFrame = requestAnimationFrame(() => {
-        setTimeout(loop, 100);
+        setTimeout(loop, delay);
       });
     };
     loop();
