@@ -1,7 +1,12 @@
 import { QuadLaunchpadManager } from './QuadLaunchpadManager.js';
 import { DEVICE_CONFIG } from './constants.js';
 import { GlobalCanvas } from './GlobalCanvas.js';
-import { renderDiagonalWave } from './animations.js';
+import { 
+  renderDiagonalWave, 
+  renderCenterExpansion, 
+  renderGlobalSparkle, 
+  renderScrollingText 
+} from './animations.js';
 import {
   GRID_PADS,
   TOP_BUTTONS,
@@ -221,6 +226,27 @@ export class QuadLaunchpadApp {
     if (btnDiagWave) {
       btnDiagWave.addEventListener('click', () => {
         this.startPatterns(renderDiagonalWave);
+      });
+    }
+
+    const btnCenterExp = document.getElementById('btn-center-exp');
+    if (btnCenterExp) {
+      btnCenterExp.addEventListener('click', () => {
+        this.startPatterns(renderCenterExpansion);
+      });
+    }
+
+    const btnScrollText = document.getElementById('btn-scroll-text');
+    if (btnScrollText) {
+      btnScrollText.addEventListener('click', () => {
+        this.startPatterns(renderScrollingText);
+      });
+    }
+
+    const btnGlobalSparkle = document.getElementById('btn-global-sparkle');
+    if (btnGlobalSparkle) {
+      btnGlobalSparkle.addEventListener('click', () => {
+        this.startPatterns(renderGlobalSparkle);
       });
     }
   }
