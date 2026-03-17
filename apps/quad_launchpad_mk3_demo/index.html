@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quad Launchpad mk3 Demo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>Quad Launchpad mk3 Demo</h1>
+
+  <div class="status-bar">
+    <div class="status">
+      <div id="status-indicator" class="status-indicator"></div>
+      <span id="status-text">Disconnected</span>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <div class="quad-grid-container">
+      <div class="device-area" id="device-0-0" data-rotation="-90">
+        <div class="virtual-launchpad"></div>
+      </div>
+      <div class="device-area" id="device-0-1" data-rotation="0">
+        <div class="virtual-launchpad"></div>
+      </div>
+      <div class="device-area" id="device-1-0" data-rotation="180">
+        <div class="virtual-launchpad"></div>
+      </div>
+      <div class="device-area" id="device-1-1" data-rotation="90">
+        <div class="virtual-launchpad"></div>
+      </div>
+    </div>
+
+    <div class="controls-area">
+      <!-- Connectivity controls will be generated/managed by JS for each device -->
+      <div class="control-group" id="connectivity-group">
+        <h3>Connectivity (4 Devices)</h3>
+        <!-- UI dynamically added -->
+      </div>
+
+      <div class="control-group">
+        <h3>Global Animations</h3>
+        <button id="btn-diag-wave">Diagonal Wave (16x16)</button>
+        <button id="btn-center-exp">Center-out Expansion</button>
+        <button id="btn-scroll-text">16x16 Scrolling Text</button>
+        <button id="btn-global-sparkle">Global Sparkle</button>
+        <button id="btn-clear" class="secondary">Clear All</button>
+      </div>
+      
+      <div class="control-group">
+        <h3>Input Feedback</h3>
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <input type="checkbox" id="local-feedback-toggle" checked> 
+          Local Input Feedback (Hardware)
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Using the shared socketcluster client -->
+  <script src="../lib/socketcluster-client.min.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
