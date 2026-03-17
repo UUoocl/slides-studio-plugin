@@ -1,8 +1,8 @@
 # Implementation Plan: Quad Launchpad MK3 Demo App
 
 ## Phase 1: Setup & Scaffolding
-- [ ] Task: Create new directory `apps/quad_launchpad_mk3_demo` and copy shared assets (e.g., `lib/`).
-- [ ] Task: Create basic `index.html` with a 2x2 layout container for 4 virtual grids.
+- [x] Task: Create new directory `apps/quad_launchpad_mk3_demo` and copy shared assets (e.g., `lib/`). 986e094
+- [~] Task: Create basic `index.html` with a 2x2 layout container for 4 virtual grids.
 - [ ] Task: Create `styles.css` for the 2x2 grid layout and device rotations.
 - [ ] Task: Create `constants.js` to store device orientations and global canvas dimensions (16x16).
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Setup & Scaffolding' (Protocol in workflow.md)
