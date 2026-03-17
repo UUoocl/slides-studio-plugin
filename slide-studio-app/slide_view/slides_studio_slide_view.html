@@ -42,73 +42,26 @@
         <iframe id="revealIframe" class="slide-position full-screen" src="about:blank" onload="onIframeLoad()" onerror="onIframeError()" allow="autoplay; fullscreen"></iframe>
     </div>
     
-    <!-- SocketCluster Scripts -->
+    <!-- SocketCluster & Sync Scripts -->
     <script type="module" src="../lib/sc-connection.js"></script>
     <script type="module" src="../lib/slideSync_OBS.js"></script>
 
     <script type="module">
-        const broadcastChannels = {}; 
-
+        // All synchronization is now handled within slideSync_OBS.js via SyncService.
+        // This includes slide navigation, URL changes, and CSS layout transitions.
+        
         (async () => {
             while (!window.scSocket) {
                 await new Promise(r => setTimeout(r, 100));
             }
 
-            // Connection listener loop
+            // Optional: Listen for connection status if needed for UI feedback
             (async () => {
                 for await (let event of window.scSocket.listener('connect')) {
-                    // Connected
+                    console.log("[SlideView] SocketCluster connected");
                 }
             })();
-
-            // Disconnection listener loop
-            (async () => {
-                for await (let event of window.scSocket.listener('disconnect')) {
-                    // Disconnected
-                }
-            })();
-
-            // Subscribe specifically to the broadcast navigation channel
-            const channel = window.scSocket.subscribe('slides_navigation');
-            for await (let data of channel) {
-                try {
-                    const { eventName, msgParam } = data;
-                    
-                    // CSS Updates
-                    let slidePosClass = msgParam ? msgParam.slidePosition : null;
-                    if (!slidePosClass && msgParam && msgParam.scene) {
-                        const sceneName = msgParam.scene;
-                        if (sceneName.includes("slides ")) {
-                            slidePosClass = sceneName.split("slides ")[1];
-                        }
-                    }
-                    if (slidePosClass) setSlidePositionCSS(slidePosClass);
-
-                    // Camera Shape
-                    if (msgParam && msgParam.cameraShape && broadcastChannels.cameraShapes) {
-                        broadcastChannels.cameraShapes.postMessage(msgParam.cameraShape);
-                    }
-        
-                    // Dispatch for slideSync_OBS.js internal listeners (if any still use CustomEvents)
-                    window.dispatchEvent(new CustomEvent(eventName, { 
-                        detail: { webSocketMessage: JSON.stringify(msgParam) } 
-                    }));
-                } catch (err) {
-                    console.error("[SlideView] Error processing SC message:", err);
-                }
-            }
         })();
-
-        window.addEventListener('DOMContentLoaded', () => {
-            broadcastChannels.cameraShapes = new BroadcastChannel("cameraShapes_channel");
-        });
-        
-        function setSlidePositionCSS(className) {
-            const iframe = document.getElementById("revealIframe");
-            if (iframe) {
-                iframe.className = "slide-position " + className;
-            }
-        }
     </script>
 </body>
 </html>

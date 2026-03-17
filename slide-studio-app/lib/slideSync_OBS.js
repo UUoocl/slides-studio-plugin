@@ -4,7 +4,7 @@ let slideState = '';
 
 // Subscribe to SyncService for unified synchronization
 SyncService.subscribeSync((data) => {
-    const { url, slideState: newStateStr, indexh, indexv, indexf } = data;
+    const { url, slideState: newStateStr, indexh, indexv, indexf, scene, slidePosition, cameraShape } = data;
 
     // Handle URL change
     if (url) {
@@ -28,60 +28,48 @@ SyncService.subscribeSync((data) => {
             iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: slidesState }), '*');
         }
     }
+
+    // Handle CSS layout change (scene-driven or explicit)
+    let slidePosClass = slidePosition || null;
+    if (!slidePosClass && scene) {
+        const lowerScene = scene.toLowerCase();
+        if (lowerScene.includes("slides ")) {
+            const parts = scene.split(/slides /i);
+            if (parts.length > 1) {
+                slidePosClass = parts[1].trim().split(" ")[0];
+            }
+        }
+    }
+
+    if (slidePosClass) {
+        setSlidePositionCSS(slidePosClass);
+    }
+
+    // Handle Camera Shape (Local Sync via BroadcastChannel)
+    if (cameraShape) {
+        const bc = new BroadcastChannel("cameraShapes_channel");
+        bc.postMessage(cameraShape);
+        bc.close();
+    }
+
+    // Legacy support: Dispatch CustomEvents for internal listeners
+    window.dispatchEvent(new CustomEvent('slide-changed', { 
+        detail: { webSocketMessage: JSON.stringify(data) } 
+    }));
 });
+
+function setSlidePositionCSS(className) {
+    const iframe = document.getElementById("revealIframe");
+    if (iframe) {
+        iframe.className = "slide-position " + className;
+    }
+}
 
 async function broadcastSC(eventName, eventData) {
     if (window.scSocket && window.scSocket.state === 'open') {
         window.scSocket.transmitPublish('slides_navigation', { eventName, msgParam: eventData });
     }
 }
-
-// Subscribe to remote changes via SocketCluster
-(async () => {
-    while (!window.scSocket) {
-        await new Promise(r => setTimeout(r, 100));
-    }
-
-    // Subscribe specifically to the broadcast navigation channel
-    const channel = window.scSocket.subscribe('slides_navigation');
-    for await (let data of channel) {
-        const { eventName, msgParam } = data;
-        
-        if (eventName === 'slide-changed' || eventName === 'reveal-event') {
-            const revealState = msgParam.state || msgParam.slideState || msgParam;
-            const newState = JSON.stringify(revealState);
-            if (newState === slideState) continue;
-            
-            slideState = newState;
-            
-            let slidesState;
-            if (msgParam.slideState && typeof msgParam.slideState === 'string') {
-                slidesState = msgParam.slideState.split(",").map(v => Number(v));
-            } else if (revealState && typeof revealState.indexh !== 'undefined') {
-                slidesState = [revealState.indexh, revealState.indexv, revealState.indexf || 0];
-            }
-
-            if (slidesState) {
-                const iframe = document.getElementById("revealIframe");
-                if (iframe && iframe.contentWindow) {
-                    iframe.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: slidesState }), '*');
-                }
-            }
-        } else if (eventName === 'overview-toggled') {
-            const newState = JSON.stringify(msgParam);
-            if(newState !== slideState){
-                slideState = newState;
-                const iframe = document.getElementById("revealIframe")
-                if (iframe && iframe.contentWindow) {
-                    iframe.contentWindow.postMessage(JSON.stringify({ method: 'toggleOverview', args: [ msgParam.overview ] }), '*');
-                }
-            }
-        } else if (eventName === 'set-slides-studio-url') {
-             const url = msgParam.url;
-             if (url) updateIframeUrl(url);
-        }
-    }
-})();
 
 function updateIframeUrl(url) {
     const oldIframe = document.getElementById("revealIframe");

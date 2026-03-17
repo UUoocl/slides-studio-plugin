@@ -33,6 +33,8 @@
     <script type="module" src="../lib/sc-connection.js"></script>
     
     <script type="module">
+        import { SyncService } from '../lib/sync-service.js';
+
         const container = document.getElementById("container");
 
         function applyShape(shape) {
@@ -47,42 +49,14 @@
         };
 
         window.addEventListener('DOMContentLoaded', async(event) => {
-            while (!window.scSocket) {
-                await new Promise(r => setTimeout(r, 100));
-            }
-
-            // Connection listener loop
-            (async () => {
-                for await (let event of window.scSocket.listener('connect')) {
-                    // Connected
+            // Unified sync via SyncService
+            SyncService.subscribeSync((data) => {
+                const shape = data.cameraShape || (data.attributes ? data.attributes.cameraShape : null);
+                if (shape !== null && shape !== undefined) {
+                    applyShape(shape);
                 }
-            })();
-
-            // Disconnection listener loop
-            (async () => {
-                for await (let event of window.scSocket.listener('disconnect')) {
-                    // Disconnected
-                }
-            })();
-
-            // Subscribe to the broadcast channel for overrides
-            const channel = window.scSocket.subscribe('slides_navigation');
-            
-            (async () => {
-                for await (let data of channel) {
-                    try {
-                        const payload = data.msgParam || {};
-                        const shape = payload.cameraShape || (payload.attributes ? payload.attributes.cameraShape : null);
-                        
-                        if (shape !== null && shape !== undefined) {
-                            applyShape(shape);
-                        }
-                    } catch (err) {
-                        console.error("[CameraShape] Error parsing SC message:", err);
-                    }
-                }
-            })();
-        })
+            });
+        });
     </script>
 </body>
 </html>
