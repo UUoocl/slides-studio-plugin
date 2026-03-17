@@ -185,6 +185,16 @@ describe('UVCPTZMonitor', () => {
         });
     });
 
+    it('should update status with PTZ info', () => {
+        app.track = { getCapabilities: () => ({ pan: {}, zoom: {} }) };
+        app.updatePTZStatus();
+        expect(mockElements['status'].textContent).toContain('PTZ: pan, zoom');
+
+        app.track = { getCapabilities: () => ({}) };
+        app.updatePTZStatus();
+        expect(mockElements['status'].textContent).toContain('No PTZ Support');
+    });
+
     it('should update status correctly', () => {
         app.updateStatus('Connected', false);
         expect(mockElements['status'].textContent).toBe('Connected');

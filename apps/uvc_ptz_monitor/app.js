@@ -72,9 +72,22 @@ export class UVCPTZMonitor {
             this.updateStatus('Connected');
             
             this.renderPTZControls();
+            this.updatePTZStatus();
         } catch (err) {
             console.error('Error connecting to camera:', err);
             this.updateStatus(`Error: ${err.name}`, true);
+        }
+    }
+
+    updatePTZStatus() {
+        const capabilities = this.getPTZCapabilities();
+        const ptzProps = ['pan', 'tilt', 'zoom'];
+        const supported = ptzProps.filter(prop => prop in capabilities);
+        
+        if (supported.length > 0) {
+            this.updateStatus(`Connected (PTZ: ${supported.join(', ')})`);
+        } else {
+            this.updateStatus('Connected (No PTZ Support)');
         }
     }
 
