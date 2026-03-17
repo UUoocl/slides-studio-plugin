@@ -7,15 +7,15 @@
 - [x] Task: Create `constants.js` to store device orientations and global canvas dimensions (16x16). d4d9a07
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Setup & Scaffolding' (Protocol in workflow.md) c24c3a8
 
-## Phase 2: Connectivity & Device Management
+## Phase 2: Connectivity & Device Management [checkpoint: 07fa16d]
 - [x] Task: Implement `LaunchpadConnection` class to handle individual device state (WebMIDI/SocketCluster). d8fa4f2
 - [x] Task: Implement `QuadLaunchpadManager` to orchestrate 4 connections and their lifecycle. eb49467
 - [x] Task: Add UI controls for connecting 4 devices independently (MIDI port selectors and SC aliases). 7ff3595
-- [~] Task: Verify programmer mode handshake works for all 4 devices simultaneously.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Connectivity & Device Management' (Protocol in workflow.md)
+- [x] Task: Verify programmer mode handshake works for all 4 devices simultaneously. 4cc3ae0
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Connectivity & Device Management' (Protocol in workflow.md) 07fa16d
 
 ## Phase 3: Coordinate Transformation & Global Canvas
-- [ ] Task: Implement a `CoordinateTransformer` utility to map global (x, y) coordinates to (device_id, local_x, local_y).
+- [~] Task: Implement a `CoordinateTransformer` utility to map global (x, y) coordinates to (device_id, local_x, local_y).
 - [ ] Task: Implement rotation logic within the transformer (0, 90, 180, 270 degrees).
 - [ ] Task: Create a `GlobalCanvas` class that uses the transformer to dispatch LED commands to the correct devices.
 - [ ] Task: Write unit tests for coordinate transformations and rotations.
