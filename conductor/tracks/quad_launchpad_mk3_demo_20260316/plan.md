@@ -29,7 +29,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 4: Animations' (Protocol in workflow.md) d0e9820
 
 ## Phase 5: Input Handling & UI Feedback
-- [~] Task: Implement input routing from physical devices to their respective virtual UI grids.
-- [ ] Task: Add "Local Input Feedback" toggle to allow/disallow hardware-side feedback.
-- [ ] Task: Final UI polish (connection status indicators, animation speed controls).
-- [ ] Task: Conductor - User Manual Verification 'Phase 5: Input Handling & UI Feedback' (Protocol in workflow.md)
+- [x] Task: Implement input routing from physical devices to their respective virtual UI grids. 2d907fe
+- [x] Task: Add "Local Input Feedback" toggle to allow/disallow hardware-side feedback. 2d907fe
+- [x] Task: Final UI polish (connection status indicators, animation speed controls). 2d907fe
+- [~] Task: Conductor - User Manual Verification 'Phase 5: Input Handling & UI Feedback' (Protocol in workflow.md)
