@@ -9,9 +9,9 @@
 
 ## Phase 2: Device Discovery and Video Feed
 - [x] Task: Implement `enumerateDevices()` in `app.js` to populate a camera selection dropdown. 1f75af5
-- [ ] Task: Implement `getUserMedia()` logic to request access to the selected video input.
-- [ ] Task: Render the live video stream in a dedicated `<video>` element on the page.
-- [ ] Task: Add basic error handling for camera permission denials or connection failures.
+- [x] Task: Implement `getUserMedia()` logic to request access to the selected video input. decf80d
+- [x] Task: Render the live video stream in a dedicated `<video>` element on the page. decf80d
+- [x] Task: Add basic error handling for camera permission denials or connection failures. 595bb0b
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Device Discovery and Video Feed' (Protocol in workflow.md)
 
 ## Phase 3: PTZ Capability Detection and UI Implementation
