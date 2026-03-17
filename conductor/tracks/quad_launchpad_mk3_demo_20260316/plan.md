@@ -8,8 +8,8 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Setup & Scaffolding' (Protocol in workflow.md) c24c3a8
 
 ## Phase 2: Connectivity & Device Management
-- [~] Task: Implement `LaunchpadConnection` class to handle individual device state (WebMIDI/SocketCluster).
-- [ ] Task: Implement `QuadLaunchpadManager` to orchestrate 4 connections and their lifecycle.
+- [x] Task: Implement `LaunchpadConnection` class to handle individual device state (WebMIDI/SocketCluster). d8fa4f2
+- [~] Task: Implement `QuadLaunchpadManager` to orchestrate 4 connections and their lifecycle.
 - [ ] Task: Add UI controls for connecting 4 devices independently (MIDI port selectors and SC aliases).
 - [ ] Task: Verify programmer mode handshake works for all 4 devices simultaneously.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Connectivity & Device Management' (Protocol in workflow.md)
