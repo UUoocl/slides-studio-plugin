@@ -110,4 +110,26 @@ describe('QuadLaunchpadApp', () => {
     clickHandler();
     expect(app.manager.enterProgrammerModeAll).toHaveBeenCalled();
   });
+
+  it('should route local feedback when toggle is checked', () => {
+    const toggle = mockElements['local-feedback-toggle'];
+    toggle.checked = true;
+
+    // 0x90 Note On
+    app.handleMidiMessage('0,0', [0x90, 11, 127]);
+    expect(app.manager.sendToDevice).toHaveBeenCalledWith('0,0', { type: 'noteon', data: [0x90, 11, 21] });
+
+    // 0x90 Note Off (velocity 0)
+    app.handleMidiMessage('0,0', [0x90, 11, 0]);
+    expect(app.manager.sendToDevice).toHaveBeenCalledWith('0,0', { type: 'noteoff', data: [0x90, 11, 0] });
+  });
+
+  it('should NOT route local feedback when toggle is unchecked', () => {
+    const toggle = mockElements['local-feedback-toggle'];
+    toggle.checked = false;
+    vi.clearAllMocks();
+
+    app.handleMidiMessage('0,0', [0x90, 11, 127]);
+    expect(app.manager.sendToDevice).not.toHaveBeenCalled();
+  });
 });
