@@ -93,16 +93,27 @@ export class UVCPTZMonitor {
 
     async listDevices() {
         try {
-            // First, ensure we have permission to see labels
-            // (Often enumerateDevices only shows labels after a getUserMedia call)
-            // But for now we just try enumeration
-            const allDevices = await navigator.mediaDevices.enumerateDevices();
-            this.devices = allDevices.filter(device => device.kind === 'videoinput');
-            
+            let allDevices = await navigator.mediaDevices.enumerateDevices();
+            let videoDevices = allDevices.filter(device => device.kind === 'videoinput');
+
+            // If labels are missing, trigger a permission prompt
+            if (videoDevices.length > 0 && !videoDevices[0].label) {
+                this.updateStatus('Requesting permissions...');
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                // Stop the temporary stream
+                stream.getTracks().forEach(track => track.stop());
+                
+                // Re-enumerate to get labels
+                allDevices = await navigator.mediaDevices.enumerateDevices();
+                videoDevices = allDevices.filter(device => device.kind === 'videoinput');
+            }
+
+            this.devices = videoDevices;
             this.populateDeviceDropdown();
+            this.updateStatus('Ready');
         } catch (err) {
             console.error('Error listing devices:', err);
-            this.updateStatus('Error listing devices', true);
+            this.updateStatus(`Error: ${err.name}`, true);
         }
     }
 
