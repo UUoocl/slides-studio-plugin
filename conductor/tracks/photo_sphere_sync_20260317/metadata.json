@@ -1,0 +1,8 @@
+{
+  "track_id": "photo_sphere_sync_20260317",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-03-17T22:45:00Z",
+  "updated_at": "2026-03-17T22:45:00Z",
+  "description": "New app photo-sphere-viewer uvc sync. Create an app featuring the photo-sphere-viewer js library. The photo-sphere-viewer will subscribe to the UVC channel, map the received value to the photo-sphere-viewer scale, and animate the photo-sphere in sync with the uvc pan, tilt and zoom messages."
+}
