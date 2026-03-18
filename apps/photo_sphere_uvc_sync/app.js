@@ -216,8 +216,8 @@ export class PhotoSphereApp {
         this.currentZoom = MathUtils.lerp(this.currentZoom, zoom, this.smoothingFactor);
 
         this.viewer.rotate({
-          longitude: this.currentPan,
-          latitude: this.currentTilt
+          yaw: this.currentPan,
+          pitch: this.currentTilt
         });
         
         // Update Zoom (FOV)
