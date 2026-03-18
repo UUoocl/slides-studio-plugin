@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock SocketCluster client
-vi.mock('../lib/socketcluster-client.min.js', () => ({
+vi.mock('socketcluster-client', () => ({
   create: vi.fn().mockReturnValue({
     listener: vi.fn().mockReturnValue({
       [Symbol.asyncIterator]: vi.fn().mockReturnValue({
@@ -20,16 +20,17 @@ vi.mock('../lib/socketcluster-client.min.js', () => ({
 }));
 
 // Mock PhotoSphereViewer
-vi.mock('../lib/photo-sphere-viewer.module.js', () => ({
-  Viewer: vi.fn().mockImplementation(() => ({
-    setPanorama: vi.fn().mockResolvedValue(true),
-    rotate: vi.fn(),
-    setOption: vi.fn(),
-    destroy: vi.fn(),
-    addEventListener: vi.fn(),
-    on: vi.fn()
-  }))
-}));
+vi.mock('photo-sphere-viewer', () => {
+  const Viewer = vi.fn().mockImplementation(function() {
+    this.setPanorama = vi.fn().mockResolvedValue(true);
+    this.rotate = vi.fn();
+    this.setOption = vi.fn();
+    this.destroy = vi.fn();
+    this.addEventListener = vi.fn();
+    this.on = vi.fn();
+  });
+  return { Viewer };
+});
 
 // Mock DOM
 const elementCache = {};
@@ -91,7 +92,8 @@ describe('PhotoSphereApp', () => {
   });
 
   it('should initialize with default state', () => {
-    expect(app.isConnected).toBe(false);
+    // connect() is called in constructor, so it should be true if mock succeeds
+    expect(app.isConnected).toBe(true);
     expect(app.panSensitivity).toBe(1.0);
   });
 
@@ -115,5 +117,24 @@ describe('PhotoSphereApp', () => {
     // This will depend on how we implement init
     // For now just checking if the property exists
     expect(app.connect).toBeDefined();
+  });
+
+  describe('PTZ Mapping', () => {
+    it('should map pan range to 0-2PI', () => {
+      // Input: value, min, max, targetMin, targetMax
+      const result = app.mapValue(150, -180, 180, 0, 2 * Math.PI);
+      expect(result).toBeCloseTo((330/360) * 2 * Math.PI);
+    });
+
+    it('should map tilt range to -PI/2 to PI/2', () => {
+      const result = app.mapValue(0, -90, 90, -Math.PI / 2, Math.PI / 2);
+      expect(result).toBeCloseTo(0);
+    });
+
+    it('should map zoom range to FOV 30-90 (inverted)', () => {
+      // 100% zoom -> 30 deg FOV, 0% zoom -> 90 deg FOV
+      const result = app.mapValue(100, 0, 100, 90, 30);
+      expect(result).toBe(30);
+    });
   });
 });
