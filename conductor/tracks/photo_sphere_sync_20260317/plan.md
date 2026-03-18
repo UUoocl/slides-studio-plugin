@@ -5,15 +5,15 @@
 - [x] Task: Research and download required `photo-sphere-viewer` and `three.js` ESM files into `apps/lib/`. 88589de
 - [x] Task: Add a sample equirectangular image to `apps/assets/`. cca12ff
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Project Setup and Asset Preparation' (Protocol in workflow.md) 4051e6d
-
-## Phase 2: Core Viewer and SocketCluster Integration
+## Phase 2: Core Viewer and SocketCluster Integration [checkpoint: 54cfeee]
 - [x] Task: Create base `index.html` and `styles.css` with the standard Slides Studio technical aesthetic. 9bdb7a6
-- [ ] Task: Write failing tests for SocketCluster connection and message handling in `apps/photo_sphere_uvc_sync/app.test.js`.
-- [ ] Task: Implement `app.js` to initialize the `PhotoSphereViewer` and establish a SocketCluster connection.
-- [ ] Task: Verify that the viewer renders the sample image correctly and reports its connection status.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Core Viewer and SocketCluster Integration' (Protocol in workflow.md)
+- [x] Task: Write failing tests for SocketCluster connection and message handling in `apps/photo_sphere_uvc_sync/app.test.js`. a63f43e
+- [x] Task: Implement `app.js` to initialize the `PhotoSphereViewer` and establish a SocketCluster connection. 2414727
+- [x] Task: Verify that the viewer renders the sample image correctly and reports its connection status. 2414727
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Core Viewer and SocketCluster Integration' (Protocol in workflow.md) 54cfeee
 
 ## Phase 3: UVC Mapping and Animation Logic
+...
 - [ ] Task: Define the data structure for UVC PTZ messages and the mapping ranges (min/max).
 - [ ] Task: Write failing tests for PTZ mapping functions (input values -> viewer orientation/FOV).
 - [ ] Task: Implement the `uvcResponse` channel subscription and the mapping logic in `app.js`.
