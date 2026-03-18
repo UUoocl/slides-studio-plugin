@@ -26,6 +26,10 @@ export class PhotoSphereApp {
     this.smoothingFactor = 0.1; // 0 to 1
     this.isViewerReady = false;
 
+    // Parse device name from query params
+    const urlParams = new URLSearchParams(window.location.search);
+    this.deviceName = urlParams.get('name') || 'UVC Camera';
+
     this.initUI();
     this.initViewer();
     this.connect();
@@ -37,6 +41,12 @@ export class PhotoSphereApp {
     this.statusText = document.getElementById('status-text');
     this.uvcDebug = document.getElementById('uvc-debug');
     
+    // Show device name in title
+    const title = document.querySelector('h1');
+    if (title) {
+      title.textContent = `PhotoSphere UVC - ${this.deviceName}`;
+    }
+
     // Sensitivity controls
     ['pan', 'tilt', 'zoom'].forEach(type => {
       const slider = document.getElementById(`${type}-sens`);
@@ -128,7 +138,7 @@ export class PhotoSphereApp {
         autoReconnect: true
       });
 
-      this.updateStatus('Connected to Bridge', true);
+      this.updateStatus(`Connected to ${this.deviceName}`, true);
       this.listenToUVC();
       
       // Handle connection events
@@ -141,7 +151,7 @@ export class PhotoSphereApp {
 
       (async () => {
         for await (let event of this.socket.listener('connect')) {
-          this.updateStatus('Connected to Bridge', true);
+          this.updateStatus(`Connected to ${this.deviceName}`, true);
         }
       })();
 
@@ -160,10 +170,22 @@ export class PhotoSphereApp {
   async listenToUVC() {
     if (!this.socket) return;
     
-    const channel = this.socket.subscribe('uvcResponse');
+    // Global events
+    const globalChannel = this.socket.subscribe('uvcResponse');
+    (async () => {
+      for await (let data of globalChannel) {
+        if (data.status === 'connected') {
+          console.log('Bridge reports UVC library loaded:', data.lib_loaded);
+        }
+      }
+    })();
+
+    // Device specific data
+    const deviceChannel = this.socket.subscribe(`uvc_in_${this.deviceName}`);
+    console.log(`Subscribed to uvc_in_${this.deviceName}`);
     
     (async () => {
-      for await (let data of channel) {
+      for await (let data of deviceChannel) {
         this.handleUVCData(data);
       }
     })();
@@ -198,8 +220,6 @@ export class PhotoSphereApp {
       } else if (name.includes('tilt')) {
         this.targetTilt = this.mapValue(val, min, max, -Math.PI / 2, Math.PI / 2);
       } else if (name.includes('zoom')) {
-        // Zoom mapping: min zoom (0) -> max FOV, max zoom (100) -> min FOV
-        // Assuming input min/max corresponds to 0-100 zoom scale
         this.targetZoom = this.mapValue(val, min, max, 0, 100);
       }
     });
