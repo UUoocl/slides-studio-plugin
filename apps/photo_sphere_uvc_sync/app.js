@@ -24,6 +24,7 @@ export class PhotoSphereApp {
     this.currentZoom = 90;
 
     this.smoothingFactor = 0.1; // 0 to 1
+    this.isViewerReady = false;
 
     this.initUI();
     this.initViewer();
@@ -80,6 +81,11 @@ export class PhotoSphereApp {
         'zoom',
         'fullscreen',
       ],
+    });
+
+    this.viewer.addEventListener('ready', () => {
+      console.log('Viewer is ready');
+      this.isViewerReady = true;
     });
   }
 
@@ -199,7 +205,7 @@ export class PhotoSphereApp {
 
   startAnimationLoop() {
     const loop = () => {
-      if (this.viewer) {
+      if (this.viewer && this.isViewerReady) {
         // Apply sensitivity and smoothing
         const pan = this.targetPan * this.panSensitivity;
         const tilt = this.targetTilt * this.tiltSensitivity;
