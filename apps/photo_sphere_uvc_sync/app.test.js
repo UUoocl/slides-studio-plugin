@@ -32,11 +32,12 @@ vi.mock('photo-sphere-viewer', () => {
     this.setPanorama = vi.fn().mockResolvedValue(true);
     this.rotate = vi.fn();
     this.setOption = vi.fn();
-    this.getOption = vi.fn().mockReturnValue(90);
+    this.zoom = vi.fn();
+    this.getZoomLevel = vi.fn().mockReturnValue(50);
     this.destroy = vi.fn();
     this.addEventListener = vi.fn();
     this.on = vi.fn();
-    this.getPosition = vi.fn().mockReturnValue({ longitude: 0, latitude: 0 });
+    this.getPosition = vi.fn().mockReturnValue({ yaw: 0, pitch: 0 });
   });
   return { Viewer };
 });
@@ -138,9 +139,9 @@ describe('PhotoSphereApp', () => {
       expect(result).toBeCloseTo(0);
     });
 
-    it('should map zoom range to FOV 30-90 (inverted)', () => {
-      const result = app.mapValue(100, 0, 100, 90, 30);
-      expect(result).toBe(30);
+    it('should map zoom range to 0-100', () => {
+      const result = app.mapValue(100, 0, 100, 0, 100);
+      expect(result).toBe(100);
     });
   });
 });

@@ -198,7 +198,9 @@ export class PhotoSphereApp {
       } else if (name.includes('tilt')) {
         this.targetTilt = this.mapValue(val, min, max, -Math.PI / 2, Math.PI / 2);
       } else if (name.includes('zoom')) {
-        this.targetZoom = this.mapValue(val, min, max, 90, 30);
+        // Zoom mapping: min zoom (0) -> max FOV, max zoom (100) -> min FOV
+        // Assuming input min/max corresponds to 0-100 zoom scale
+        this.targetZoom = this.mapValue(val, min, max, 0, 100);
       }
     });
   }
@@ -220,9 +222,9 @@ export class PhotoSphereApp {
           pitch: this.currentTilt
         });
         
-        // Update Zoom (FOV)
-        if (Math.abs(this.currentZoom - (this.viewer.getOption('defaultZoomLvl') || 0)) > 0.01) {
-          this.viewer.setOption('defaultZoomLvl', this.currentZoom);
+        // Update Zoom
+        if (Math.abs(this.currentZoom - (this.viewer.getZoomLevel() || 0)) > 0.1) {
+          this.viewer.zoom(this.currentZoom);
         }
       }
       requestAnimationFrame(loop);
