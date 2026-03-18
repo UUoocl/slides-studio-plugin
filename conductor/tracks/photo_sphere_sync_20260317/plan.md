@@ -2,7 +2,7 @@
 
 ## Phase 1: Project Setup and Asset Preparation
 - [x] Task: Create the application directory at `apps/photo_sphere_uvc_sync/`. 6011f37
-- [ ] Task: Research and download required `photo-sphere-viewer` and `three.js` ESM files into `apps/lib/`.
+- [x] Task: Research and download required `photo-sphere-viewer` and `three.js` ESM files into `apps/lib/`. 88589de
 - [ ] Task: Add a sample equirectangular image to `apps/assets/`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Project Setup and Asset Preparation' (Protocol in workflow.md)
 
