@@ -147,11 +147,56 @@ export class PhotoSphereApp {
     })();
   }
 
+  mapValue(value, inMin, inMax, outMin, outMax) {
+    if (inMax === inMin) return outMin;
+    return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
+  }
+
   handleUVCData(data) {
     if (this.uvcDebug) {
       this.uvcDebug.textContent = JSON.stringify(data, null, 2);
     }
-    // Mapping logic will be implemented in Phase 3
+    
+    if (data.action === 'poll' && Array.isArray(data.data)) {
+      this.syncViewer(data.data);
+    }
+  }
+
+  syncViewer(controls) {
+    if (!this.viewer) return;
+
+    let pan = null;
+    let tilt = null;
+    let zoom = null;
+
+    controls.forEach(ctrl => {
+      const name = ctrl.name.toLowerCase();
+      const val = ctrl['current-value'];
+      const min = ctrl.min;
+      const max = ctrl.max;
+
+      if (name.includes('pan')) {
+        pan = this.mapValue(val, min, max, 0, 2 * Math.PI) * this.panSensitivity;
+      } else if (name.includes('tilt')) {
+        tilt = this.mapValue(val, min, max, -Math.PI / 2, Math.PI / 2) * this.tiltSensitivity;
+      } else if (name.includes('zoom')) {
+        // Zoom mapping: min zoom -> 90 FOV, max zoom -> 30 FOV
+        zoom = this.mapValue(val, min, max, 90, 30) * this.zoomSensitivity;
+      }
+    });
+
+    if (pan !== null || tilt !== null) {
+      this.viewer.rotate({
+        longitude: pan !== null ? pan : this.viewer.getPosition().longitude,
+        latitude: tilt !== null ? tilt : this.viewer.getPosition().latitude
+      });
+    }
+
+    if (zoom !== null) {
+      this.viewer.setOption('defaultZoomLvl', zoom); // Or use zoom method if available
+      // PhotoSphereViewer 5 uses setOption for FOV or zoom methods
+      // Actually FOV is what we want.
+    }
   }
 }
 
