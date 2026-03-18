@@ -18,7 +18,7 @@ The product centers on three key pillars:
 ## Key Features & Integrations
 Slides Studio leverages a modern, high-performance architecture powered by **SocketCluster** to provide:
 - **Integrated Reveal.js App**: A built-in `slide-studio-app` for professional slide delivery and real-time state management.
-- **Standalone Production Apps**: A growing suite of HTML-based tools (located in `apps/`) for specialized hardware monitoring, rule management, and real-time controller demonstrations (e.g., Novation Launchpad, AKAI Fire).
+- **Standalone Production Apps**: A growing suite of HTML-based tools (located in `apps/`) for specialized hardware monitoring, rule management, and real-time controller demonstrations (e.g., Novation Launchpad, AKAI Fire, PhotoSphere UVC Sync).
 - **Multi-protocol Support**: Native bridging for OSC, MIDI (including full SysEx/LED control), and UVC devices via a unified SocketCluster messaging system.
 - **Real-time Event Streaming**: A centralized SocketCluster server for system-wide status, monitor data, and high-frequency hardware communication.
 - **Input Monitoring**: Python-based monitors for global mouse and keyboard tracking, integrated into the SocketCluster network.

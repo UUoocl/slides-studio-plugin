@@ -14,6 +14,8 @@
 ## Creative Coding & Overlays
 - **p5.js**: A flexible JavaScript library for creative coding, used to create reactive animations and visual effects in OBS overlays.
 - **cables.gl**: A visual programming environment for WebGL, utilized for high-performance 3D graphics and complex shader-based overlays.
+- **PhotoSphereViewer**: A JavaScript library for displaying 360-degree panoramas, used for real-time UVC-synchronized visualizations.
+- **Three.js**: The underlying 3D engine for PhotoSphereViewer and complex WebGL overlays.
 - **SocketCluster Client**: Integrated into all browser-based overlays for real-time, bidirectional interaction between reactive visuals and the Slides Studio system.
 
 ## Core Libraries
