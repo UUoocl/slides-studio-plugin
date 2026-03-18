@@ -37,6 +37,7 @@ sc = None
 connected = False
 
 def heartbeat_loop():
+    """Sends periodic heartbeats to the SocketCluster server."""
     while True:
         time.sleep(20)
         if connected and sc:
@@ -48,6 +49,7 @@ def heartbeat_loop():
                 logging.error(f"Heartbeat failed: {e}")
 
 def get_modifier_string():
+    """Returns a string representation of currently active modifiers."""
     parts = []
     if modifiers[keyboard.Key.ctrl] or modifiers[keyboard.Key.ctrl_l] or modifiers[keyboard.Key.ctrl_r]:
         parts.append("ctrl")
@@ -60,6 +62,7 @@ def get_modifier_string():
     return " + ".join(parts)
 
 def on_connect(socket):
+    """Callback for successful SocketCluster connection."""
     global connected
     connected = True
     logging.info(f"CONNECTED to SocketCluster: {target_url}")
@@ -69,14 +72,17 @@ def on_connect(socket):
     socket.publish("keyboardSettings", {"status": "connected", "test": True})
 
 def on_disconnect(socket):
+    """Callback for SocketCluster disconnection."""
     global connected
     connected = False
     logging.warning("DISCONNECTED from SocketCluster")
 
 def on_connect_error(socket, error):
+    """Callback for SocketCluster connection errors."""
     logging.error(f"CONNECTION ERROR: {error}")
 
 def on_press(key):
+    """Callback for keyboard press events."""
     logging.debug(f"Key pressed: {key}")
     if key in modifiers:
         modifiers[key] = True
@@ -108,6 +114,7 @@ def on_press(key):
         logging.warning(f"Not connected, cannot publish: {combo}")
 
 def on_release(key):
+    """Callback for keyboard release events."""
     logging.debug(f"Key released: {key}")
     if key in modifiers:
         modifiers[key] = False
@@ -138,7 +145,9 @@ def on_release(key):
     else:
         logging.warning(f"Not connected, cannot publish: {combo}")
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for the Keyboard Monitor."""
+    global sc
     logging.info(f"Starting Keyboard Monitor targeting {target_url}...")
     sc = Socketcluster.socket(target_url)
     sc.setBasicListener(on_connect, on_disconnect, on_connect_error)
@@ -162,3 +171,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logging.info("Stopping Keyboard Monitor...")
 
+if __name__ == "__main__":
+    main()

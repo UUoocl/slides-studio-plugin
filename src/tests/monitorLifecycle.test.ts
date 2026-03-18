@@ -46,10 +46,33 @@ vi.mock('../utils/obsEndpoints', () => ({
 import { spawn } from 'child_process';
 import { ServerManager } from '../utils/serverLogic';
 
+interface MockPlugin {
+    manifest: { dir: string };
+    settings: {
+        pythonPath: string;
+        mouseMonitorEnabled: boolean;
+        keyboardMonitorEnabled: boolean;
+        mouseMonitorPosition: boolean;
+        mouseMonitorClicks: boolean;
+        mouseMonitorScroll: boolean;
+        keyboardMonitorShowCombinations: boolean;
+    };
+}
+
+interface MockApp {
+    vault: {
+        adapter: FileSystemAdapter;
+    };
+}
+
 describe('Monitor Lifecycle', () => {
-    let serverManager: any;
-    const mockApp: any = { vault: { adapter: new FileSystemAdapter() } };
-    const mockPlugin: any = { 
+    let serverManager: ServerManager;
+    const mockApp: MockApp = { 
+        vault: { 
+            adapter: new FileSystemAdapter() 
+        } 
+    };
+    const mockPlugin: MockPlugin = { 
         manifest: { dir: 'plugins/slides-studio' },
         settings: { 
             pythonPath: 'python3',
@@ -63,7 +86,8 @@ describe('Monitor Lifecycle', () => {
     };
 
     beforeEach(() => {
-        serverManager = new ServerManager(mockApp, mockPlugin, 59000);
+        // @ts-ignore - necessary for mock injection
+        serverManager = new ServerManager(mockApp as any, mockPlugin as any, 59000);
     });
 
     it('should spawn python processes when enabled', async () => {
@@ -77,6 +101,7 @@ describe('Monitor Lifecycle', () => {
     it('should kill processes on stop', async () => {
         await serverManager.startMouseMonitor();
         serverManager.stopMouseMonitor();
-        expect(serverManager.mouseMonitorProcess).toBeNull();
+        // Check internal state via casting to any since property is private
+        expect((serverManager as any).mouseMonitorProcess).toBeNull();
     });
 });

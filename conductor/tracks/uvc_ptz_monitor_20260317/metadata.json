@@ -1,9 +1,0 @@
-{
-  "track_id": "uvc_ptz_monitor_20260317",
-  "type": "feature",
-  "status": "cancelled",
-  "reason": "PTZ hardware detection is not possible in Chrome getUserMedia on MacOS with Apple Silicon.",
-  "created_at": "2026-03-17T12:00:00Z",
-  "updated_at": "2026-03-17T12:00:00Z",
-  "description": "create a new app to monitor UVC PTZ controls using the chrome getusermedia. Create a stand alone html page the allows the user to control a usb ptz camera. Allow the user to select the camera in browser. Create a ui to control the camera properties: Pan, tilt, Zoom."
-}

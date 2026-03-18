@@ -29,6 +29,7 @@ sc = None
 connected = False
 
 def heartbeat_loop():
+    """Sends periodic heartbeats to the SocketCluster server."""
     while True:
         time.sleep(20)
         if connected and sc:
@@ -38,6 +39,7 @@ def heartbeat_loop():
                 logging.error(f"Heartbeat failed: {e}")
 
 def on_connect(socket):
+    """Callback for successful SocketCluster connection."""
     global connected
     connected = True
     logging.info(f"CONNECTED to SocketCluster: {target_url}")
@@ -47,20 +49,24 @@ def on_connect(socket):
     socket.publish("mousePosition", {"x": 0, "y": 0, "test": True})
 
 def on_disconnect(socket):
+    """Callback for SocketCluster disconnection."""
     global connected
     connected = False
     logging.warning("DISCONNECTED from SocketCluster")
 
 def on_connect_error(socket, error):
+    """Callback for SocketCluster connection errors."""
     logging.error(f"CONNECTION ERROR: {error}")
 
 def on_move(x, y):
+    """Callback for mouse move events."""
     if not monitor_pos: return
     global pending_move
     with event_lock:
         pending_move = {"x": int(x), "y": int(y)}
 
 def on_click(x, y, button, pressed):
+    """Callback for mouse click events."""
     if not monitor_clicks: return
     btn_code = ""
     if button == mouse.Button.left: btn_code = "MB1"
@@ -77,6 +83,7 @@ def on_click(x, y, button, pressed):
             })
 
 def on_scroll(x, y, dx, dy):
+    """Callback for mouse scroll events."""
     if not monitor_scroll: return
     with event_lock:
         scroll_state["x"] = int(x)
@@ -85,6 +92,7 @@ def on_scroll(x, y, dx, dy):
         scroll_state["dy"] += dy
 
 def timer_loop():
+    """Periodically publishes accumulated mouse events."""
     global pending_move
     while True:
         time.sleep(0.05) # 20Hz
@@ -121,7 +129,9 @@ def timer_loop():
         except Exception as e:
             logging.error(f"Failed to publish mouse event: {e}")
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for the Mouse Monitor."""
+    global sc
     logging.info(f"Starting Mouse Monitor targeting {target_url}...")
     sc = Socketcluster.socket(target_url)
     sc.setBasicListener(on_connect, on_disconnect, on_connect_error)
@@ -147,3 +157,6 @@ if __name__ == "__main__":
         logging.error(f"Mouse listener error: {e}")
     except KeyboardInterrupt:
         logging.info("Stopping Mouse Monitor...")
+
+if __name__ == "__main__":
+    main()
