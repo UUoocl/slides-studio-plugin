@@ -101,6 +101,7 @@ export class PhotoSphereApp {
       this.socket = socketClusterClient.create({
         hostname: hostname,
         port: parseInt(port),
+        path: '/socketcluster/',
         secure: window.location.protocol === 'https:',
         autoReconnect: true
       });
