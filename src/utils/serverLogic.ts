@@ -679,8 +679,18 @@ export class ServerManager {
     }
 
     private setupProcessLogging(process: ChildProcess, name: string): void {
-        process.stdout?.on('data', (data) => console.warn(`[${name}] ${data}`));
-        process.stderr?.on('data', (data) => console.error(`[${name}] ERR: ${data}`));
+        process.stdout?.on('data', (data) => {
+            const lines = data.toString().split('\n');
+            lines.forEach((line: string) => {
+                if (line.trim()) console.warn(`[${name}] ${line}`);
+            });
+        });
+        process.stderr?.on('data', (data) => {
+            const lines = data.toString().split('\n');
+            lines.forEach((line: string) => {
+                if (line.trim()) console.error(`[${name}] ERR: ${line}`);
+            });
+        });
         process.on('close', (code) => console.warn(`[${name}] Process exited with code ${code}`));
         process.on('error', (err) => console.error(`[${name}] Failed to start:`, err));
     }

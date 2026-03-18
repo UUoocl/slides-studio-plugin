@@ -6,8 +6,12 @@ import logging
 from pynput import keyboard
 from socketclusterclient import Socketcluster
 
-# Configure logging
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+# Configure logging to stdout
+logging.basicConfig(
+    format='%(levelname)s:%(message)s', 
+    level=logging.DEBUG,
+    stream=sys.stdout
+)
 
 # Configuration
 target_url = sys.argv[1] if len(sys.argv) > 1 else "ws://127.0.0.1:8000/socketcluster/"
@@ -31,6 +35,17 @@ modifiers = {
 # SocketCluster state
 sc = None
 connected = False
+
+def heartbeat_loop():
+    while True:
+        time.sleep(20)
+        if connected and sc:
+            try:
+                logging.debug("Sending heartbeat...")
+                # Use emit instead of publish for heartbeat to avoid re-broadcasting
+                sc.emit("heartbeat", {"name": "Python-Keyboard-Monitor"})
+            except Exception as e:
+                logging.error(f"Heartbeat failed: {e}")
 
 def get_modifier_string():
     parts = []
@@ -62,6 +77,7 @@ def on_connect_error(socket, error):
     logging.error(f"CONNECTION ERROR: {error}")
 
 def on_press(key):
+    logging.debug(f"Key pressed: {key}")
     if key in modifiers:
         modifiers[key] = True
         return
@@ -84,9 +100,15 @@ def on_press(key):
     
     if connected:
         logging.debug(f"Publishing keyboardPress: {combo}")
-        sc.publish("keyboardPress", data)
+        try:
+            sc.publish("keyboardPress", data)
+        except Exception as e:
+            logging.error(f"Failed to publish: {e}")
+    else:
+        logging.warning(f"Not connected, cannot publish: {combo}")
 
 def on_release(key):
+    logging.debug(f"Key released: {key}")
     if key in modifiers:
         modifiers[key] = False
         return
@@ -109,17 +131,34 @@ def on_release(key):
     
     if connected:
         logging.debug(f"Publishing keyboardRelease: {combo}")
-        sc.publish("keyboardRelease", data)
+        try:
+            sc.publish("keyboardRelease", data)
+        except Exception as e:
+            logging.error(f"Failed to publish: {e}")
+    else:
+        logging.warning(f"Not connected, cannot publish: {combo}")
 
 if __name__ == "__main__":
     logging.info(f"Starting Keyboard Monitor targeting {target_url}...")
     sc = Socketcluster.socket(target_url)
     sc.setBasicListener(on_connect, on_disconnect, on_connect_error)
     sc.setreconnection(True)
-    sc.connect()
+    
+    # Run connect in a thread to avoid blocking if the library behaves synchronously
+    connect_thread = threading.Thread(target=sc.connect, daemon=True)
+    connect_thread.start()
 
+    # Start heartbeat thread
+    hb_thread = threading.Thread(target=heartbeat_loop, daemon=True)
+    hb_thread.start()
+
+    logging.info("Starting keyboard listener...")
     try:
         with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
+            logging.info("Keyboard listener joined.")
             listener.join()
+    except Exception as e:
+        logging.error(f"Keyboard listener error: {e}")
     except KeyboardInterrupt:
         logging.info("Stopping Keyboard Monitor...")
+

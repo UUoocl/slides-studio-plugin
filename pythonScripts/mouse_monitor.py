@@ -6,8 +6,12 @@ import logging
 from pynput import mouse
 from socketclusterclient import Socketcluster
 
-# Configure logging
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+# Configure logging to stdout
+logging.basicConfig(
+    format='%(levelname)s:%(message)s', 
+    level=logging.DEBUG,
+    stream=sys.stdout
+)
 
 # Configuration
 target_url = sys.argv[1] if len(sys.argv) > 1 else "ws://127.0.0.1:8000/socketcluster/"
@@ -23,6 +27,15 @@ pending_clicks = []
 scroll_state = {"x": 0, "y": 0, "dx": 0.0, "dy": 0.0}
 sc = None
 connected = False
+
+def heartbeat_loop():
+    while True:
+        time.sleep(20)
+        if connected and sc:
+            try:
+                sc.emit("heartbeat", {"name": "Python-Mouse-Monitor"})
+            except Exception as e:
+                logging.error(f"Heartbeat failed: {e}")
 
 def on_connect(socket):
     global connected
@@ -98,25 +111,39 @@ def timer_loop():
                 scroll_state["dx"] *= 0.8
                 scroll_state["dy"] *= 0.8
 
-        if move_to_send:
-            sc.publish("mousePosition", move_to_send)
-        for click in clicks_to_send:
-            sc.publish("mouseClick", click)
-        if scroll_to_send:
-            sc.publish("mouseScroll", scroll_to_send)
+        try:
+            if move_to_send:
+                sc.publish("mousePosition", move_to_send)
+            for click in clicks_to_send:
+                sc.publish("mouseClick", click)
+            if scroll_to_send:
+                sc.publish("mouseScroll", scroll_to_send)
+        except Exception as e:
+            logging.error(f"Failed to publish mouse event: {e}")
 
 if __name__ == "__main__":
     logging.info(f"Starting Mouse Monitor targeting {target_url}...")
     sc = Socketcluster.socket(target_url)
     sc.setBasicListener(on_connect, on_disconnect, on_connect_error)
     sc.setreconnection(True)
-    sc.connect()
+    
+    # Run connect in a thread to avoid blocking if the library behaves synchronously
+    connect_thread = threading.Thread(target=sc.connect, daemon=True)
+    connect_thread.start()
 
     timer_thread = threading.Thread(target=timer_loop, daemon=True)
     timer_thread.start()
 
+    # Start heartbeat thread
+    hb_thread = threading.Thread(target=heartbeat_loop, daemon=True)
+    hb_thread.start()
+
+    logging.info("Starting mouse listener...")
     try:
         with mouse.Listener(on_move=on_move, on_click=on_click, on_scroll=on_scroll) as listener:
+            logging.info("Mouse listener joined.")
             listener.join()
+    except Exception as e:
+        logging.error(f"Mouse listener error: {e}")
     except KeyboardInterrupt:
         logging.info("Stopping Mouse Monitor...")
