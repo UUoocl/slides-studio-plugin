@@ -11,17 +11,16 @@
 - [x] Task: Implement `app.js` to initialize the `PhotoSphereViewer` and establish a SocketCluster connection. 2414727
 - [x] Task: Verify that the viewer renders the sample image correctly and reports its connection status. 2414727
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Core Viewer and SocketCluster Integration' (Protocol in workflow.md) 54cfeee
-
-## Phase 3: UVC Mapping and Animation Logic
-...
-- [ ] Task: Define the data structure for UVC PTZ messages and the mapping ranges (min/max).
-- [ ] Task: Write failing tests for PTZ mapping functions (input values -> viewer orientation/FOV).
-- [ ] Task: Implement the `uvcResponse` channel subscription and the mapping logic in `app.js`.
-- [ ] Task: Implement a smoothing/interpolation layer (e.g., using Three.js `lerp`) to handle incoming data stream updates.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: UVC Mapping and Animation Logic' (Protocol in workflow.md)
+## Phase 3: UVC Mapping and Animation Logic [checkpoint: 9cd3d76]
+- [x] Task: Define the data structure for UVC PTZ messages and the mapping ranges (min/max). 51365a1
+- [x] Task: Write failing tests for PTZ mapping functions (input values -> viewer orientation/FOV). bd61d74
+- [x] Task: Implement the `uvcResponse` channel subscription and the mapping logic in `app.js`. eb2f976
+- [x] Task: Implement a smoothing/interpolation layer (e.g., using Three.js `lerp`) to handle incoming data stream updates. eb2f976
+- [x] Task: Conductor - User Manual Verification 'Phase 3: UVC Mapping and Animation Logic' (Protocol in workflow.md) 9cd3d76
 
 ## Phase 4: Control Panel and Image Management
-- [ ] Task: Build the side control panel UI using standard Obsidian-inspired CSS variables.
-- [ ] Task: Implement UI controls for mapping sensitivity and image selection.
-- [ ] Task: Integrate mapping parameters into the active synchronization loop.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Control Panel and Image Management' (Protocol in workflow.md)
+## Phase 4: Control Panel and Image Management [checkpoint: 3b42479]
+- [x] Task: Build the side control panel UI using standard Obsidian-inspired CSS variables. 3b5869b
+- [x] Task: Implement UI controls for mapping sensitivity and image selection. 3b5869b
+- [x] Task: Integrate mapping parameters into the active synchronization loop. 3b5869b
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Control Panel and Image Management' (Protocol in workflow.md) 3b42479
