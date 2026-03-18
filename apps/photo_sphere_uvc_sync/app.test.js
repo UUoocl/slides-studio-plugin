@@ -65,6 +65,10 @@ const mockDocument = {
     }
     return elementCache[id];
   }),
+  querySelector: vi.fn().mockImplementation((sel) => {
+    if (sel === 'h1') return { textContent: '' };
+    return null;
+  }),
   querySelectorAll: vi.fn().mockReturnValue([]),
   createElement: vi.fn().mockImplementation((tag) => ({
     tag,

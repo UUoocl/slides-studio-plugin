@@ -212,14 +212,18 @@ export class PhotoSphereApp {
     controls.forEach(ctrl => {
       const name = ctrl.name.toLowerCase();
       const val = ctrl['current-value'];
-      const min = ctrl.min;
-      const max = ctrl.max;
+      const min = ctrl.minimum;
+      const max = ctrl.maximum;
 
-      if (name.includes('pan')) {
-        this.targetPan = this.mapValue(val, min, max, 0, 2 * Math.PI);
-      } else if (name.includes('tilt')) {
-        this.targetTilt = this.mapValue(val, min, max, -Math.PI / 2, Math.PI / 2);
-      } else if (name.includes('zoom')) {
+      if (name === 'pan-tilt-abs') {
+        // Handle nested pan/tilt
+        if (val && val.pan !== undefined && min && min.pan !== undefined && max && max.pan !== undefined) {
+          this.targetPan = this.mapValue(val.pan, min.pan, max.pan, 0, 2 * Math.PI);
+        }
+        if (val && val.tilt !== undefined && min && min.tilt !== undefined && max && max.tilt !== undefined) {
+          this.targetTilt = this.mapValue(val.tilt, min.tilt, max.tilt, -Math.PI / 2, Math.PI / 2);
+        }
+      } else if (name === 'zoom-abs' || name.includes('zoom')) {
         this.targetZoom = this.mapValue(val, min, max, 0, 100);
       }
     });
