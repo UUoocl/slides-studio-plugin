@@ -1,7 +1,7 @@
 # Implementation Plan: Photo Sphere Viewer UVC Sync
 
 ## Phase 1: Project Setup and Asset Preparation
-- [ ] Task: Create the application directory at `apps/photo_sphere_uvc_sync/`.
+- [x] Task: Create the application directory at `apps/photo_sphere_uvc_sync/`. 6011f37
 - [ ] Task: Research and download required `photo-sphere-viewer` and `three.js` ESM files into `apps/lib/`.
 - [ ] Task: Add a sample equirectangular image to `apps/assets/`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Project Setup and Asset Preparation' (Protocol in workflow.md)
