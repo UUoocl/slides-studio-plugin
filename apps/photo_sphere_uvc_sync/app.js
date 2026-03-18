@@ -2,7 +2,13 @@ import { Viewer } from 'photo-sphere-viewer';
 import * as socketClusterClient from 'socketcluster-client';
 import { MathUtils } from 'three';
 
+/**
+ * Main application class for synchronizing PhotoSphereViewer with UVC PTZ data.
+ */
 export class PhotoSphereApp {
+  /**
+   * Initializes the application state and components.
+   */
   constructor() {
     this.viewer = null;
     this.socket = null;
@@ -36,6 +42,9 @@ export class PhotoSphereApp {
     this.startAnimationLoop();
   }
 
+  /**
+   * Sets up UI event listeners and initial state.
+   */
   initUI() {
     this.statusIndicator = document.getElementById('status-indicator');
     this.statusText = document.getElementById('status-text');
@@ -103,6 +112,9 @@ export class PhotoSphereApp {
     }
   }
 
+  /**
+   * Initializes the PhotoSphereViewer instance.
+   */
   initViewer() {
     const container = document.getElementById('viewer-container');
     if (!container) return;
@@ -124,6 +136,11 @@ export class PhotoSphereApp {
     });
   }
 
+  /**
+   * Handles sensitivity slider changes.
+   * @param {string} type - The control type ('pan', 'tilt', 'zoom').
+   * @param {number} value - The new sensitivity value.
+   */
   handleSensitivityChange(type, value) {
     this[`${type}Sensitivity`] = value;
     const display = document.getElementById(`${type}-sens-val`);
@@ -132,6 +149,11 @@ export class PhotoSphereApp {
     }
   }
 
+  /**
+   * Updates the connection status UI.
+   * @param {string} text - The status message.
+   * @param {boolean} connected - Whether the bridge is connected.
+   */
   updateStatus(text, connected) {
     this.isConnected = connected;
     if (this.statusText) this.statusText.textContent = text;
@@ -144,6 +166,10 @@ export class PhotoSphereApp {
     }
   }
 
+  /**
+   * Establishes a SocketCluster connection to the bridge.
+   * @return {Promise<void>}
+   */
   async connect() {
     this.updateStatus('Connecting...', false);
     
@@ -192,6 +218,10 @@ export class PhotoSphereApp {
     }
   }
 
+  /**
+   * Subscribes to UVC data channels.
+   * @return {Promise<void>}
+   */
   async listenToUVC() {
     if (!this.socket) return;
     
@@ -216,11 +246,24 @@ export class PhotoSphereApp {
     })();
   }
 
+  /**
+   * Maps a value from one range to another.
+   * @param {number} value
+   * @param {number} inMin
+   * @param {number} inMax
+   * @param {number} outMin
+   * @param {number} outMax
+   * @return {number}
+   */
   mapValue(value, inMin, inMax, outMin, outMax) {
     if (inMax === inMin) return outMin;
     return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
   }
 
+  /**
+   * Parses incoming UVC data and triggers viewer sync.
+   * @param {Object} data
+   */
   handleUVCData(data) {
     if (this.uvcDebug) {
       this.uvcDebug.textContent = JSON.stringify(data, null, 2);
@@ -231,6 +274,10 @@ export class PhotoSphereApp {
     }
   }
 
+  /**
+   * Extracts PTZ values from UVC control list.
+   * @param {Array} controls
+   */
   syncViewer(controls) {
     if (!this.viewer) return;
 
@@ -254,26 +301,33 @@ export class PhotoSphereApp {
     });
   }
 
+  /**
+   * Starts the animation loop for smoothed synchronization.
+   */
   startAnimationLoop() {
     const loop = () => {
       if (this.viewer && this.isViewerReady) {
-        // Apply sensitivity and smoothing
-        const pan = this.targetPan * this.panSensitivity;
-        const tilt = this.targetTilt * this.tiltSensitivity;
-        const zoom = this.targetZoom * this.zoomSensitivity;
+        try {
+          // Apply sensitivity and smoothing
+          const pan = this.targetPan * this.panSensitivity;
+          const tilt = this.targetTilt * this.tiltSensitivity;
+          const zoom = this.targetZoom * this.zoomSensitivity;
 
-        this.currentPan = MathUtils.lerp(this.currentPan, pan, this.smoothingFactor);
-        this.currentTilt = MathUtils.lerp(this.currentTilt, tilt, this.smoothingFactor);
-        this.currentZoom = MathUtils.lerp(this.currentZoom, zoom, this.smoothingFactor);
+          this.currentPan = MathUtils.lerp(this.currentPan, pan, this.smoothingFactor);
+          this.currentTilt = MathUtils.lerp(this.currentTilt, tilt, this.smoothingFactor);
+          this.currentZoom = MathUtils.lerp(this.currentZoom, zoom, this.smoothingFactor);
 
-        this.viewer.rotate({
-          yaw: this.currentPan,
-          pitch: this.currentTilt
-        });
-        
-        // Update Zoom
-        if (Math.abs(this.currentZoom - (this.viewer.getZoomLevel() || 0)) > 0.1) {
-          this.viewer.zoom(this.currentZoom);
+          this.viewer.rotate({
+            yaw: this.currentPan,
+            pitch: this.currentTilt
+          });
+          
+          // Update Zoom
+          if (Math.abs(this.currentZoom - (this.viewer.getZoomLevel() || 0)) > 0.1) {
+            this.viewer.zoom(this.currentZoom);
+          }
+        } catch (err) {
+          console.error('Animation frame error:', err);
         }
       }
       requestAnimationFrame(loop);

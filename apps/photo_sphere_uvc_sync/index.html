@@ -57,9 +57,9 @@
             <h3>Configuration</h3>
             <div class="control-item">
                 <label>Device Name</label>
-                <div style="display: flex; gap: 5px;">
+                <div class="input-group">
                     <input type="text" id="device-name-input" placeholder="e.g. OBS Camera">
-                    <button id="btn-update-name" style="width: auto; padding: 5px 10px; margin-bottom: 0;">Set</button>
+                    <button id="btn-update-name" class="btn-small">Set</button>
                 </div>
             </div>
         </div>
@@ -68,7 +68,7 @@
             <h3>UVC Data</h3>
             <div class="control-item">
                 <label>Last Message</label>
-                <div id="uvc-debug" style="font-family: monospace; font-size: 0.75rem; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 4px; color: var(--text-muted); min-height: 40px; overflow-wrap: break-word; max-height: 150px; overflow-y: auto;">
+                <div id="uvc-debug" class="debug-panel">
                     Waiting for data...
                 </div>
             </div>
