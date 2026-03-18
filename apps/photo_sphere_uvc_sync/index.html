@@ -15,7 +15,7 @@
             <h1>PhotoSphere UVC</h1>
             <div class="status-bar">
                 <div id="status-indicator" class="status-indicator"></div>
-                <span id="status-text">Connecting to Bridge...</span>
+                <span id="status-text">Connecting...</span>
             </div>
         </div>
 
@@ -36,6 +36,14 @@
         </div>
 
         <div class="control-group">
+            <h3>Animation</h3>
+            <div class="control-item">
+                <label>Smoothing <span id="smoothing-val" class="value-display">0.1</span></label>
+                <input type="range" id="smoothing" min="0.01" max="1.0" step="0.01" value="0.1">
+            </div>
+        </div>
+
+        <div class="control-group">
             <h3>Image Selection</h3>
             <div class="control-item">
                 <label>Equirectangular Image</label>
@@ -46,10 +54,21 @@
         </div>
 
         <div class="control-group">
+            <h3>Configuration</h3>
+            <div class="control-item">
+                <label>Device Name</label>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="device-name-input" placeholder="e.g. OBS Camera">
+                    <button id="btn-update-name" style="width: auto; padding: 5px 10px; margin-bottom: 0;">Set</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-group">
             <h3>UVC Data</h3>
             <div class="control-item">
                 <label>Last Message</label>
-                <div id="uvc-debug" style="font-family: monospace; font-size: 0.75rem; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 4px; color: var(--text-muted); min-height: 40px; overflow-wrap: break-word;">
+                <div id="uvc-debug" style="font-family: monospace; font-size: 0.75rem; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 4px; color: var(--text-muted); min-height: 40px; overflow-wrap: break-word; max-height: 150px; overflow-y: auto;">
                     Waiting for data...
                 </div>
             </div>

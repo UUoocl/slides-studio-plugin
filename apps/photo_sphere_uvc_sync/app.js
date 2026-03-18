@@ -16,12 +16,12 @@ export class PhotoSphereApp {
     // Target state for smoothing
     this.targetPan = 0;
     this.targetTilt = 0;
-    this.targetZoom = 90;
+    this.targetZoom = 50; // 0-100 scale
     
     // Current state (smoothed)
     this.currentPan = 0;
     this.currentTilt = 0;
-    this.currentZoom = 90;
+    this.currentZoom = 50;
 
     this.smoothingFactor = 0.1; // 0 to 1
     this.isViewerReady = false;
@@ -47,6 +47,21 @@ export class PhotoSphereApp {
       title.textContent = `PhotoSphere UVC - ${this.deviceName}`;
     }
 
+    // Device name input
+    const nameInput = document.getElementById('device-name-input');
+    const btnUpdateName = document.getElementById('btn-update-name');
+    if (nameInput) nameInput.value = this.deviceName;
+    if (btnUpdateName) {
+      btnUpdateName.addEventListener('click', () => {
+        const newName = nameInput.value.trim();
+        if (newName) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('name', newName);
+          window.location.href = url.toString();
+        }
+      });
+    }
+
     // Sensitivity controls
     ['pan', 'tilt', 'zoom'].forEach(type => {
       const slider = document.getElementById(`${type}-sens`);
@@ -58,6 +73,16 @@ export class PhotoSphereApp {
         });
       }
     });
+
+    // Smoothing control
+    const smoothingSlider = document.getElementById('smoothing');
+    const smoothingDisplay = document.getElementById('smoothing-val');
+    if (smoothingSlider) {
+      smoothingSlider.addEventListener('input', (e) => {
+        this.smoothingFactor = parseFloat(e.target.value);
+        if (smoothingDisplay) smoothingDisplay.textContent = this.smoothingFactor.toFixed(2);
+      });
+    }
 
     // Image select
     const imageSelect = document.getElementById('image-select');
