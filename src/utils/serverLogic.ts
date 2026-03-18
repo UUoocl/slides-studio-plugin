@@ -94,7 +94,7 @@ export class ServerManager {
         this.server.addHook('preHandler', async (request, reply) => {
             reply.header('X-Frame-Options', 'ALLOWALL');
             reply.header('Access-Control-Allow-Origin', '*');
-            reply.header('Content-Security-Policy', "frame-ancestors *; frame-src *; default-src * 'unsafe-inline' 'unsafe-eval' blob:; img-src * data:; media-src *;");
+            reply.header('Content-Security-Policy', "frame-ancestors *; frame-src *; default-src * 'unsafe-inline' 'unsafe-eval' blob:; img-src * data: blob:; media-src *;");
         });
 
         await this.server.register(fastifyCors, { origin: '*' });
