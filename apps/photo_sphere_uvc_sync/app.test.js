@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+// Mock Three.js
+vi.mock('three', () => ({
+  MathUtils: {
+    lerp: (start, end, t) => start + (end - start) * t
+  }
+}));
+
 // Mock SocketCluster client
 vi.mock('socketcluster-client', () => ({
   create: vi.fn().mockReturnValue({
@@ -25,9 +32,11 @@ vi.mock('photo-sphere-viewer', () => {
     this.setPanorama = vi.fn().mockResolvedValue(true);
     this.rotate = vi.fn();
     this.setOption = vi.fn();
+    this.getOption = vi.fn().mockReturnValue(90);
     this.destroy = vi.fn();
     this.addEventListener = vi.fn();
     this.on = vi.fn();
+    this.getPosition = vi.fn().mockReturnValue({ longitude: 0, latitude: 0 });
   });
   return { Viewer };
 });
@@ -71,16 +80,18 @@ const mockDocument = {
 const mockWindow = {
   location: {
     hostname: 'localhost',
-    port: '8080'
+    port: '8080',
+    protocol: 'http:'
   },
-  __vitest_worker__: true
+  __vitest_worker__: true,
+  requestAnimationFrame: vi.fn()
 };
 
 vi.stubGlobal('document', mockDocument);
 vi.stubGlobal('window', mockWindow);
+vi.stubGlobal('requestAnimationFrame', mockWindow.requestAnimationFrame);
 
 // Import app after mocks
-// We expect PhotoSphereApp to be exported from app.js
 import { PhotoSphereApp } from './app.js';
 
 describe('PhotoSphereApp', () => {
@@ -92,7 +103,6 @@ describe('PhotoSphereApp', () => {
   });
 
   it('should initialize with default state', () => {
-    // connect() is called in constructor, so it should be true if mock succeeds
     expect(app.isConnected).toBe(true);
     expect(app.panSensitivity).toBe(1.0);
   });
@@ -114,14 +124,11 @@ describe('PhotoSphereApp', () => {
   });
 
   it('should attempt to connect to SocketCluster on init', () => {
-    // This will depend on how we implement init
-    // For now just checking if the property exists
     expect(app.connect).toBeDefined();
   });
 
   describe('PTZ Mapping', () => {
     it('should map pan range to 0-2PI', () => {
-      // Input: value, min, max, targetMin, targetMax
       const result = app.mapValue(150, -180, 180, 0, 2 * Math.PI);
       expect(result).toBeCloseTo((330/360) * 2 * Math.PI);
     });
@@ -132,7 +139,6 @@ describe('PhotoSphereApp', () => {
     });
 
     it('should map zoom range to FOV 30-90 (inverted)', () => {
-      // 100% zoom -> 30 deg FOV, 0% zoom -> 90 deg FOV
       const result = app.mapValue(100, 0, 100, 90, 30);
       expect(result).toBe(30);
     });

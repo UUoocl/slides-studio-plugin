@@ -1,5 +1,6 @@
 import { Viewer } from 'photo-sphere-viewer';
 import * as socketClusterClient from 'socketcluster-client';
+import { MathUtils } from 'three';
 
 export class PhotoSphereApp {
   constructor() {
@@ -12,9 +13,22 @@ export class PhotoSphereApp {
     this.tiltSensitivity = 1.0;
     this.zoomSensitivity = 1.0;
 
+    // Target state for smoothing
+    this.targetPan = 0;
+    this.targetTilt = 0;
+    this.targetZoom = 90;
+    
+    // Current state (smoothed)
+    this.currentPan = 0;
+    this.currentTilt = 0;
+    this.currentZoom = 90;
+
+    this.smoothingFactor = 0.1; // 0 to 1
+
     this.initUI();
     this.initViewer();
     this.connect();
+    this.startAnimationLoop();
   }
 
   initUI() {
@@ -38,7 +52,9 @@ export class PhotoSphereApp {
     const imageSelect = document.getElementById('image-select');
     if (imageSelect) {
       imageSelect.addEventListener('change', (e) => {
-        this.viewer.setPanorama(e.target.value);
+        if (this.viewer) {
+          this.viewer.setPanorama(e.target.value);
+        }
       });
     }
 
@@ -58,7 +74,7 @@ export class PhotoSphereApp {
     this.viewer = new Viewer({
       container: container,
       panorama: '../assets/sample_360.jpg',
-      loadingImg: '', // No loading image needed for now
+      loadingImg: '', 
       navbar: [
         'autorotate',
         'zoom',
@@ -165,10 +181,6 @@ export class PhotoSphereApp {
   syncViewer(controls) {
     if (!this.viewer) return;
 
-    let pan = null;
-    let tilt = null;
-    let zoom = null;
-
     controls.forEach(ctrl => {
       const name = ctrl.name.toLowerCase();
       const val = ctrl['current-value'];
@@ -176,27 +188,40 @@ export class PhotoSphereApp {
       const max = ctrl.max;
 
       if (name.includes('pan')) {
-        pan = this.mapValue(val, min, max, 0, 2 * Math.PI) * this.panSensitivity;
+        this.targetPan = this.mapValue(val, min, max, 0, 2 * Math.PI);
       } else if (name.includes('tilt')) {
-        tilt = this.mapValue(val, min, max, -Math.PI / 2, Math.PI / 2) * this.tiltSensitivity;
+        this.targetTilt = this.mapValue(val, min, max, -Math.PI / 2, Math.PI / 2);
       } else if (name.includes('zoom')) {
-        // Zoom mapping: min zoom -> 90 FOV, max zoom -> 30 FOV
-        zoom = this.mapValue(val, min, max, 90, 30) * this.zoomSensitivity;
+        this.targetZoom = this.mapValue(val, min, max, 90, 30);
       }
     });
+  }
 
-    if (pan !== null || tilt !== null) {
-      this.viewer.rotate({
-        longitude: pan !== null ? pan : this.viewer.getPosition().longitude,
-        latitude: tilt !== null ? tilt : this.viewer.getPosition().latitude
-      });
-    }
+  startAnimationLoop() {
+    const loop = () => {
+      if (this.viewer) {
+        // Apply sensitivity and smoothing
+        const pan = this.targetPan * this.panSensitivity;
+        const tilt = this.targetTilt * this.tiltSensitivity;
+        const zoom = this.targetZoom * this.zoomSensitivity;
 
-    if (zoom !== null) {
-      this.viewer.setOption('defaultZoomLvl', zoom); // Or use zoom method if available
-      // PhotoSphereViewer 5 uses setOption for FOV or zoom methods
-      // Actually FOV is what we want.
-    }
+        this.currentPan = MathUtils.lerp(this.currentPan, pan, this.smoothingFactor);
+        this.currentTilt = MathUtils.lerp(this.currentTilt, tilt, this.smoothingFactor);
+        this.currentZoom = MathUtils.lerp(this.currentZoom, zoom, this.smoothingFactor);
+
+        this.viewer.rotate({
+          longitude: this.currentPan,
+          latitude: this.currentTilt
+        });
+        
+        // Update Zoom (FOV)
+        if (Math.abs(this.currentZoom - (this.viewer.getOption('defaultZoomLvl') || 0)) > 0.01) {
+          this.viewer.setOption('defaultZoomLvl', this.currentZoom);
+        }
+      }
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
   }
 }
 
