@@ -48,4 +48,12 @@
     - [x] Update `danger.html` and `danger_settings.html`
     - [x] Update `flag.html` and `flag_settings.html`
     - [x] Update `layers.html` and `layers_settings.html`
-- [ ] Task: Conductor - User Manual Verification 'Apply Changes to Other space_type_generator Apps' (Protocol in workflow.md)
+## Phase 5: Organization and Documentation
+- [x] Task: Move and document Source Manager app
+    - [x] Create `apps/obs_source_manager/`
+    - [x] Move `apps/manage_source_settings.html` to `apps/obs_source_manager/index.html` (update paths)
+    - [x] Create `apps/obs_source_manager/README.md`
+- [x] Task: Update STG and Project docs
+    - [x] Update `apps/space_type_generator/readme.md`
+    - [x] Add "OBS Source Manager" to `apps/index.html`
+- [ ] Task: Conductor - User Manual Verification 'Organization and Documentation' (Protocol in workflow.md)
