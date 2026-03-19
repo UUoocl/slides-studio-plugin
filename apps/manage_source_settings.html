@@ -88,8 +88,9 @@
         <li class="no-sources">No marked browser sources found.</li>
     </ul>
 
-    <script src="lib/socketcluster-client.min.js"></script>
-    <script>
+    <script type="module">
+        import * as socketClusterClient from './lib/socketcluster-client.min.js';
+        
         let socket;
         const statusDiv = document.getElementById('status');
         const sourceList = document.getElementById('source-list');
@@ -190,11 +191,32 @@
             // e.g. .../stripes.html -> stripes_settings.html
             let settingsUrl = '#';
             if (url) {
-                const parts = url.split('/');
-                const filename = parts.pop();
-                if (filename.endsWith('.html')) {
-                    const base = filename.replace('.html', '');
-                    settingsUrl = parts.join('/') + '/' + base + '_settings.html';
+                try {
+                    // Handle both full URLs and potential local paths
+                    let urlObj;
+                    if (url.startsWith('http')) {
+                        urlObj = new URL(url);
+                    } else {
+                        // For local paths, we'll try to treat it as relative to the current app
+                        // but usually OBS browser sources will have full http://localhost:PORT/ paths
+                        urlObj = new URL(url, window.location.origin);
+                    }
+
+                    const pathname = urlObj.pathname;
+                    if (pathname.endsWith('.html')) {
+                        const newPathname = pathname.replace('.html', '_settings.html');
+                        urlObj.pathname = newPathname;
+                        settingsUrl = urlObj.toString();
+                    }
+                } catch (e) {
+                    console.warn('Could not parse URL:', url, e);
+                    // Fallback to simple logic if URL parsing fails
+                    const parts = url.split('/');
+                    const filename = parts.pop();
+                    if (filename && filename.endsWith('.html')) {
+                        const base = filename.replace('.html', '');
+                        settingsUrl = parts.join('/') + '/' + base + '_settings.html';
+                    }
                 }
             }
 
