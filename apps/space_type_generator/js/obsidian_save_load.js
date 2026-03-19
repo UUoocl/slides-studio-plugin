@@ -2,8 +2,10 @@
 const fullPath = window.location.pathname;
 //get filename
 let filename = fullPath.substring(fullPath.lastIndexOf("/") + 1);
-// Remove the file extension
+// Remove the file extension and potential suffix
+const appBaseName = filename.replace('_settings.html', '').replace('.html', '');
 filename = filename.substring(0, filename.lastIndexOf(".")) || filename;
+
 const saveStyle = document.createElement('style');
 
 // Define your CSS rules as a string
@@ -33,8 +35,8 @@ document.head.appendChild(saveStyle);
 
 const newDiv = document.createElement('div');
 newDiv.id = 'obsidian-save-ui-layer';
-newDiv.innerHTML = `<span>Settings Name</span>
-    <input type="text" id="settingsName" placeholder="My Settings" value="${filename}_settings">
+newDiv.innerHTML = `<span>Preset Name</span>
+    <input type="text" id="settingsName" placeholder="My Preset" value="default">
     <button onclick="saveSettings()">Save</button>
     <select id="loadSelect"><option>Loading...</option></select>
     <button onclick="loadSettings()">Load</button>`;
@@ -43,60 +45,69 @@ newDiv.innerHTML = `<span>Settings Name</span>
 document.body.prepend(newDiv);
 
 
-// --- Save / Load Logic  ---
-const APP_FOLDER = "apps/space_type_generator/presets";
+// --- Save / Load Logic (Dictionary based) ---
+const APP_FOLDER = "apps/space_type_generator";
+const PRESET_FILE = `${appBaseName}_presets.json`;
 
 window.saveSettings = async () => {
-  const name =
-    document.getElementById("settingsName").value || "untitled_settings";
-
-  const data = getSketchSettings(filename);
+  const presetName = document.getElementById("settingsName").value || "default";
+  const currentSettings = getSketchSettings(appBaseName);
 
   try {
-    // Updated Endpoint: /api/file/save
+    // 1. Fetch current presets dictionary
+    let presets = {};
+    const getResponse = await fetch(`/api/file/get?folder=${APP_FOLDER}&filename=${PRESET_FILE}`);
+    if (getResponse.ok) {
+        presets = await getResponse.json();
+    }
+
+    // 2. Update/Add new preset
+    presets[presetName] = currentSettings;
+
+    // 3. Save the whole dictionary back
     const response = await fetch("/api/file/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         folder: APP_FOLDER,
-        filename: name,
-        data: data,
+        filename: PRESET_FILE,
+        data: presets,
       }),
     });
     const res = await response.json();
     if (res.success) {
-      //alert("Settings saved!");
       refreshLoadList();
     } else {
       alert("Error: " + res.error);
     }
   } catch (e) {
+    console.error("Save Error:", e);
     alert("Server Error during Save");
   }
 };
 
 window.loadSettings = async () => {
   const select = document.getElementById("loadSelect");
-  const filename = select.value;
-  if (!filename) return;
+  const presetName = select.value;
+  if (!presetName || presetName === "select") return;
 
   try {
-    // Updated Endpoint: /api/file/get with query params
-    const response = await fetch(
-      `/api/file/get?folder=${APP_FOLDER}&filename=${filename}`
-    );
-    if (!response.ok) throw new Error("File not found");
+    const response = await fetch(`/api/file/get?folder=${APP_FOLDER}&filename=${PRESET_FILE}`);
+    if (!response.ok) throw new Error("Preset file not found");
 
-    const json = await response.json();
+    const presets = await response.json();
+    const settings = presets[presetName];
 
-    //do something with returned file
-    setSketchSettings(json);
-
-    //alert("Settings loaded");
-    document.getElementById("settingsName").value = filename.replace(
-      ".json",
-      ""
-    );
+    if (settings) {
+        setSketchSettings(settings);
+        document.getElementById("settingsName").value = presetName;
+        // Broadcast change via SocketCluster if on settings page
+        if (typeof window.publishStgSettings === 'function') {
+            window.publishStgSettings();
+        }
+    } else {
+        alert("Preset not found in file");
+    }
   } catch (e) {
     console.error(e);
     alert("Error loading settings");
@@ -105,33 +116,29 @@ window.loadSettings = async () => {
 
 async function refreshLoadList() {
   try {
-    // Updated Endpoint: /api/file/list with query param
-    const response = await fetch(`/api/file/list?folder=${APP_FOLDER}`);
-    const files = await response.json();
+    const response = await fetch(`/api/file/get?folder=${APP_FOLDER}&filename=${PRESET_FILE}`);
     const select = document.getElementById("loadSelect");
     if (select) {
-        //clear options
         select.innerHTML = "";
-        
-        //add default option
         const opt1 = document.createElement("option");
         opt1.value = "select";
-        opt1.innerText = "select";
-        opt1.disabled = true
+        opt1.innerText = "select preset";
+        opt1.disabled = true;
         select.appendChild(opt1);
-        select.value = "select"
-        
-        //add saved presets
-        files.forEach((f) => {
-        const opt = document.createElement("option");
-        opt.value = f;
-        opt.innerText = f;
-        select.appendChild(opt);
-        });
+        select.value = "select";
 
+        if (response.ok) {
+            const presets = await response.json();
+            Object.keys(presets).sort().forEach((name) => {
+                const opt = document.createElement("option");
+                opt.value = name;
+                opt.innerText = name;
+                select.appendChild(opt);
+            });
+        }
     }
   } catch (e) {
-    console.error("Could not fetch list", e);
+    console.error("Could not fetch preset list", e);
   }
 }
 

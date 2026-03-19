@@ -2,14 +2,15 @@ import { create } from '../../lib/socketcluster-client.min.js';
 
 (async () => {
     const isSettingsPage = window.location.pathname.includes('_settings.html');
-    const filename = window.location.pathname.split('/').pop().replace('_settings.html', '').replace('.html', '');
-    const channelName = `stg_${filename}`;
+    const filename = window.location.pathname.split('/').pop();
+    const appBaseName = filename.replace('_settings.html', '').replace('.html', '');
+    const channelName = `stg_${appBaseName}`;
 
     const socket = create({
         hostname: window.location.hostname,
         port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
         path: '/socketcluster/',
-        authToken: { name: `Stg-Sync: ${filename}${isSettingsPage ? ' (Settings)' : ''}` }
+        authToken: { name: `Stg-Sync: ${appBaseName}${isSettingsPage ? ' (Settings)' : ''}` }
     });
 
     // Handle Input Sources (Audio STT and Keyboard Press)
@@ -56,7 +57,7 @@ import { create } from '../../lib/socketcluster-client.min.js';
         
         const publishSettings = () => {
             if (typeof getSketchSettings === 'function') {
-                const settings = getSketchSettings(filename);
+                const settings = getSketchSettings(appBaseName);
                 const settingsStr = JSON.stringify(settings);
                 if (settingsStr !== lastSettings) {
                     socket.transmitPublish(channelName, settings);
@@ -71,9 +72,7 @@ import { create } from '../../lib/socketcluster-client.min.js';
             if (p5Inputs.length > 5 || retries <= 0) {
                 console.log(`STG: Attaching listeners to ${p5Inputs.length} inputs`);
                 p5Inputs.forEach(el => {
-                    // Use 'input' event for real-time slider/picker updates
                     el.addEventListener('input', publishSettings);
-                    // Use 'change' for checkboxes/selects
                     el.addEventListener('change', publishSettings);
                 });
             } else {
@@ -81,25 +80,19 @@ import { create } from '../../lib/socketcluster-client.min.js';
             }
         };
 
-        // Start attaching listeners after a delay to allow p5 setup to run
         setTimeout(attachEventListeners, 1000);
 
-        // Fallback sync loop for things that don't trigger events (if any)
         const syncLoop = () => {
             publishSettings();
             requestAnimationFrame(syncLoop);
         };
-        
-        // Wait for setup to complete before starting fallback sync
         setTimeout(syncLoop, 2000);
 
-        // Expose publishSettings globally for manual triggers from other scripts
         window.publishStgSettings = publishSettings;
 
     } else {
         console.log(`STG Display Mode: ${channelName}`);
         
-        // Hide UI immediately and periodically to ensure new elements are hidden
         const hideElements = () => {
             if (typeof hideui === 'function') {
                 hideui();
@@ -116,7 +109,6 @@ import { create } from '../../lib/socketcluster-client.min.js';
         setInterval(hideElements, 500);
 
         // Subscribe to real-time updates ONLY if no preset is provided
-        // This avoids conflicts between initial preset load and real-time updates
         if (!urlParams.has('preset')) {
             const channel = socket.subscribe(channelName);
             (async () => {
@@ -130,39 +122,41 @@ import { create } from '../../lib/socketcluster-client.min.js';
             console.log(`STG: Preset active, real-time sync on ${channelName} disabled.`);
         }
 
-        // Load preset if provided in query param
+        // Load preset from dictionary JSON file if provided in query param
         if (urlParams.has('preset')) {
             const presetName = urlParams.get('preset');
-            console.log(`STG: Loading initial preset: ${presetName}`);
+            const APP_FOLDER = "apps/space_type_generator";
+            const PRESET_FILE = `${appBaseName}_presets.json`;
+
+            console.log(`STG: Loading initial preset: ${presetName} from ${PRESET_FILE}`);
+            
             (async () => {
                 try {
-                    const APP_FOLDER = "apps/space_type_generator/presets";
-                    const presetFilename = presetName.endsWith('.json') ? presetName : `${presetName}.json`;
-                    const response = await fetch(`/api/file/get?folder=${APP_FOLDER}&filename=${presetFilename}`);
+                    const response = await fetch(`/api/file/get?folder=${APP_FOLDER}&filename=${PRESET_FILE}`);
                     if (response.ok) {
-                        const json = await response.json();
-                        console.log(`STG: Preset loaded successfully:`, json);
+                        const presets = await response.json();
+                        const settings = presets[presetName];
                         
-                        const applyWhenReady = (retries = 20) => {
-                            const p5Ready = typeof typeXSlider !== 'undefined' || 
-                                          typeof innerHSlider !== 'undefined' || 
-                                          typeof strokeColorPicker !== 'undefined' ||
-                                          typeof typeSlider !== 'undefined' ||
-                                          typeof scalarSlider !== 'undefined' ||
-                                          (document.getElementById("fontChange") && document.getElementById("fontChange").options.length > 0);
+                        if (settings) {
+                            console.log(`STG: Preset found, applying settings:`, settings);
+                            const applyWhenReady = (retries = 20) => {
+                                const p5Ready = typeof typeXSlider !== 'undefined' || 
+                                              typeof ribbonCountSlider !== 'undefined' || 
+                                              typeof bkgdColorPicker !== 'undefined';
 
-                            if (typeof setSketchSettings === 'function' && (p5Ready || retries <= 0)) {
-                                console.log(`STG: Applying initial preset settings (p5Ready: ${p5Ready})`);
-                                setSketchSettings(json);
-                            } else if (retries > 0) {
-                                setTimeout(() => applyWhenReady(retries - 1), 100);
-                            }
-                        };
-                        
-                        applyWhenReady();
+                                if (typeof setSketchSettings === 'function' && (p5Ready || retries <= 0)) {
+                                    setSketchSettings(settings);
+                                } else if (retries > 0) {
+                                    setTimeout(() => applyWhenReady(retries - 1), 100);
+                                }
+                            };
+                            applyWhenReady();
+                        } else {
+                            console.warn(`STG: Preset '${presetName}' not found in ${PRESET_FILE}`);
+                        }
                     }
                 } catch (e) {
-                    console.error(`STG: Error fetching preset:`, e);
+                    console.error(`STG: Error fetching preset file:`, e);
                 }
             })();
         }
