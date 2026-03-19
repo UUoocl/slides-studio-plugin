@@ -48,7 +48,7 @@
     - [x] Update `danger.html` and `danger_settings.html`
     - [x] Update `flag.html` and `flag_settings.html`
     - [x] Update `layers.html` and `layers_settings.html`
-## Phase 5: Organization and Documentation
+## Phase 5: Organization and Documentation [checkpoint: cd690e9]
 - [x] Task: Move and document Source Manager app
     - [x] Create `apps/obs_source_manager/`
     - [x] Move `apps/manage_source_settings.html` to `apps/obs_source_manager/index.html` (update paths)
@@ -56,4 +56,4 @@
 - [x] Task: Update STG and Project docs
     - [x] Update `apps/space_type_generator/readme.md`
     - [x] Add "OBS Source Manager" to `apps/index.html`
-- [ ] Task: Conductor - User Manual Verification 'Organization and Documentation' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Organization and Documentation' (Protocol in workflow.md) [cd690e9]
