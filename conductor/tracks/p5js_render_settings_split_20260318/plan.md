@@ -29,14 +29,13 @@
 - [x] Task: Conductor - User Manual Verification 'Refactor space_type_generator (stripes.html)' (Protocol in workflow.md) [7318869]
 
 ## Phase 3: Implement Preset Management
-- [~] Task: Setup preset storage in single JSON file
-    - [x] Use `<app>_presets.json` in the same directory as the HTML files
+- [~] Task: Setup preset storage in plugin directory
+    - [x] Use `<app>_presets.json` in the same directory as the HTML files within the plugin folder
 - [~] Task: Implement save and apply preset logic in settings page
-    - [x] Update `saveSettings()` in `obsidian_save_load.js` to use local directory for JSON file
-    - [x] Update `loadSettings()` in `obsidian_save_load.js` to broadcast the selected preset name via SocketCluster
+    - [ ] Update `ServerManager.ts` endpoints to support plugin-relative paths if needed
+    - [x] Update `saveSettings()` in `obsidian_save_load.js` to use plugin-relative directory for JSON file
 - [~] Task: Implement preset loading in render page
-    - [x] Update `stg_sc_sync.js` to load from local directory JSON file based on the `?preset=` parameter
-    - [x] Update `stg_sc_sync.js` to listen for "apply preset" events from SocketCluster and load them from the local JSON file
+    - [x] Update `stg_sc_sync.js` to load from plugin-relative directory JSON file based on the `?preset=` parameter
 - [ ] Task: Conductor - User Manual Verification 'Implement Preset Management' (Protocol in workflow.md)
 
 ## Phase 4: Apply Changes to Other space_type_generator Apps
