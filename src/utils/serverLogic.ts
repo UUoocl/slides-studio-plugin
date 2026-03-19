@@ -218,25 +218,9 @@ export class ServerManager {
             const adapter = this.app.vault.adapter;
             if (!(adapter instanceof FileSystemAdapter)) return reply.code(500).send({ error: "No FS adapter" });
             const basePath = adapter.getBasePath();
-            const pluginDir = this.plugin.manifest.dir;
-
-            // Resolve folder: try absolute first, then plugin-relative, then vault-relative
-            let targetDir;
-            if (path.isAbsolute(folder)) {
-                targetDir = folder;
-            } else if (folder.startsWith(pluginDir)) {
-                // If it already starts with plugin dir, join with vault root
-                targetDir = path.join(basePath, folder);
-            } else {
-                // Default to plugin-relative for app presets
-                targetDir = path.join(basePath, pluginDir, folder);
-            }
-
+            const targetDir = path.join(basePath, folder);
             const fullPath = path.join(targetDir, filename.endsWith('.json') ? filename : `${filename}.json`);
-            
-            // Security check: must be within vault
-            if (!targetDir.startsWith(basePath)) return reply.code(403).send({ error: "Access denied: outside vault" });
-            
+            if (!targetDir.startsWith(basePath)) return reply.code(403).send({ error: "Access denied" });
             if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
             try {
                 fs.writeFileSync(fullPath, JSON.stringify(data, null, 2));
@@ -249,19 +233,7 @@ export class ServerManager {
         this.server.get<{ Querystring: FileListQuery }>('/api/file/list', (request, reply) => {
             const adapter = this.app.vault.adapter;
             if (!(adapter instanceof FileSystemAdapter)) return reply.code(500).send({ error: "No FS adapter" });
-            const basePath = adapter.getBasePath();
-            const pluginDir = this.plugin.manifest.dir;
-            const folder = request.query.folder;
-
-            let targetDir;
-            if (path.isAbsolute(folder)) {
-                targetDir = folder;
-            } else if (folder.startsWith(pluginDir)) {
-                targetDir = path.join(basePath, folder);
-            } else {
-                targetDir = path.join(basePath, pluginDir, folder);
-            }
-
+            const targetDir = path.join(adapter.getBasePath(), request.query.folder);
             if (!fs.existsSync(targetDir)) return reply.send([]);
             return reply.send(fs.readdirSync(targetDir).filter(f => f.endsWith('.json')));
         });
@@ -269,20 +241,7 @@ export class ServerManager {
         this.server.get<{ Querystring: GetFileQuery }>('/api/file/get', (request, reply) => {
             const adapter = this.app.vault.adapter;
             if (!(adapter instanceof FileSystemAdapter)) return reply.code(500).send({ error: "No FS adapter" });
-            const basePath = adapter.getBasePath();
-            const pluginDir = this.plugin.manifest.dir;
-            const folder = request.query.folder;
-
-            let targetDir;
-            if (path.isAbsolute(folder)) {
-                targetDir = folder;
-            } else if (folder.startsWith(pluginDir)) {
-                targetDir = path.join(basePath, folder);
-            } else {
-                targetDir = path.join(basePath, pluginDir, folder);
-            }
-
-            const fullPath = path.join(targetDir, request.query.filename);
+            const fullPath = path.join(adapter.getBasePath(), request.query.folder, request.query.filename);
             if (!fs.existsSync(fullPath)) return reply.code(404).send({ error: "Not found" });
             return reply.send(JSON.parse(fs.readFileSync(fullPath, 'utf-8')));
         });

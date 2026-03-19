@@ -8,13 +8,16 @@ filename = filename.substring(0, filename.lastIndexOf(".")) || filename;
 
 // In Slides Studio, apps are usually in /apps/ or /slide-studio-app/
 // The URL is usually http://localhost:PORT/PARENT_DIR/apps/space_type_generator/stripes_settings.html
-// We need to determine the folder path relative to the plugin directory
+// We need to determine the folder path relative to the vault root
 const pathParts = window.location.pathname.split('/');
 pathParts.pop(); // Remove the filename
 
 // The first part after leading slash is the plugin manifest dir (e.g. /slides-studio-plugin/)
-// We want everything AFTER that for the app-relative path
-const RELATIVE_APP_FOLDER = pathParts.slice(2).join('/'); // e.g. "apps/space_type_generator"
+// We want the path starting from the vault root (which includes the plugin dir if it's there)
+// The server root / maps to the lib/ folder OR the plugin dir depending on static config.
+// But the API expects paths relative to the VAULT ROOT.
+// Standard pattern: slice(1) to remove leading empty string
+const RELATIVE_APP_FOLDER = pathParts.slice(1).join('/'); // e.g. "slides-studio-plugin/apps/space_type_generator"
 
 const saveStyle = document.createElement('style');
 

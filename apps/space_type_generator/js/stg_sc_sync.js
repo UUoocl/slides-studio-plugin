@@ -7,10 +7,10 @@ import { create } from '../../lib/socketcluster-client.min.js';
     const channelName = `stg_${appBaseName}`;
     const presetChannelName = `stg_apply_preset_${appBaseName}`;
 
-    // Infer folder path relative to plugin directory
+    // Infer folder path relative to vault root
     const pathParts = window.location.pathname.split('/');
     pathParts.pop();
-    const RELATIVE_APP_FOLDER = pathParts.slice(2).join('/');
+    const RELATIVE_APP_FOLDER = pathParts.slice(1).join('/');
 
     const socket = create({
         hostname: window.location.hostname,

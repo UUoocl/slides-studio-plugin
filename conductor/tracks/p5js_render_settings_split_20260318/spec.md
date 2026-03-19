@@ -17,8 +17,9 @@ Separate the rendering and settings management for p5js applications to improve 
         - Only perform heavy settings checks when active.
 - **Preset Management**:
     - Allow users to save current configurations as presets.
-    - Presets will be saved as key-value pairs in a single JSON file per app (e.g., `apps/space_type_generator/stripes_presets.json`).
+    - Presets will be saved as key-value pairs in a single JSON file per app (e.g., `apps/space_type_generator/stripes_presets.json`) located in the app's directory relative to the vault root.
     - Render pages will support a query parameter (e.g., `?preset=presetName`) to load a specific configuration from the app's preset file on startup.
+    - Settings pages will allow the user to select a preset and "apply" it to the connected render page via SocketCluster.
 
 ## Non-Functional Requirements
 - **Communication**: Use SocketCluster for real-time synchronization between settings and render pages.
