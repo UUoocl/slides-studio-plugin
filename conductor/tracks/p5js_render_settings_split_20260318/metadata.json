@@ -1,0 +1,8 @@
+{
+  "track_id": "p5js_render_settings_split_20260318",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-03-18T00:00:00Z",
+  "updated_at": "2026-03-18T00:00:00Z",
+  "description": "Separate the rendering and settings management for p5js applications to improve user experience in OBS. Render pages will focus solely on the visual output, while a separate standalone HTML settings page will handle configuration and preset management via SocketCluster."
+}
