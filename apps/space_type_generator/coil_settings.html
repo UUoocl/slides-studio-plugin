@@ -32,6 +32,7 @@
     <script src="./js/keyboard_input.js"></script>
     
     <script id="sketchSettings">
+      let hideCanvasUI = false;
       function getSketchSettings(filename){
           const settings = {
               "filename" : filename,
@@ -120,9 +121,6 @@
           if (typeof bkgdColorPicker !== 'undefined') bkgdColorPicker.value(json.bkgdColor);
           PRESET_SETTINGS = json;
       }
-      
-      window.getSketchSettings = getSketchSettings;
-      window.setSketchSettings = setSketchSettings;
     </script>
 
     <script src="./js/stg_sc_sync.js" type="module"></script>

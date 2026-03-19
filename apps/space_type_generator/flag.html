@@ -20,6 +20,7 @@
     <script src="./js/manage_view.js"></script>
     <script src="./js/keyboard_input.js"></script>
     <script id="sketchSettings">
+      let hideCanvasUI = true;
       function setSketchSettings(json){
           if (!json) return;
           if (typeof typeXSlider !== 'undefined') typeXSlider.value(json.typeX);
@@ -67,8 +68,6 @@
           
           PRESET_SETTINGS = json;
       }
-      
-      window.setSketchSettings = setSketchSettings;
     </script>
     <script src="./js/stg_sc_sync.js" type="module"></script>
   </body>

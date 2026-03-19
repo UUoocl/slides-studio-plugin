@@ -41,11 +41,11 @@
 - [x] Task: Conductor - User Manual Verification 'Implement Preset Management' (Protocol in workflow.md) [d273161]
 
 ## Phase 4: Apply Changes to Other space_type_generator Apps
-- [ ] Task: Refactor remaining apps to use new SocketCluster and preset patterns
-    - [ ] Update `boost.html` and `boost_settings.html`
-    - [ ] Update `coil.html` and `coil_settings.html`
-    - [ ] Update `cylinder.html` and `cylinder_settings.html`
-    - [ ] Update `danger.html` and `danger_settings.html`
-    - [ ] Update `flag.html` and `flag_settings.html`
-    - [ ] Update `layers.html` and `layers_settings.html`
+- [x] Task: Refactor remaining apps to use new SocketCluster and preset patterns
+    - [x] Update `boost.html` and `boost_settings.html`
+    - [x] Update `coil.html` and `coil_settings.html`
+    - [x] Update `cylinder.html` and `cylinder_settings.html`
+    - [x] Update `danger.html` and `danger_settings.html`
+    - [x] Update `flag.html` and `flag_settings.html`
+    - [x] Update `layers.html` and `layers_settings.html`
 - [ ] Task: Conductor - User Manual Verification 'Apply Changes to Other space_type_generator Apps' (Protocol in workflow.md)

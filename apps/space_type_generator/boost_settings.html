@@ -256,16 +256,8 @@
   <script id="sketchSettings">
     let hideCanvasUI = false;
     function getSketchSettings(filename){
-      const scriptElems = document.querySelectorAll('script[src]:not([data-obsidian]')
-      const scriptSrcValues = [];
-      for (const script of scriptElems) {
-          scriptSrcValues.push(script.attributes.src.textContent);
-      }
-      scriptSrcValues.push(`./js/sketch_${filename}_obs.js`)
-
       const settings = {
         "filename" : filename,
-        "scripts" : scriptSrcValues,
         "text" : document.getElementById("textArea").value,
         "setFont" : document.getElementById("fontChange").value,
         "setAlignMode" : document.getElementById("alignMode").value,
@@ -298,47 +290,56 @@
         "setStageBstrength" : document.getElementById("stageBstrength").value,
         "setStageBdirect" : document.getElementById("stageBdirect").value,
         "setStageBlength" : document.getElementById("stageBlength").value,
-        "p5CameraX" : p5Camera.eyeX,
-        "p5CameraY" : p5Camera.eyeY,
-        "p5CameraZ" : p5Camera.eyeZ
+        "p5CameraX" : typeof p5Camera !== 'undefined' ? p5Camera.eyeX : 0,
+        "p5CameraY" : typeof p5Camera !== 'undefined' ? p5Camera.eyeY : 0,
+        "p5CameraZ" : typeof p5Camera !== 'undefined' ? p5Camera.eyeZ : 0
       }
       return settings
     }
 
     function setSketchSettings(json){
-      document.getElementById("textArea").value = json.text; 
-      document.getElementById("fontChange").value = json.setFont ; setFont( json.setFont);
-      document.getElementById("alignMode").value = json.setAlignMode ; setAlignMode( json.setAlignMode);
-      document.getElementById("scaler").value = json.setScaler ; setScaler( json.setScaler);
-      document.getElementById("bkgdColor").value = json.setBkgdColor ; setBkgdColor( json.setBkgdColor);
-      document.getElementById("capsOn").checked = json.setCapsOn === "on" ; setCapsOn();
-      document.getElementById("textColor").value = json.setTextColor ; setTextColor( json.setTextColor);
-      document.getElementById("strokeOn").checked = json.setStrokeOn === "on" ; setStrokeOn();
-      document.getElementById("strokeWeight").value = json.setStrokeWeight ; setStrokeWeight( json.setStrokeWeight);
-      document.getElementById("strokeColor").value = json.setStrokeColor ; setStrokeColor( json.setStrokeColor);
-      document.getElementById("sidesType").value = json.setSidesType ; setSidesType( json.setSidesType);
-      document.getElementById("sideSolidColor").value = json.setSideSolidColor ; setSideSolidColor( json.setSideSolidColor);
-      document.getElementById("quint0color").value = json.quint0color ; setColorSet("0", json.quint0color);
-      document.getElementById("quint1color").value = json.quint1color ; setColorSet("1", json.quint1color);
-      document.getElementById("quint2color").value = json.quint2color ; setColorSet("2", json.quint2color);
-      document.getElementById("quint3color").value = json.quint3color ; setColorSet("3", json.quint3color);
-      document.getElementById("quint4color").value = json.quint4color ; setColorSet("4", json.quint4color);
-      document.getElementById("orbitOn").checked = json.setOrbitOn === "on" ; setOrbitOn();
-      document.getElementById("mouseCenter").checked = json.setMouseCenterOn === "on" ; setMouseCenterOn();
-      document.getElementById("extrudeType").value = json.setExtrudeType ; setExtrudeType( json.setExtrudeType);
-      document.getElementById("tumbleDepthLength").value = json.setTumbleDepthLength ; setTumbleDepthLength( json.setTumbleDepthLength);
-      document.getElementById("tumbleAmount").value = json.setTumbleAmount ; setTumbleAmount( json.setTumbleAmount);
-      document.getElementById("zoomDepthLength").value = json.setZoomDepthLength ; setZoomDepthLength( json.setZoomDepthLength);
-      document.getElementById("punchDepthLength").value = json.setPunchDepthLength ; setPunchDepthLength( json.setPunchDepthLength);
-      document.getElementById("punchDistance").value = json.setPunchDistance ; setPunchDistance( json.setPunchDistance);
-      document.getElementById("maxDelay").value = json.setMaxDelay ; setMaxDelay( json.setMaxDelay);
-      document.getElementById("stageAstrength").value = json.setStageAstrength ; setStageAstrength( json.setStageAstrength);
-      document.getElementById("stageAdirect").value = json.setStageAdirect ; setStageAdirect( json.setStageAdirect);
-      document.getElementById("pauseLength").value = json.setPauseLength ; setPauseLength( json.setPauseLength);
-      document.getElementById("stageBstrength").value = json.setStageBstrength ; setStageBstrength( json.setStageBstrength);
-      document.getElementById("stageBdirect").value = json.setStageBdirect ; setStageBdirect( json.setStageBdirect);
-      document.getElementById("stageBlength").value = json.setStageBlength ; setStageBlength( json.setStageBlength);
-      p5Camera.camera(json.p5CameraX, json.p5CameraY, json.p5CameraZ)
+      if (!json) return;
+      const el = (id) => document.getElementById(id);
+      
+      if (json.text !== undefined) { el("textArea").value = json.text; if(typeof setText === 'function') setText(); }
+      if (json.setFont !== undefined) { el("fontChange").value = json.setFont; if(typeof setFont === 'function') setFont(json.setFont); }
+      if (json.setAlignMode !== undefined) { el("alignMode").value = json.setAlignMode; if(typeof setAlignMode === 'function') setAlignMode(json.setAlignMode); }
+      if (json.setScaler !== undefined) { el("scaler").value = json.setScaler; if(typeof setScaler === 'function') setScaler(json.setScaler); }
+      if (json.setBkgdColor !== undefined) { el("bkgdColor").value = json.setBkgdColor; if(typeof setBkgdColor === 'function') setBkgdColor(json.setBkgdColor); }
+      if (json.setCapsOn !== undefined) { el("capsOn").checked = json.setCapsOn === "on"; if(typeof setCapsOn === 'function') setCapsOn(); }
+      if (json.setTextColor !== undefined) { el("textColor").value = json.setTextColor; if(typeof setTextColor === 'function') setTextColor(json.setTextColor); }
+      if (json.setStrokeOn !== undefined) { el("strokeOn").checked = json.setStrokeOn === "on"; if(typeof setStrokeOn === 'function') setStrokeOn(); }
+      if (json.setStrokeWeight !== undefined) { el("strokeWeight").value = json.setStrokeWeight; if(typeof setStrokeWeight === 'function') setStrokeWeight(json.setStrokeWeight); }
+      if (json.setStrokeColor !== undefined) { el("strokeColor").value = json.setStrokeColor; if(typeof setStrokeColor === 'function') setStrokeColor(json.setStrokeColor); }
+      if (json.setSidesType !== undefined) { el("sidesType").value = json.setSidesType; if(typeof setSidesType === 'function') setSidesType(json.setSidesType); }
+      if (json.setSideSolidColor !== undefined) { el("sideSolidColor").value = json.setSideSolidColor; if(typeof setSideSolidColor === 'function') setSideSolidColor(json.setSideSolidColor); }
+      
+      if (json.quint0color !== undefined) { el("quint0color").value = json.quint0color; if(typeof setColorSet === 'function') setColorSet("0", json.quint0color); }
+      if (json.quint1color !== undefined) { el("quint1color").value = json.quint1color; if(typeof setColorSet === 'function') setColorSet("1", json.quint1color); }
+      if (json.quint2color !== undefined) { el("quint2color").value = json.quint2color; if(typeof setColorSet === 'function') setColorSet("2", json.quint2color); }
+      if (json.quint3color !== undefined) { el("quint3color").value = json.quint3color; if(typeof setColorSet === 'function') setColorSet("3", json.quint3color); }
+      if (json.quint4color !== undefined) { el("quint4color").value = json.quint4color; if(typeof setColorSet === 'function') setColorSet("4", json.quint4color); }
+      
+      if (json.setOrbitOn !== undefined) { el("orbitOn").checked = json.setOrbitOn === "on"; if(typeof setOrbitOn === 'function') setOrbitOn(); }
+      if (json.setMouseCenterOn !== undefined) { el("mouseCenter").checked = json.setMouseCenterOn === "on"; if(typeof setMouseCenterOn === 'function') setMouseCenterOn(); }
+      if (json.setExtrudeType !== undefined) { el("extrudeType").value = json.setExtrudeType; if(typeof setExtrudeType === 'function') setExtrudeType(json.setExtrudeType); }
+      if (json.setTumbleDepthLength !== undefined) { el("tumbleDepthLength").value = json.setTumbleDepthLength; if(typeof setTumbleDepthLength === 'function') setTumbleDepthLength(json.setTumbleDepthLength); }
+      if (json.setTumbleAmount !== undefined) { el("tumbleAmount").value = json.setTumbleAmount; if(typeof setTumbleAmount === 'function') setTumbleAmount(json.setTumbleAmount); }
+      if (json.setZoomDepthLength !== undefined) { el("zoomDepthLength").value = json.setZoomDepthLength; if(typeof setZoomDepthLength === 'function') setZoomDepthLength(json.setZoomDepthLength); }
+      if (json.setPunchDepthLength !== undefined) { el("punchDepthLength").value = json.setPunchDepthLength; if(typeof setPunchDepthLength === 'function') setPunchDepthLength(json.setPunchDepthLength); }
+      if (json.setPunchDistance !== undefined) { el("punchDistance").value = json.setPunchDistance; if(typeof setPunchDistance === 'function') setPunchDistance(json.setPunchDistance); }
+      
+      if (json.setMaxDelay !== undefined) { el("maxDelay").value = json.setMaxDelay; if(typeof setMaxDelay === 'function') setMaxDelay(json.setMaxDelay); }
+      if (json.setStageAstrength !== undefined) { el("stageAstrength").value = json.setStageAstrength; if(typeof setStageAstrength === 'function') setStageAstrength(json.setStageAstrength); }
+      if (json.setStageAdirect !== undefined) { el("stageAdirect").value = json.setStageAdirect; if(typeof setStageAdirect === 'function') setStageAdirect(json.setStageAdirect); }
+      if (json.setPauseLength !== undefined) { el("pauseLength").value = json.setPauseLength; if(typeof setPauseLength === 'function') setPauseLength(json.setPauseLength); }
+      if (json.setStageBstrength !== undefined) { el("stageBstrength").value = json.setStageBstrength; if(typeof setStageBstrength === 'function') setStageBstrength(json.setStageBstrength); }
+      if (json.setStageBdirect !== undefined) { el("stageBdirect").value = json.setStageBdirect; if(typeof setStageBdirect === 'function') setStageBdirect(json.setStageBdirect); }
+      if (json.setStageBlength !== undefined) { el("stageBlength").value = json.setStageBlength; if(typeof setStageBlength === 'function') setStageBlength(json.setStageBlength); }
+      
+      if(typeof p5Camera !== 'undefined' && json.p5CameraX !== undefined) {
+        p5Camera.camera(json.p5CameraX, json.p5CameraY, json.p5CameraZ);
+      }
       PRESET_SETTINGS = json
     }
   </script>
