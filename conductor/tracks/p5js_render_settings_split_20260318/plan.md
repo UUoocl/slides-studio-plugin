@@ -29,15 +29,15 @@
 - [x] Task: Conductor - User Manual Verification 'Refactor space_type_generator (stripes.html)' (Protocol in workflow.md) [7318869]
 
 ## Phase 3: Implement Preset Management
-- [ ] Task: Create API endpoint for saving presets
-    - [ ] Add an endpoint in the Fastify server (or use existing file write capabilities) to save JSON to `apps/space_type_generator/presets/`
-- [ ] Task: Implement save preset logic in settings page
-    - [ ] Add a "Save Preset" button and input field for preset name in `stripes_settings.html`
-    - [ ] Implement logic to gather current settings and send to the save API
-- [ ] Task: Implement preset loading in render page
-    - [ ] Add logic in `stripes.html` to parse the `?preset=` query parameter
-    - [ ] Fetch the specified JSON preset file on startup
-    - [ ] Apply the loaded preset settings before starting the render loop
+- [~] Task: Create API endpoint for saving presets
+    - [x] Add an endpoint in the Fastify server (or use existing file write capabilities) to save JSON to `apps/space_type_generator/presets/`
+- [x] Task: Implement save preset logic in settings page
+    - [x] Add a "Save Preset" button and input field for preset name in `stripes_settings.html`
+    - [x] Implement logic to gather current settings and send to the save API
+- [x] Task: Implement preset loading in render page
+    - [x] Add logic in `stripes.html` to parse the `?preset=` query parameter
+    - [x] Fetch the specified JSON preset file on startup
+    - [x] Apply the loaded preset settings before starting the render loop
 - [ ] Task: Conductor - User Manual Verification 'Implement Preset Management' (Protocol in workflow.md)
 
 ## Phase 4: Apply Changes to Other space_type_generator Apps

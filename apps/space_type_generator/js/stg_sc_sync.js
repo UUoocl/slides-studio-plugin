@@ -115,15 +115,20 @@ import { create } from '../../lib/socketcluster-client.min.js';
 
         setInterval(hideElements, 500);
 
-        // Subscribe to real-time updates
-        const channel = socket.subscribe(channelName);
-        (async () => {
-            for await (let data of channel) {
-                if (typeof setSketchSettings === 'function') {
-                    setSketchSettings(data);
+        // Subscribe to real-time updates ONLY if no preset is provided
+        // This avoids conflicts between initial preset load and real-time updates
+        if (!urlParams.has('preset')) {
+            const channel = socket.subscribe(channelName);
+            (async () => {
+                for await (let data of channel) {
+                    if (typeof setSketchSettings === 'function') {
+                        setSketchSettings(data);
+                    }
                 }
-            }
-        })();
+            })();
+        } else {
+            console.log(`STG: Preset active, real-time sync on ${channelName} disabled.`);
+        }
 
         // Load preset if provided in query param
         if (urlParams.has('preset')) {
