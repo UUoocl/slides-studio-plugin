@@ -222,7 +222,7 @@
 
             li.innerHTML = `
                 <span class="source-name">${name}</span>
-                <a href="${settingsUrl}" class="settings-link" target="_blank">Open Settings</a>
+                <a href="${settingsUrl}${settingsUrl.includes('?') ? '&' : '?'}obsSourceName=${encodeURIComponent(name)}" class="settings-link" target="_blank">Open Settings</a>
             `;
             sourceList.appendChild(li);
         }

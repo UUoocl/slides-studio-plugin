@@ -31,10 +31,10 @@
 ## Phase 3: Implement Preset Management [checkpoint: d273161]
 - [x] Task: Setup preset storage in vault root
     - [x] Use `<app>_presets.json` in the same directory as the HTML files relative to vault root
-- [x] Task: Implement save and apply preset logic in settings page
-    - [x] Restore `ServerManager.ts` endpoints to vault-relative paths
+- [~] Task: Implement save and apply preset logic in settings page
     - [x] Update `saveSettings()` in `obsidian_save_load.js` to use vault-relative directory for JSON file
     - [x] Update `loadSettings()` in `obsidian_save_load.js` to broadcast the selected preset name via SocketCluster
+    - [ ] Update `loadSettings()` in `obsidian_save_load.js` to update OBS Browser Source URL with `?preset=` parameter
 - [x] Task: Implement preset loading in render page
     - [x] Update `stg_sc_sync.js` to load from vault-relative directory JSON file based on the `?preset=` parameter
     - [x] Update `stg_sc_sync.js` to listen for "apply preset" events from SocketCluster and load them from the local JSON file

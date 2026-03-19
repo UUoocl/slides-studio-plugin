@@ -8,16 +8,13 @@ filename = filename.substring(0, filename.lastIndexOf(".")) || filename;
 
 // In Slides Studio, apps are usually in /apps/ or /slide-studio-app/
 // The URL is usually http://localhost:PORT/PARENT_DIR/apps/space_type_generator/stripes_settings.html
-// We need to determine the folder path relative to the vault root
 const pathParts = window.location.pathname.split('/');
 pathParts.pop(); // Remove the filename
-
-// The first part after leading slash is the plugin manifest dir (e.g. /slides-studio-plugin/)
-// We want the path starting from the vault root (which includes the plugin dir if it's there)
-// The server root / maps to the lib/ folder OR the plugin dir depending on static config.
-// But the API expects paths relative to the VAULT ROOT.
-// Standard pattern: slice(1) to remove leading empty string
 const RELATIVE_APP_FOLDER = pathParts.slice(1).join('/'); // e.g. "slides-studio-plugin/apps/space_type_generator"
+
+// Get OBS Source Name from URL if available (passed from manage_source_settings.html)
+const urlParams = new URLSearchParams(window.location.search);
+const obsSourceName = urlParams.get('obsSourceName');
 
 const saveStyle = document.createElement('style');
 
@@ -52,7 +49,8 @@ newDiv.innerHTML = `<span>Preset Name</span>
     <input type="text" id="settingsName" placeholder="My Preset" value="default">
     <button onclick="saveSettings()">Save</button>
     <select id="loadSelect"><option>Loading...</option></select>
-    <button onclick="loadSettings()">Apply</button>`;
+    <button onclick="loadSettings()">Apply</button>
+    ${obsSourceName ? `<span style="font-size: 10px; color: #888; margin-left: 10px;">Source: ${obsSourceName}</span>` : ''}`;
 
 // 2. Prepend the new element to the body
 document.body.prepend(newDiv);
@@ -120,9 +118,40 @@ window.loadSettings = async () => {
         if (window.stgSocket) {
             console.log(`STG: Broadcasting applyPreset: ${presetName}`);
             window.stgSocket.transmitPublish(`stg_apply_preset_${appBaseName}`, { presetName });
+            
+            // 3. Update OBS Browser Source URL if we have the source name
+            if (obsSourceName) {
+                try {
+                    // Fetch current settings to get the base URL
+                    const obsResponse = await window.stgSocket.invoke('obsRequest', {
+                        requestType: 'GetInputSettings',
+                        requestData: { inputName: obsSourceName }
+                    });
+                    
+                    const currentUrl = obsResponse.inputSettings.url;
+                    if (currentUrl) {
+                        const url = new URL(currentUrl);
+                        if (url.searchParams.get('preset') !== presetName) {
+                            url.searchParams.set('preset', presetName);
+                            console.log(`STG: Updating OBS source '${obsSourceName}' URL to: ${url.toString()}`);
+                            
+                            await window.stgSocket.invoke('obsRequest', {
+                                requestType: 'SetInputSettings',
+                                requestData: {
+                                    inputName: obsSourceName,
+                                    inputSettings: { url: url.toString() },
+                                    overlay: true
+                                }
+                            });
+                        }
+                    }
+                } catch (obsErr) {
+                    console.error('STG: Failed to update OBS source URL:', obsErr);
+                }
+            }
         }
         
-        // 3. Also broadcast real-time settings update
+        // 4. Also broadcast real-time settings update
         if (typeof window.publishStgSettings === 'function') {
             window.publishStgSettings();
         }

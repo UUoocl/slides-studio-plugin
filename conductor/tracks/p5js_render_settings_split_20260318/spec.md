@@ -20,6 +20,7 @@ Separate the rendering and settings management for p5js applications to improve 
     - Presets will be saved as key-value pairs in a single JSON file per app (e.g., `apps/space_type_generator/stripes_presets.json`) located in the app's directory relative to the vault root.
     - Render pages will support a query parameter (e.g., `?preset=presetName`) to load a specific configuration from the app's preset file on startup.
     - Settings pages will allow the user to select a preset and "apply" it to the connected render page via SocketCluster.
+    - Applying a preset will also update the OBS Browser Source URL to include the `?preset=presetName` query parameter (if not already present or if different) to ensure the preset persists on OBS restart.
 
 ## Non-Functional Requirements
 - **Communication**: Use SocketCluster for real-time synchronization between settings and render pages.
