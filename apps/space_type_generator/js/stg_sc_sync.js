@@ -7,6 +7,11 @@ import { create } from '../../lib/socketcluster-client.min.js';
     const channelName = `stg_${appBaseName}`;
     const presetChannelName = `stg_apply_preset_${appBaseName}`;
 
+    // Infer folder path relative to vault root
+    const pathParts = window.location.pathname.split('/');
+    pathParts.pop();
+    const RELATIVE_APP_FOLDER = pathParts.slice(1).join('/');
+
     const socket = create({
         hostname: window.location.hostname,
         port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
@@ -14,15 +19,13 @@ import { create } from '../../lib/socketcluster-client.min.js';
         authToken: { name: `Stg-Sync: ${appBaseName}${isSettingsPage ? ' (Settings)' : ''}` }
     });
 
-    // Expose socket for other scripts (e.g., obsidian_save_load.js)
     window.stgSocket = socket;
 
-    // Handle Input Sources (Audio STT and Keyboard Press)
+    // Handle Input Sources
     const urlParams = new URLSearchParams(window.location.search);
     const inputSource = urlParams.get('inputSource') || 'keyboard';
 
     if (inputSource === 'audio') {
-        console.log(`STG: Subscribing to SocketCluster channel: audio_stt`);
         (async () => {
             const audioChannel = socket.subscribe('audio_stt');
             for await (let data of audioChannel) {
@@ -53,9 +56,9 @@ import { create } from '../../lib/socketcluster-client.min.js';
 
     // Helper to load and apply preset from dictionary file
     const loadAndApplyPreset = async (presetName) => {
-        const APP_FOLDER = "apps/space_type_generator";
+        const APP_FOLDER = RELATIVE_APP_FOLDER;
         const PRESET_FILE = `${appBaseName}_presets.json`;
-        console.log(`STG: Loading preset: ${presetName} from ${PRESET_FILE}`);
+        console.log(`STG: Loading preset: ${presetName} from ${PRESET_FILE} in ${APP_FOLDER}`);
 
         try {
             const response = await fetch(`/api/file/get?folder=${APP_FOLDER}&filename=${PRESET_FILE}`);
@@ -76,8 +79,6 @@ import { create } from '../../lib/socketcluster-client.min.js';
                         }
                     };
                     applyWhenReady();
-                } else {
-                    console.warn(`STG: Preset '${presetName}' not found in ${PRESET_FILE}`);
                 }
             }
         } catch (e) {
@@ -86,9 +87,7 @@ import { create } from '../../lib/socketcluster-client.min.js';
     };
 
     if (isSettingsPage) {
-        console.log(`STG Settings Mode: ${channelName}`);
         let lastSettings = "";
-        
         const publishSettings = () => {
             if (typeof getSketchSettings === 'function') {
                 const settings = getSketchSettings(appBaseName);
@@ -118,12 +117,9 @@ import { create } from '../../lib/socketcluster-client.min.js';
             requestAnimationFrame(syncLoop);
         };
         setTimeout(syncLoop, 2000);
-
         window.publishStgSettings = publishSettings;
 
     } else {
-        console.log(`STG Display Mode: ${channelName}`);
-        
         const hideElements = () => {
             if (typeof hideui === 'function') { hideui(); }
             const p5Elements = document.querySelectorAll('input, button, select, textarea');
@@ -136,7 +132,6 @@ import { create } from '../../lib/socketcluster-client.min.js';
         };
         setInterval(hideElements, 500);
 
-        // Subscribe to real-time updates ONLY if no preset is provided at startup
         let isRealTimeSyncEnabled = !urlParams.has('preset');
 
         if (isRealTimeSyncEnabled) {
@@ -150,19 +145,16 @@ import { create } from '../../lib/socketcluster-client.min.js';
             })();
         }
 
-        // Listen for "apply preset" events from settings page
         const applyPresetChannel = socket.subscribe(presetChannelName);
         (async () => {
             for await (let data of applyPresetChannel) {
                 if (data.presetName) {
-                    console.log(`STG: Received applyPreset event: ${data.presetName}`);
-                    isRealTimeSyncEnabled = false; // Disable real-time sync when a preset is applied
+                    isRealTimeSyncEnabled = false;
                     loadAndApplyPreset(data.presetName);
                 }
             }
         })();
 
-        // Load initial preset if provided in query param
         if (urlParams.has('preset')) {
             loadAndApplyPreset(urlParams.get('preset'));
         }
