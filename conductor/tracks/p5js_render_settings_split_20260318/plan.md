@@ -28,17 +28,17 @@
     - [x] Implement "settings communication mode" logic in the draw loop
 - [x] Task: Conductor - User Manual Verification 'Refactor space_type_generator (stripes.html)' (Protocol in workflow.md) [7318869]
 
-## Phase 3: Implement Preset Management
-- [~] Task: Setup preset storage in vault root
+## Phase 3: Implement Preset Management [checkpoint: d273161]
+- [x] Task: Setup preset storage in vault root
     - [x] Use `<app>_presets.json` in the same directory as the HTML files relative to vault root
-- [~] Task: Implement save and apply preset logic in settings page
+- [x] Task: Implement save and apply preset logic in settings page
     - [x] Restore `ServerManager.ts` endpoints to vault-relative paths
     - [x] Update `saveSettings()` in `obsidian_save_load.js` to use vault-relative directory for JSON file
     - [x] Update `loadSettings()` in `obsidian_save_load.js` to broadcast the selected preset name via SocketCluster
-- [~] Task: Implement preset loading in render page
+- [x] Task: Implement preset loading in render page
     - [x] Update `stg_sc_sync.js` to load from vault-relative directory JSON file based on the `?preset=` parameter
     - [x] Update `stg_sc_sync.js` to listen for "apply preset" events from SocketCluster and load them from the local JSON file
-- [ ] Task: Conductor - User Manual Verification 'Implement Preset Management' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Implement Preset Management' (Protocol in workflow.md) [d273161]
 
 ## Phase 4: Apply Changes to Other space_type_generator Apps
 - [ ] Task: Refactor remaining apps to use new SocketCluster and preset patterns
