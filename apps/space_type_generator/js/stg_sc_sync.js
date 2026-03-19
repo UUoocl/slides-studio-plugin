@@ -5,6 +5,7 @@ import { create } from '../../lib/socketcluster-client.min.js';
     const filename = window.location.pathname.split('/').pop();
     const appBaseName = filename.replace('_settings.html', '').replace('.html', '');
     const channelName = `stg_${appBaseName}`;
+    const presetChannelName = `stg_apply_preset_${appBaseName}`;
 
     const socket = create({
         hostname: window.location.hostname,
@@ -12,6 +13,9 @@ import { create } from '../../lib/socketcluster-client.min.js';
         path: '/socketcluster/',
         authToken: { name: `Stg-Sync: ${appBaseName}${isSettingsPage ? ' (Settings)' : ''}` }
     });
+
+    // Expose socket for other scripts (e.g., obsidian_save_load.js)
+    window.stgSocket = socket;
 
     // Handle Input Sources (Audio STT and Keyboard Press)
     const urlParams = new URLSearchParams(window.location.search);
@@ -23,7 +27,6 @@ import { create } from '../../lib/socketcluster-client.min.js';
             const audioChannel = socket.subscribe('audio_stt');
             for await (let data of audioChannel) {
                 if (typeof window.setHotkeyText === 'function') {
-                    console.log('Audio STT received via SC:', data);
                     const text = data.stt || data.text || (typeof data === 'string' ? data : "");
                     if (text) {
                         window.setHotkeyText(text);
@@ -33,7 +36,6 @@ import { create } from '../../lib/socketcluster-client.min.js';
             }
         })();
     } else {
-        console.log(`STG: Subscribing to SocketCluster channel: keyboardPress`);
         (async () => {
             const kbChannel = socket.subscribe('keyboardPress');
             for await (let data of kbChannel) {
@@ -41,7 +43,6 @@ import { create } from '../../lib/socketcluster-client.min.js';
                     const keyData = data.data || data;
                     const displayKey = keyData.combo || keyData.key;
                     if (displayKey && displayKey.includes("+")) {
-                        console.log('Hotkey received via SC:', displayKey);
                         window.setHotkeyText(displayKey);
                         window.hotKeyTimer = 3;
                     }
@@ -50,9 +51,42 @@ import { create } from '../../lib/socketcluster-client.min.js';
         })();
     }
 
+    // Helper to load and apply preset from dictionary file
+    const loadAndApplyPreset = async (presetName) => {
+        const APP_FOLDER = "apps/space_type_generator";
+        const PRESET_FILE = `${appBaseName}_presets.json`;
+        console.log(`STG: Loading preset: ${presetName} from ${PRESET_FILE}`);
+
+        try {
+            const response = await fetch(`/api/file/get?folder=${APP_FOLDER}&filename=${PRESET_FILE}`);
+            if (response.ok) {
+                const presets = await response.json();
+                const settings = presets[presetName];
+                
+                if (settings) {
+                    const applyWhenReady = (retries = 20) => {
+                        const p5Ready = typeof typeXSlider !== 'undefined' || 
+                                      typeof ribbonCountSlider !== 'undefined' || 
+                                      typeof bkgdColorPicker !== 'undefined';
+
+                        if (typeof setSketchSettings === 'function' && (p5Ready || retries <= 0)) {
+                            setSketchSettings(settings);
+                        } else if (retries > 0) {
+                            setTimeout(() => applyWhenReady(retries - 1), 100);
+                        }
+                    };
+                    applyWhenReady();
+                } else {
+                    console.warn(`STG: Preset '${presetName}' not found in ${PRESET_FILE}`);
+                }
+            }
+        } catch (e) {
+            console.error(`STG: Error fetching preset file:`, e);
+        }
+    };
+
     if (isSettingsPage) {
         console.log(`STG Settings Mode: ${channelName}`);
-        
         let lastSettings = "";
         
         const publishSettings = () => {
@@ -66,11 +100,9 @@ import { create } from '../../lib/socketcluster-client.min.js';
             }
         };
 
-        // Attach listeners to all p5-created inputs for real-time updates
         const attachEventListeners = (retries = 20) => {
             const p5Inputs = document.querySelectorAll('input, select, textarea');
             if (p5Inputs.length > 5 || retries <= 0) {
-                console.log(`STG: Attaching listeners to ${p5Inputs.length} inputs`);
                 p5Inputs.forEach(el => {
                     el.addEventListener('input', publishSettings);
                     el.addEventListener('change', publishSettings);
@@ -79,7 +111,6 @@ import { create } from '../../lib/socketcluster-client.min.js';
                 setTimeout(() => attachEventListeners(retries - 1), 200);
             }
         };
-
         setTimeout(attachEventListeners, 1000);
 
         const syncLoop = () => {
@@ -94,9 +125,7 @@ import { create } from '../../lib/socketcluster-client.min.js';
         console.log(`STG Display Mode: ${channelName}`);
         
         const hideElements = () => {
-            if (typeof hideui === 'function') {
-                hideui();
-            }
+            if (typeof hideui === 'function') { hideui(); }
             const p5Elements = document.querySelectorAll('input, button, select, textarea');
             p5Elements.forEach(el => {
                 if (el.id !== 'defaultCanvas0' && el.style.display !== 'none') {
@@ -105,60 +134,37 @@ import { create } from '../../lib/socketcluster-client.min.js';
                 }
             });
         };
-
         setInterval(hideElements, 500);
 
-        // Subscribe to real-time updates ONLY if no preset is provided
-        if (!urlParams.has('preset')) {
+        // Subscribe to real-time updates ONLY if no preset is provided at startup
+        let isRealTimeSyncEnabled = !urlParams.has('preset');
+
+        if (isRealTimeSyncEnabled) {
             const channel = socket.subscribe(channelName);
             (async () => {
                 for await (let data of channel) {
-                    if (typeof setSketchSettings === 'function') {
+                    if (isRealTimeSyncEnabled && typeof setSketchSettings === 'function') {
                         setSketchSettings(data);
                     }
                 }
             })();
-        } else {
-            console.log(`STG: Preset active, real-time sync on ${channelName} disabled.`);
         }
 
-        // Load preset from dictionary JSON file if provided in query param
-        if (urlParams.has('preset')) {
-            const presetName = urlParams.get('preset');
-            const APP_FOLDER = "apps/space_type_generator";
-            const PRESET_FILE = `${appBaseName}_presets.json`;
-
-            console.log(`STG: Loading initial preset: ${presetName} from ${PRESET_FILE}`);
-            
-            (async () => {
-                try {
-                    const response = await fetch(`/api/file/get?folder=${APP_FOLDER}&filename=${PRESET_FILE}`);
-                    if (response.ok) {
-                        const presets = await response.json();
-                        const settings = presets[presetName];
-                        
-                        if (settings) {
-                            console.log(`STG: Preset found, applying settings:`, settings);
-                            const applyWhenReady = (retries = 20) => {
-                                const p5Ready = typeof typeXSlider !== 'undefined' || 
-                                              typeof ribbonCountSlider !== 'undefined' || 
-                                              typeof bkgdColorPicker !== 'undefined';
-
-                                if (typeof setSketchSettings === 'function' && (p5Ready || retries <= 0)) {
-                                    setSketchSettings(settings);
-                                } else if (retries > 0) {
-                                    setTimeout(() => applyWhenReady(retries - 1), 100);
-                                }
-                            };
-                            applyWhenReady();
-                        } else {
-                            console.warn(`STG: Preset '${presetName}' not found in ${PRESET_FILE}`);
-                        }
-                    }
-                } catch (e) {
-                    console.error(`STG: Error fetching preset file:`, e);
+        // Listen for "apply preset" events from settings page
+        const applyPresetChannel = socket.subscribe(presetChannelName);
+        (async () => {
+            for await (let data of applyPresetChannel) {
+                if (data.presetName) {
+                    console.log(`STG: Received applyPreset event: ${data.presetName}`);
+                    isRealTimeSyncEnabled = false; // Disable real-time sync when a preset is applied
+                    loadAndApplyPreset(data.presetName);
                 }
-            })();
+            }
+        })();
+
+        // Load initial preset if provided in query param
+        if (urlParams.has('preset')) {
+            loadAndApplyPreset(urlParams.get('preset'));
         }
     }
 })();

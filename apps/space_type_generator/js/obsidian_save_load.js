@@ -39,7 +39,7 @@ newDiv.innerHTML = `<span>Preset Name</span>
     <input type="text" id="settingsName" placeholder="My Preset" value="default">
     <button onclick="saveSettings()">Save</button>
     <select id="loadSelect"><option>Loading...</option></select>
-    <button onclick="loadSettings()">Load</button>`;
+    <button onclick="loadSettings()">Apply</button>`;
 
 // 2. Prepend the new element to the body
 document.body.prepend(newDiv);
@@ -99,9 +99,17 @@ window.loadSettings = async () => {
     const settings = presets[presetName];
 
     if (settings) {
+        // 1. Apply to the current settings page UI
         setSketchSettings(settings);
         document.getElementById("settingsName").value = presetName;
-        // Broadcast change via SocketCluster if on settings page
+        
+        // 2. Broadcast the PRESET NAME via SocketCluster for the render page
+        if (window.stgSocket) {
+            console.log(`STG: Broadcasting applyPreset: ${presetName}`);
+            window.stgSocket.transmitPublish(`stg_apply_preset_${appBaseName}`, { presetName });
+        }
+        
+        // 3. Also broadcast real-time settings update
         if (typeof window.publishStgSettings === 'function') {
             window.publishStgSettings();
         }

@@ -31,10 +31,12 @@
 ## Phase 3: Implement Preset Management
 - [~] Task: Setup preset storage in single JSON file
     - [x] Use `apps/space_type_generator/<app>_presets.json` to store multiple presets as a dictionary
-- [ ] Task: Implement save preset logic in settings page
-    - [ ] Update `saveSettings()` in `obsidian_save_load.js` to append/update presets in the dictionary JSON file
+- [~] Task: Implement save and apply preset logic in settings page
+    - [x] Update `saveSettings()` in `obsidian_save_load.js` to append/update presets in the dictionary JSON file
+    - [ ] Update `loadSettings()` in `obsidian_save_load.js` to broadcast the selected preset name via SocketCluster
 - [ ] Task: Implement preset loading in render page
-    - [ ] Update `stg_sc_sync.js` to load the correct preset from the dictionary JSON file based on the `?preset=` parameter
+    - [x] Update `stg_sc_sync.js` to load the correct preset from the dictionary JSON file based on the `?preset=` parameter
+    - [ ] Update `stg_sc_sync.js` to listen for "apply preset" events from SocketCluster and load them from the local JSON file
 - [ ] Task: Conductor - User Manual Verification 'Implement Preset Management' (Protocol in workflow.md)
 
 ## Phase 4: Apply Changes to Other space_type_generator Apps
