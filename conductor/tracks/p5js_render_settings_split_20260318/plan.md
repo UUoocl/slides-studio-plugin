@@ -1,19 +1,19 @@
 # Implementation Plan: p5js_render_settings_split
 
 ## Phase 1: Create Manage Browser Sources App
-- [ ] Task: Setup new HTML page for managing sources
-    - [ ] Create `apps/manage_source_settings.html`
-    - [ ] Add basic HTML structure and styling
-- [ ] Task: Connect to OBS via Slides-Studio Proxy
-    - [ ] Implement SocketCluster connection to communicate with the plugin's OBS proxy.
-    - [ ] Add UI feedback for connection status
-- [ ] Task: Retrieve and filter browser sources via Proxy
-    - [ ] Send request to proxy to fetch all inputs from OBS
-    - [ ] Filter inputs to only show browser sources
-    - [ ] Send request to proxy to fetch settings for each browser source to check for `--slides-studio-refresh: 1;` in CSS
-- [ ] Task: Display marked sources and link to settings
-    - [ ] Render a list of marked sources in the UI
-    - [ ] Generate links/buttons for each source that point to its respective `_settings.html` page
+- [x] Task: Setup new HTML page for managing sources
+    - [x] Create `apps/manage_source_settings.html`
+    - [x] Add basic HTML structure and styling
+- [x] Task: Connect to OBS via Slides-Studio Proxy
+    - [x] Implement SocketCluster connection to communicate with the plugin's OBS proxy.
+    - [x] Add UI feedback for connection status
+- [x] Task: Retrieve and filter browser sources via Proxy
+    - [x] Send request to proxy to fetch all inputs from OBS
+    - [x] Filter inputs to only show browser sources
+    - [x] Send request to proxy to fetch settings for each browser source to check for `--slides-studio-refresh: 1;` in CSS
+- [x] Task: Display marked sources and link to settings
+    - [x] Render a list of marked sources in the UI
+    - [x] Generate links/buttons for each source that point to its respective `_settings.html` page
 - [ ] Task: Conductor - User Manual Verification 'Create Manage Browser Sources App' (Protocol in workflow.md)
 
 ## Phase 2: Refactor space_type_generator (stripes.html)
