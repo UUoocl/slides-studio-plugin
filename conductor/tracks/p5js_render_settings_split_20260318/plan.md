@@ -1,6 +1,6 @@
 # Implementation Plan: p5js_render_settings_split
 
-## Phase 1: Create Manage Browser Sources App
+## Phase 1: Create Manage Browser Sources App [checkpoint: 1713ba5]
 - [x] Task: Setup new HTML page for managing sources
     - [x] Create `apps/manage_source_settings.html`
     - [x] Add basic HTML structure and styling
@@ -14,7 +14,7 @@
 - [x] Task: Display marked sources and link to settings
     - [x] Render a list of marked sources in the UI
     - [x] Generate links/buttons for each source that point to its respective `_settings.html` page
-- [ ] Task: Conductor - User Manual Verification 'Create Manage Browser Sources App' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Create Manage Browser Sources App' (Protocol in workflow.md) [1713ba5]
 
 ## Phase 2: Refactor space_type_generator (stripes.html)
 - [ ] Task: Refactor settings page (`stripes_settings.html`)
