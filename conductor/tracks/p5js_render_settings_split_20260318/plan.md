@@ -17,15 +17,15 @@
 - [x] Task: Conductor - User Manual Verification 'Create Manage Browser Sources App' (Protocol in workflow.md) [1713ba5]
 
 ## Phase 2: Refactor space_type_generator (stripes.html)
-- [ ] Task: Refactor settings page (`stripes_settings.html`)
-    - [ ] Ensure UI controls are correctly separated from rendering
-    - [ ] Implement SocketCluster communication via `socketcluster-client.min.js`
-    - [ ] Publish setting changes to `stripes-settings` channel
-- [ ] Task: Refactor render page (`stripes.html`)
-    - [ ] Remove UI controls and related DOM logic
-    - [ ] Connect to SocketCluster server
-    - [ ] Subscribe to `stripes-settings` channel
-    - [ ] Implement "settings communication mode" logic in the draw loop
+- [x] Task: Refactor settings page (`stripes_settings.html`)
+    - [x] Ensure UI controls are correctly separated from rendering
+    - [x] Implement SocketCluster communication via `socketcluster-client.min.js`
+    - [x] Publish setting changes to `stripes-settings` channel
+- [x] Task: Refactor render page (`stripes.html`)
+    - [x] Remove UI controls and related DOM logic
+    - [x] Connect to SocketCluster server
+    - [x] Subscribe to `stripes-settings` channel
+    - [x] Implement "settings communication mode" logic in the draw loop
 - [ ] Task: Conductor - User Manual Verification 'Refactor space_type_generator (stripes.html)' (Protocol in workflow.md)
 
 ## Phase 3: Implement Preset Management

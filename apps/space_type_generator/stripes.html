@@ -23,6 +23,7 @@
       let hideCanvasUI = true; // Default to true for display page
       function setSketchSettings(json){
           if (!json) return;
+          // Only update if the variable exists (p5 setup finished)
           if (typeof typeXSlider !== 'undefined') typeXSlider.value(json.typeX);
           if (typeof typeYSlider !== 'undefined') typeYSlider.value(json.typeY);
           if (typeof typeStrokeSlider !== 'undefined') typeStrokeSlider.value(json.typeStroke);
