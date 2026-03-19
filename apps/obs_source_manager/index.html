@@ -187,42 +187,43 @@
             const li = document.createElement('li');
             li.className = 'source-item';
             
-            // Try to infer the settings page name
-            // e.g. .../stripes.html -> stripes_settings.html
             let settingsUrl = '#';
             if (url) {
                 try {
-                    // Handle both full URLs and potential local paths
                     let urlObj;
                     if (url.startsWith('http')) {
                         urlObj = new URL(url);
                     } else {
-                        // For local paths, we'll try to treat it as relative to the current app
-                        // but usually OBS browser sources will have full http://localhost:PORT/ paths
                         urlObj = new URL(url, window.location.origin);
                     }
+
+                    // Remove preset parameter if it exists (don't want to hide UI in settings page)
+                    urlObj.searchParams.delete('preset');
 
                     const pathname = urlObj.pathname;
                     if (pathname.endsWith('.html')) {
                         const newPathname = pathname.replace('.html', '_settings.html');
                         urlObj.pathname = newPathname;
+                        
+                        // Add obsSourceName parameter
+                        urlObj.searchParams.set('obsSourceName', name);
+                        
                         settingsUrl = urlObj.toString();
                     }
                 } catch (e) {
                     console.warn('Could not parse URL:', url, e);
-                    // Fallback to simple logic if URL parsing fails
                     const parts = url.split('/');
                     const filename = parts.pop();
                     if (filename && filename.endsWith('.html')) {
                         const base = filename.replace('.html', '');
-                        settingsUrl = parts.join('/') + '/' + base + '_settings.html';
+                        settingsUrl = parts.join('/') + '/' + base + '_settings.html?obsSourceName=' + encodeURIComponent(name);
                     }
                 }
             }
 
             li.innerHTML = `
                 <span class="source-name">${name}</span>
-                <a href="${settingsUrl}${settingsUrl.includes('?') ? '&' : '?'}obsSourceName=${encodeURIComponent(name)}" class="settings-link" target="_blank">Open Settings</a>
+                <a href="${settingsUrl}" class="settings-link" target="_blank">Open Settings</a>
             `;
             sourceList.appendChild(li);
         }
