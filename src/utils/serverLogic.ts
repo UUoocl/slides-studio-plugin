@@ -11,13 +11,23 @@ import { WebSocketServer } from 'ws';
 import type { OBSRequestTypes } from 'obs-websocket-js';
 
 import type slidesStudioPlugin from '../main'; 
-import { SaveFileBody, FileListQuery, GetFileQuery, OscSendBody, MidiSendBody, MidiPayload, CustomMessageBody } from '../types';
+import { 
+    SaveFileBody, 
+    FileListQuery, 
+    GetFileQuery, 
+    OscSendBody, 
+    MidiSendBody, 
+    MidiPayload, 
+    CustomMessageBody,
+    ReadFileRequest,
+    WriteFileRequest
+} from '../types';
 import { ObsServer } from './obsEndpoints';
 
-interface ScRequest {
+interface ScRequest<T = unknown> {
     end: (data?: unknown) => void;
     error: (err: unknown) => void;
-    data: unknown;
+    data: T;
 }
 
 interface QueuedObsRequest {
@@ -401,12 +411,57 @@ export class ServerManager {
 
             void (async () => {
                 for await (const request of socket.procedure('setInfo')) {
-                    const scReq = request as unknown as ScRequest;
-                    const data = scReq.data as { name: string };
+                    const scReq = request as unknown as ScRequest<{ name: string }>;
+                    const data = scReq.data;
                     console.warn(`[SocketCluster] Client ${socket.id} updated name to: ${data.name}`);
                     this.clientMetadata.set(socket.id, { name: data.name || 'Unknown' });
                     this.broadcastServerState();
                     scReq.end();
+                }
+            })();
+
+            void (async () => {
+                for await (const request of socket.procedure('readFile')) {
+                    const scReq = request as unknown as ScRequest<ReadFileRequest>;
+                    const adapter = this.app.vault.adapter;
+                    if (!(adapter instanceof FileSystemAdapter)) {
+                        scReq.error('FileSystemAdapter not available');
+                        continue;
+                    }
+                    const fullPath = path.join(adapter.getBasePath(), scReq.data.path);
+                    if (!fs.existsSync(fullPath)) {
+                        scReq.error('File not found');
+                        continue;
+                    }
+                    try {
+                        const content = fs.readFileSync(fullPath, 'utf-8');
+                        scReq.end({ content });
+                    } catch (err) {
+                        scReq.error(String(err));
+                    }
+                }
+            })();
+
+            void (async () => {
+                for await (const request of socket.procedure('writeFile')) {
+                    const scReq = request as unknown as ScRequest<WriteFileRequest>;
+                    const adapter = this.app.vault.adapter;
+                    if (!(adapter instanceof FileSystemAdapter)) {
+                        scReq.error('FileSystemAdapter not available');
+                        continue;
+                    }
+                    const fullPath = path.join(adapter.getBasePath(), scReq.data.path);
+                    const targetDir = path.dirname(fullPath);
+                    
+                    try {
+                        if (!fs.existsSync(targetDir)) {
+                            fs.mkdirSync(targetDir, { recursive: true });
+                        }
+                        fs.writeFileSync(fullPath, scReq.data.content);
+                        scReq.end({ success: true });
+                    } catch (err) {
+                        scReq.error(String(err));
+                    }
                 }
             })();
 

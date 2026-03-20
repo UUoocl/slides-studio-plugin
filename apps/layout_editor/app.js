@@ -1,3 +1,5 @@
+import '../../slide-studio-app/lib/sc-connection.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     // UI Elements
     const controls = {
@@ -35,17 +37,33 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const saveBtn = document.getElementById('save-layout');
+    const statusMsg = document.getElementById('status-message');
+    const layoutList = document.getElementById('layout-list');
+
+    // Constants
+    const LAYOUT_FILE = 'apps/slide-studio-app/layouts.json';
 
     // State
     let isDragging = false;
     let isResizing = false;
     let startX, startY, startLeft, startTop, startWidth, startHeight;
+    let allLayouts = {};
 
     // Initialization
-    function init() {
+    async function init() {
         updateParentPreview();
         updateIframePreview();
         setupEventListeners();
+        
+        // Wait for socket to connect before loading
+        if (window.scSocket.state === 'open') {
+            loadLayouts();
+        } else {
+            for await (let event of window.scSocket.listener('connect')) {
+                loadLayouts();
+                break;
+            }
+        }
     }
 
     function setupEventListeners() {
@@ -117,11 +135,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function formatValue(val) {
-        if (!val) return '0';
-        if (val.endsWith('%') || val.endsWith('px') || val.endsWith('em') || val.endsWith('rem') || val === 'auto') {
-            return val;
+        if (!val && val !== 0) return '0';
+        const sVal = String(val);
+        if (sVal.endsWith('%') || sVal.endsWith('px') || sVal.endsWith('em') || sVal.endsWith('rem') || sVal === 'auto') {
+            return sVal;
         }
-        return isNaN(val) ? val : `${val}px`;
+        return isNaN(Number(sVal)) ? sVal : `${sVal}px`;
+    }
+
+    function parseValue(val) {
+        if (!val) return '0';
+        const sVal = String(val);
+        return sVal.replace('px', '');
     }
 
     // Interaction Handlers
@@ -181,15 +206,83 @@ document.addEventListener('DOMContentLoaded', () => {
         isResizing = false;
     }
 
+    // Persistence logic
+    async function loadLayouts() {
+        try {
+            // Using SocketCluster invoke to read file via plugin
+            const result = await window.scSocket.invoke('readFile', { path: LAYOUT_FILE });
+            if (result && result.content) {
+                allLayouts = JSON.parse(result.content);
+                updateLayoutList();
+            }
+        } catch (e) {
+            console.log('No existing layouts found or error loading:', e);
+            allLayouts = {};
+        }
+    }
+
+    function updateLayoutList() {
+        layoutList.innerHTML = '';
+        Object.keys(allLayouts).forEach(name => {
+            const li = document.createElement('li');
+            li.textContent = name;
+            li.addEventListener('click', () => applyLayout(name));
+            layoutList.appendChild(li);
+        });
+    }
+
+    function applyLayout(name) {
+        const layout = allLayouts[name];
+        if (!layout) return;
+
+        controls.layoutName.value = name;
+        controls.parentWidth.value = layout.parent.width;
+        controls.parentHeight.value = layout.parent.height;
+        
+        const s = layout.styles;
+        controls.top.value = parseValue(s.top);
+        controls.left.value = parseValue(s.left);
+        controls.width.value = parseValue(s.width);
+        controls.height.value = parseValue(s.height);
+        controls.zIndex.value = s.zIndex;
+        controls.aspectRatio.value = s.aspectRatio;
+        controls.objectFit.value = s.objectFit;
+        controls.opacity.value = s.opacity;
+        controls.borderRadius.value = parseValue(s.borderRadius);
+        controls.boxShadow.value = s.boxShadow;
+        controls.mixBlendMode.value = s.mixBlendMode;
+
+        // Parse transform: scale(1) rotate(0deg) skew(0deg, 0deg)
+        const transform = s.transform || '';
+        const scaleMatch = transform.match(/scale\((.*?)\)/);
+        const rotateMatch = transform.match(/rotate\((.*?)deg\)/);
+        const skewMatch = transform.match(/skew\((.*?)deg,\s*(.*?)deg\)/);
+
+        if (scaleMatch) controls.scale.value = scaleMatch[1];
+        if (rotateMatch) controls.rotate.value = rotateMatch[1];
+        if (skewMatch) {
+            controls.skewX.value = skewMatch[1];
+            controls.skewY.value = skewMatch[2];
+        }
+
+        // Update value displays
+        Object.keys(valueDisplays).forEach(key => {
+            valueDisplays[key].textContent = controls[key].value;
+        });
+
+        updateParentPreview();
+        updateIframePreview();
+        showStatus(`Layout "${name}" loaded`, 'success');
+    }
+
     async function saveLayout() {
         const layoutName = controls.layoutName.value.trim();
         if (!layoutName) {
-            alert('Please enter a layout name');
+            showStatus('Please enter a layout name', 'error');
             return;
         }
 
         const layoutData = {
-            name: layoutName,
             parent: {
                 width: controls.parentWidth.value,
                 height: controls.parentHeight.value
@@ -197,10 +290,27 @@ document.addEventListener('DOMContentLoaded', () => {
             styles: getStylesFromControls()
         };
 
-        console.log('Saving layout:', layoutData);
-        
-        // Persistence logic will be implemented in Phase 3
-        alert(`Layout "${layoutName}" prepared for saving! (Persistence to be added in Phase 3)`);
+        allLayouts[layoutName] = layoutData;
+
+        try {
+            await window.scSocket.invoke('writeFile', {
+                path: LAYOUT_FILE,
+                content: JSON.stringify(allLayouts, null, 2)
+            });
+            showStatus(`Layout "${layoutName}" saved successfully!`, 'success');
+            updateLayoutList();
+        } catch (e) {
+            console.error('Save failed:', e);
+            showStatus(`Save failed: ${e.message}`, 'error');
+        }
+    }
+
+    function showStatus(msg, type) {
+        statusMsg.textContent = msg;
+        statusMsg.className = type;
+        setTimeout(() => {
+            statusMsg.className = '';
+        }, 3000);
     }
 
     init();

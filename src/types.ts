@@ -209,6 +209,15 @@ export interface CustomMessageBody {
     data: Record<string, unknown>;
 }
 
+export interface ReadFileRequest {
+    path: string;
+}
+
+export interface WriteFileRequest {
+    path: string;
+    content: string;
+}
+
 export interface MouseEventData {
     topic: string;
     data: unknown;
