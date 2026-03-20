@@ -18,13 +18,13 @@
     - [x] Implement event listeners in `app.js` to bind UI control changes to the preview iframe's live CSS styles.
 - [x] Task: Conductor - User Manual Verification 'Custom Layout Editor App UI' (Protocol in workflow.md)
 
-## Phase 3: Persistence and Storage
-- [ ] Task: Implement Save/Load Logic
-    - [ ] Write unit tests for JSON serialization and parsing logic in a new `apps/layout_editor/app.test.js`.
-    - [ ] Add a "Layout Name" text input and "Save Layout" button to the UI.
-    - [ ] Implement logic in `app.js` to gather current CSS properties from the UI and serialize them into a JSON object.
-    - [ ] Implement API calls (using the plugin's Fastify server or SocketCluster bridge) to read/write the JSON object to `apps/slide-studio-app/layouts.json`.
-- [ ] Task: Conductor - User Manual Verification 'Persistence and Storage' (Protocol in workflow.md)
+## Phase 3: Persistence and Storage [checkpoint: 4d329b6]
+- [x] Task: Implement Save/Load Logic
+    - [x] Write unit tests for JSON serialization and parsing logic in a new `apps/layout_editor/app.test.js`.
+    - [x] Add a "Layout Name" text input and "Save Layout" button to the UI.
+    - [x] Implement logic in `app.js` to gather current CSS properties from the UI and serialize them into a JSON object.
+    - [x] Implement API calls (using the plugin's Fastify server or SocketCluster bridge) to read/write the JSON object to `apps/slide-studio-app/layouts.json`.
+- [x] Task: Conductor - User Manual Verification 'Persistence and Storage' (Protocol in workflow.md)
 
 ## Phase 4: Slide Navigation and Triggering (`studio.html`)
 - [ ] Task: Update `studio.html` Logic
