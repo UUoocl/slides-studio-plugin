@@ -40,3 +40,6 @@
     - [x] Modify `slide-studio-app/slide_view/slides_studio_slide_view.html` to listen for the `apply-custom-layout` SocketCluster event.
     - [x] Implement logic to receive the CSS properties payload and dynamically apply them to the slide iframe's inline styles or update a dynamic `<style>` block.
 - [x] Task: Conductor - User Manual Verification 'Slide View Application' (Protocol in workflow.md)
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions [ccfc9ba]
