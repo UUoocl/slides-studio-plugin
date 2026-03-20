@@ -1,0 +1,8 @@
+{
+  "track_id": "custom_css_layout_editor_20260319",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-03-19T00:00:00Z",
+  "updated_at": "2026-03-19T00:00:00Z",
+  "description": "new feature to create custom css layout for the  slide-studio-app slide-view. Currently there are 4 slide css layouts in iframe_positioins.css .  The goal of the custom css layout editor is to give the user a gui where the slide position can be set. \nCreate an interface where the User can set the parent window width and height, adjust the iframe css layout settings to visualize the layout.  The custom css layout can be saved and used as an OBS Scene name . When the Speaker-view navigates to the scene containing the custom css layout name,  then the custom css layout is applied to the slide-view. \nThe gui should allow the User to click and drag to adjust the iframe or use slides to adjust the iframe position in the parent window. The css properties used in the iframe_positioins.css should be available . Recommend other css settings that could be useful . correct the file name iframe_positioins.css to iframe_positions.css"
+}
