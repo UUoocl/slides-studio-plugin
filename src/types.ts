@@ -1,231 +1,178 @@
 /**
+ * @fileoverview Type definitions for Slides Studio.
+ */
+
+import {TFile} from 'obsidian';
+
+/**
  * Device Settings
  */
 export interface OscDeviceSetting {
-    name: string;
-    ip: string;
-    inPort: number;
-    outPort: number;
-    autoStart?: boolean;
+  name: string;
+  ip: string;
+  inPort: number;
+  outPort: number;
+  autoStart?: boolean;
 }
 
 export interface MidiDeviceSetting {
-    name: string;      // User defined alias (e.g. "My Keyboard")
-    inputName: string; // System Input Name (e.g. "Keystation 49")
-    outputName: string;// System Output Name
-    autoStart?: boolean;
+  name: string;
+  inputDevice: string;
+  outputDevice: string;
+  autoStart?: boolean;
 }
 
 export interface AudioDeviceSetting {
-    name: string;      // User defined alias (e.g. "My Mic")
-    deviceId: string;  // System Device ID
-    sampleRate: number;// Sample Rate (e.g. 44100)
-    fftSize: number;   // FFT Size (e.g. 2048)
-    smoothingTimeConstant: number; // Smoothing (0-1)
-    fftEnabled: boolean;
-    sttEnabled: boolean;
-    autoStart?: boolean;
-}
-
-export interface GamepadDeviceSetting {
-    name: string;      // User defined alias (e.g. "Player 1")
-    index: number;     // The gamepad index (0, 1, 2, 3)
-    enabled: boolean;  // Whether this gamepad is broadcasting
-}
-
-export interface MediaPipeDeviceSetting {
-    name: string;      // User defined alias / channel name
-    type: 'face' | 'hand' | 'pose';
-    sourceName: string; // OBS Source or Scene name
-    fps: number;
-    width: number;
-    enabled: boolean;
-    autoStart?: boolean;
-}
-
-export interface UvcDeviceSetting {
-    name: string;      // User defined alias / channel name
-    index: number;     // Hardware index
-    enabled: boolean;
-    pollingEnabled: boolean;
-    pollsPerSecond: number;
-    mapEnabled?: boolean;
-    mapMin?: number;
-    mapMax?: number;
+  name: string;
+  inputDevice: string;
+  autoStart?: boolean;
 }
 
 /**
- * Main Plugin Settings
+ * Plugin Settings
  */
 export interface SlidesStudioPluginSettings {
-    websocketIP_Text: string;
-    websocketPort_Text: string;
-    websocketPW_Text: string;
-    slidesPort_Text: string;
-    slide_tags: string[];
-    scene_tags: string[];
-    camera_tags: string[];
-    camera_shape_tags: string[];
-    newTag: string;
-    newTagKey: string;   // Added to support dynamic UI keys
-    newTagValue: string; // Added to support dynamic UI values
-    user_tags: string[];
-    obsAppName_Text: string;
-    obsCollection_Text: string;
-    obsProfile_Text: string;
-    obsCollections_List: string[];
-    obsProfiles_List: string[];
-    obsDebugPort_Text: string;
-    obsAppPath_Text: string;
-    obsRequestLimit: number;
-    serverPort: string;
-    serverEnabled: boolean;
-    pythonPath: string;
-    mouseMonitorEnabled: boolean;
-    mouseMonitorPosition: boolean;
-    mouseMonitorClicks: boolean;
-    mouseMonitorScroll: boolean;
-    keyboardMonitorEnabled: boolean;
-    keyboardMonitorShowCombinations: boolean;
-    uvcUtilEnabled: boolean;
-    uvcUtilLibPath: string;
-    settingsFolder: string;
-    settingsFile: string;
-    oscDevices: OscDeviceSetting[];
-    midiDevices: MidiDeviceSetting[];
-    audioDevices: AudioDeviceSetting[];
-    gamepadDevices: GamepadDeviceSetting[];
-    mediapipeDevices: MediaPipeDeviceSetting[];
-    uvcDevices: UvcDeviceSetting[];
-    all_sources: string[];
+  fastifyPort: number;
+  pythonPath: string;
+  pythonSocketPort: number;
+  obsIP: string;
+  obsPort: number;
+  obsPassword?: string;
+  obsCollection: string;
+  obsDebugPort: number;
+  obsDebugMode: boolean;
+  oscDevices: OscDeviceSetting[];
+  midiDevices: MidiDeviceSetting[];
+  audioDevices: AudioDeviceSetting[];
+  mouseMonitor: {
+    enabled: boolean;
+    trackPosition: boolean;
+    trackClick: boolean;
+    trackScroll: boolean;
+  };
+  keyboardMonitor: {
+    enabled: boolean;
+    showCombinations: boolean;
+  };
+  uvcUtilBridge: {
+    enabled: boolean;
+    libraryPath: string;
+  };
+  settingsFolder: string;
+  settingsFile: string;
 }
 
-/**
- * Message Payloads for OSC/MIDI
- */
-export interface MidiPayload {
-    type: string;
-    data?: number[];
-    channel?: number;
-    command?: number;
-    note?: number | null;
-    velocity?: number;
-    value?: number;
-    controller?: number | null;
-}
-
-/**
- * OBS WebSocket Connection Details
- */
-export interface WssDetails {
-    IP: string;
-    PORT: string;
-    PW: string;
-}
-
-/**
- * OBS Internal Data Structures
- */
-export interface OBSScene {
-    sceneName: string;
-}
-
-export interface OBSSceneList {
-    scenes: OBSScene[];
-}
-
-export interface OBSSceneItem {
-    sourceName: string;
-}
-
-export interface OBSSceneItemList {
-    sceneItems: OBSSceneItem[];
-}
-
-export interface OBSSource {
-    inputUuid: string;
-    inputName: string;
-}
-
-export interface OBSInputListResponse {
-    inputs: OBSSource[];
-}
-
-export interface OBSInputSettingsResponse {
-    inputSettings: {
-        url: string;
-        css: string;
-    };
-}
-
-/**
- * OBS Custom Events
- */
-export interface OBSCustomEvent {
-    event_name: string;
-    osc_name?: string;
-    midi_name?: string;
-    address?: string;
-    arg1?: string | number;
-    arg2?: string | number;
-    arg3?: string | number;
-    arg4?: string | number;
-    arg5?: string | number;
-    arg6?: string | number;
-    arg7?: string | number;
-}
+export const DEFAULT_SETTINGS: SlidesStudioPluginSettings = {
+  fastifyPort: 8080,
+  pythonPath: 'python3',
+  pythonSocketPort: 50007,
+  obsIP: '127.0.0.1',
+  obsPort: 4455,
+  obsCollection: '',
+  obsDebugPort: 4444,
+  obsDebugMode: false,
+  oscDevices: [],
+  midiDevices: [],
+  audioDevices: [],
+  mouseMonitor: {
+    enabled: false,
+    trackPosition: true,
+    trackClick: true,
+    trackScroll: true,
+  },
+  keyboardMonitor: {
+    enabled: false,
+    showCombinations: true,
+  },
+  uvcUtilBridge: {
+    enabled: false,
+    libraryPath: '/usr/local/lib/libuvc.dylib',
+  },
+  settingsFolder: 'SlidesStudio',
+  settingsFile: 'settings.json',
+};
 
 /**
  * Server API Interfaces
  */
 export interface SaveFileBody {
-    folder: string;
-    filename: string;
-    data: unknown;
+  folder: string;
+  filename: string;
+  content: string;
 }
 
 export interface FileListQuery {
-    folder: string;
+  folder: string;
 }
 
 export interface GetFileQuery {
-    folder: string;
-    filename: string;
+  folder: string;
+  filename: string;
 }
 
 export interface OscSendBody {
-    deviceName: string;
-    address: string;
-    args: (string | number | boolean)[];
+  deviceName: string;
+  address: string;
+  args: Array<{
+    type: string;
+    value: string | number | boolean;
+  }>;
 }
 
 export interface MidiSendBody {
-    deviceName: string;
-    message: MidiPayload;
+  deviceName: string;
+  message: number[];
+}
+
+export interface MidiPayload {
+  command: number;
+  data1: number;
+  data2: number;
 }
 
 export interface CustomMessageBody {
-    name: string;
-    data: Record<string, unknown>;
+  name: string;
+  data: Record<string, unknown>;
 }
 
 export interface ReadFileRequest {
-    path: string;
+  path: string;
 }
 
 export interface WriteFileRequest {
-    path: string;
-    content: string;
+  path: string;
+  content: string;
 }
 
 export interface MouseEventData {
-    topic: string;
-    data: unknown;
+  topic: string;
+  data: unknown;
 }
 
 export interface ISlidesStudioPlugin {
-    manifest: {
-        dir: string;
-    };
-    settings: SlidesStudioPluginSettings;
+  manifest: {
+    dir: string;
+  };
+  settings: SlidesStudioPluginSettings;
+  isObsConnected: boolean;
+}
+
+/**
+ * Obsidian Tag View Types
+ */
+export interface SlideTag {
+  id: string;
+  type: 'scene' | 'camera' | 'custom';
+  value: string;
+}
+
+export interface SlideData {
+  tags: SlideTag[];
+}
+
+/**
+ * Helper to get the base path from Obsidian adapter
+ */
+export interface ObsidianFileSystemAdapter {
+  getBasePath(): string;
 }

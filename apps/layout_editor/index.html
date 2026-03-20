@@ -1,133 +1,141 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slides Studio - Custom CSS Layout Editor</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Slides Studio - Custom CSS Layout Editor</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id="editor-container">
-        <aside id="controls">
-            <h2>Layout Controls</h2>
-            <div class="control-group">
-                <label for="layout-name">Layout Name:</label>
-                <input type="text" id="layout-name" placeholder="e.g. Sidebar-Right">
-            </div>
+  <div id="editor-container">
+    <aside id="controls">
+      <h2>Layout Controls</h2>
+      <div class="control-group">
+        <label for="layout-name">Layout Name:</label>
+        <input type="text" id="layout-name" placeholder="e.g. Sidebar-Right">
+      </div>
 
-            <fieldset>
-                <legend>Parent Window</legend>
-                <div class="control-row">
-                    <label for="parent-width">Width (px):</label>
-                    <input type="number" id="parent-width" value="1920">
-                </div>
-                <div class="control-row">
-                    <label for="parent-height">Height (px):</label>
-                    <input type="number" id="parent-height" value="1080">
-                </div>
-            </fieldset>
+      <fieldset>
+        <legend>Parent Window</legend>
+        <div class="control-row">
+          <label for="parent-width">Width (px):</label>
+          <input type="number" id="parent-width" value="1920">
+        </div>
+        <div class="control-row">
+          <label for="parent-height">Height (px):</label>
+          <input type="number" id="parent-height" value="1080">
+        </div>
+      </fieldset>
 
-            <fieldset id="iframe-controls">
-                <legend>Iframe Properties</legend>
-                
-                <div class="control-row">
-                    <label for="top">Top (px/%):</label>
-                    <input type="text" id="top" value="0">
-                </div>
-                <div class="control-row">
-                    <label for="left">Left (px/%):</label>
-                    <input type="text" id="left" value="0">
-                </div>
-                <div class="control-row">
-                    <label for="width">Width (px/%):</label>
-                    <input type="text" id="width" value="100%">
-                </div>
-                <div class="control-row">
-                    <label for="height">Height (px/%):</label>
-                    <input type="text" id="height" value="100%">
-                </div>
-                <div class="control-row">
-                    <label for="z-index">Z-Index:</label>
-                    <input type="number" id="z-index" value="1">
-                </div>
-                <div class="control-row">
-                    <label for="aspect-ratio">Aspect Ratio:</label>
-                    <input type="text" id="aspect-ratio" value="16/9">
-                </div>
-                <div class="control-row">
-                    <label for="object-fit">Object Fit:</label>
-                    <select id="object-fit">
-                        <option value="cover">Cover</option>
-                        <option value="contain">Contain</option>
-                        <option value="fill">Fill</option>
-                        <option value="none">None</option>
-                    </select>
-                </div>
-                <div class="control-row">
-                    <label for="opacity">Opacity:</label>
-                    <input type="range" id="opacity" min="0" max="1" step="0.01" value="1">
-                    <span id="opacity-val">1</span>
-                </div>
-                <div class="control-row">
-                    <label for="border-radius">Border Radius (px):</label>
-                    <input type="text" id="border-radius" value="0">
-                </div>
-                <div class="control-row">
-                    <label for="box-shadow">Box Shadow:</label>
-                    <input type="text" id="box-shadow" placeholder="e.g. 0 4px 8px rgba(0,0,0,0.5)">
-                </div>
-                <div class="control-row">
-                    <label for="mix-blend-mode">Mix Blend Mode:</label>
-                    <select id="mix-blend-mode">
-                        <option value="normal">Normal</option>
-                        <option value="multiply">Multiply</option>
-                        <option value="screen">Screen</option>
-                        <option value="overlay">Overlay</option>
-                        <option value="darken">Darken</option>
-                        <option value="lighten">Lighten</option>
-                    </select>
-                </div>
+      <fieldset id="iframe-controls">
+        <legend>Iframe Properties</legend>
 
-                <fieldset>
-                    <legend>Transform</legend>
-                    <div class="control-row">
-                        <label for="scale">Scale:</label>
-                        <input type="range" id="scale" min="0.1" max="2" step="0.01" value="1">
-                        <span id="scale-val">1</span>
-                    </div>
-                    <div class="control-row">
-                        <label for="rotate">Rotate (deg):</label>
-                        <input type="range" id="rotate" min="-180" max="180" step="1" value="0">
-                        <span id="rotate-val">0</span>
-                    </div>
-                    <div class="control-row">
-                        <label for="skewX">Skew X (deg):</label>
-                        <input type="range" id="skewX" min="-45" max="45" step="1" value="0">
-                        <span id="skewX-val">0</span>
-                    </div>
-                    <div class="control-row">
-                        <label for="skewY">Skew Y (deg):</label>
-                        <input type="range" id="skewY" min="-45" max="45" step="1" value="0">
-                        <span id="skewY-val">0</span>
-                    </div>
-                </fieldset>
-            </fieldset>
+        <div class="control-row">
+          <label for="top">Top (px/%):</label>
+          <input type="text" id="top" value="0">
+        </div>
+        <div class="control-row">
+          <label for="left">Left (px/%):</label>
+          <input type="text" id="left" value="0">
+        </div>
+        <div class="control-row">
+          <label for="width">Width (px/%):</label>
+          <input type="text" id="width" value="100%">
+        </div>
+        <div class="control-row">
+          <label for="height">Height (px/%):</label>
+          <input type="text" id="height" value="100%">
+        </div>
+        <div class="control-row">
+          <label for="z-index">Z-Index:</label>
+          <input type="number" id="z-index" value="1">
+        </div>
+        <div class="control-row">
+          <label for="aspect-ratio">Aspect Ratio:</label>
+          <input type="text" id="aspect-ratio" value="16/9">
+        </div>
+        <div class="control-row">
+          <label for="object-fit">Object Fit:</label>
+          <select id="object-fit">
+            <option value="cover">Cover</option>
+            <option value="contain">Contain</option>
+            <option value="fill">Fill</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <label for="opacity">Opacity:</label>
+          <input type="range" id="opacity" min="0" max="1" step="0.01" value="1">
+          <span id="opacity-val">1</span>
+        </div>
+        <div class="control-row">
+          <label for="border-radius">Border Radius (px):</label>
+          <input type="text" id="border-radius" value="0">
+        </div>
+        <div class="control-row">
+          <label for="box-shadow">Box Shadow:</label>
+          <input type="text" id="box-shadow" placeholder="e.g. 0 4px 8px rgba(0,0,0,0.5)">
+        </div>
+        <div class="control-row">
+          <label for="mix-blend-mode">Mix Blend Mode:</label>
+          <select id="mix-blend-mode">
+            <option value="normal">Normal</option>
+            <option value="multiply">Multiply</option>
+            <option value="screen">Screen</option>
+            <option value="overlay">Overlay</option>
+            <option value="darken">Darken</option>
+            <option value="lighten">Lighten</option>
+          </select>
+        </div>
 
-            <div class="actions">
-                <button id="save-layout">Save Layout</button>
-            </div>
-        </aside>
+        <fieldset>
+          <legend>Transform</legend>
+          <div class="control-row">
+            <label for="scale">Scale:</label>
+            <input type="range" id="scale" min="0.1" max="2" step="0.01" value="1">
+            <span id="scale-val">1</span>
+          </div>
+          <div class="control-row">
+            <label for="rotate">Rotate (deg):</label>
+            <input type="range" id="rotate" min="-180" max="180" step="1" value="0">
+            <span id="rotate-val">0</span>
+          </div>
+          <div class="control-row">
+            <label for="skewX">Skew X (deg):</label>
+            <input type="range" id="skewX" min="-45" max="45" step="1" value="0">
+            <span id="skewX-val">0</span>
+          </div>
+          <div class="control-row">
+            <label for="skewY">Skew Y (deg):</label>
+            <input type="range" id="skewY" min="-45" max="45" step="1" value="0">
+            <span id="skewY-val">0</span>
+          </div>
+        </fieldset>
+      </fieldset>
 
-        <main id="preview">
-            <div id="parent-preview">
-                <div id="iframe-preview">
-                    <div class="iframe-placeholder">Slide Content Iframe</div>
-                    <div class="resizer" id="resizer-se"></div>
-                </div>
-            </div>
-        </main>
-    </div>
+      <div class="actions">
+        <button id="save-layout">Save Layout</button>
+      </div>
+      <div id="status-message"></div>
 
-    <script src="app.js"></script>
+      <fieldset>
+        <legend>Existing Layouts</legend>
+        <ul id="layout-list">
+          <!-- Layouts will be loaded here -->
+        </ul>
+      </fieldset>
+    </aside>
+
+    <main id="preview">
+      <div id="parent-preview">
+        <div id="iframe-preview">
+          <div class="iframe-placeholder">Slide Content Iframe</div>
+          <div class="resizer" id="resizer-se"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="app.js"></script>
 </body>
 </html>

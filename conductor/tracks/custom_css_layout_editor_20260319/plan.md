@@ -16,6 +16,7 @@
     - [x] Add an interactive "Slide Iframe" preview area that supports drag-to-move and resize interactions.
     - [x] Add input controls (sliders/text fields) for: `top`, `left`, `width`, `height`, `z-index`, `aspect-ratio`, `object-fit`, `opacity`, `transform` (scale/rotate/skew), `border-radius`, `box-shadow`, `mix-blend-mode`.
     - [x] Implement event listeners in `app.js` to bind UI control changes to the preview iframe's live CSS styles.
+    - [x] UI Polish: Scale parent-preview to fit and align left in the visible window.
 - [x] Task: Conductor - User Manual Verification 'Custom Layout Editor App UI' (Protocol in workflow.md)
 
 ## Phase 3: Persistence and Storage [checkpoint: 4d329b6]
@@ -27,15 +28,15 @@
 - [x] Task: Conductor - User Manual Verification 'Persistence and Storage' (Protocol in workflow.md)
 
 ## Phase 4: Slide Navigation and Triggering (`studio.html`)
-- [ ] Task: Update `studio.html` Logic
-    - [ ] Write unit tests for the utility function that parses the layout name from the OBS Scene name (e.g., extracting "SideBySide" from "Slides-SideBySide").
-    - [ ] Modify the slide navigation event handler in `studio.html` to execute when a new tabulator row becomes active.
-    - [ ] Implement logic to determine the active OBS Scene name from the tabulator row data, parse the layout name, and load the corresponding layout definition from `layouts.json`.
-    - [ ] Implement SocketCluster broadcast of a new `apply-custom-layout` event containing the CSS properties payload.
-- [ ] Task: Conductor - User Manual Verification 'Slide Navigation and Triggering' (Protocol in workflow.md)
+- [x] Task: Update `studio.html` Logic
+    - [x] Write unit tests for the utility function that parses the layout name from the OBS Scene name (e.g., extracting "SideBySide" from "Slides-SideBySide").
+    - [x] Modify the slide navigation event handler in `studio.html` to execute when a new tabulator row becomes active.
+    - [x] Implement logic to determine the active OBS Scene name from the tabulator row data, parse the layout name, and load the corresponding layout definition from `layouts.json`.
+    - [x] Implement SocketCluster broadcast of a new `apply-custom-layout` event containing the CSS properties payload.
+- [x] Task: Conductor - User Manual Verification 'Slide Navigation and Triggering' (Protocol in workflow.md)
 
 ## Phase 5: Slide View Application (`slide_view`)
-- [ ] Task: Update `slide_view` Logic
-    - [ ] Modify `slide-studio-app/slide_view/slides_studio_slide_view.html` to listen for the `apply-custom-layout` SocketCluster event.
-    - [ ] Implement logic to receive the CSS properties payload and dynamically apply them to the slide iframe's inline styles or update a dynamic `<style>` block.
-- [ ] Task: Conductor - User Manual Verification 'Slide View Application' (Protocol in workflow.md)
+- [x] Task: Update `slide_view` Logic
+    - [x] Modify `slide-studio-app/slide_view/slides_studio_slide_view.html` to listen for the `apply-custom-layout` SocketCluster event.
+    - [x] Implement logic to receive the CSS properties payload and dynamically apply them to the slide iframe's inline styles or update a dynamic `<style>` block.
+- [x] Task: Conductor - User Manual Verification 'Slide View Application' (Protocol in workflow.md)

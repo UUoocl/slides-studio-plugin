@@ -76,6 +76,16 @@ describe('Monitor Lifecycle', () => {
         manifest: { dir: 'plugins/slides-studio' },
         settings: { 
             pythonPath: 'python3',
+            mouseMonitor: {
+                enabled: true,
+                trackPosition: true,
+                trackClick: true,
+                trackScroll: true
+            },
+            keyboardMonitor: {
+                enabled: true,
+                showCombinations: true
+            },
             mouseMonitorEnabled: true,
             keyboardMonitorEnabled: true,
             mouseMonitorPosition: true,

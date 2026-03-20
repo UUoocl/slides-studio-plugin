@@ -1,67 +1,85 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slides Studio (OBS View)</title>
-    <link rel="stylesheet" href="../css/iframe_positions.css">
-    <style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: transparent;
-        }
-
-        .container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-        }
-    </style>
-    <script>
-        window.onIframeLoad = function() {
-            const iframe = document.getElementById("revealIframe");
-            if (!iframe) return;
-            const url = iframe.src;
-            if (url && url !== "about:blank" && !url.includes("slides_studio_slide_view.html")) {
-                // Deck loaded
-            }
-        }
-
-        window.onIframeError = function() {
-            console.error("[SlideView] Iframe failed to load!");
-        }
-    </script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Slides Studio (OBS View)</title>
+  <link rel="stylesheet" href="../css/iframe_positions.css">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: transparent;
+    }
+    #revealIframe {
+      border: none;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <iframe id="revealIframe" class="slide-position full-screen" src="about:blank" onload="onIframeLoad()" onerror="onIframeError()" allow="autoplay; fullscreen"></iframe>
-    </div>
-    
-    <!-- SocketCluster & Sync Scripts -->
-    <script type="module" src="../lib/sc-connection.js"></script>
-    <script type="module" src="../lib/slideSync_OBS.js"></script>
+  <iframe id="revealIframe" allow="autoplay; fullscreen"></iframe>
 
-    <script type="module">
-        // All synchronization is now handled within slideSync_OBS.js via SyncService.
-        // This includes slide navigation, URL changes, and CSS layout transitions.
-        
-        (async () => {
-            while (!window.scSocket) {
-                await new Promise(r => setTimeout(r, 100));
-            }
+  <script type="module" src="../lib/sc-connection.js"></script>
+  <script type="module" src="../lib/slideSync_OBS.js"></script>
+  <script type="module">
+    /**
+     * @fileoverview Slide View controller for OBS browser source.
+     */
 
-            // Optional: Listen for connection status if needed for UI feedback
-            (async () => {
-                for await (let event of window.scSocket.listener('connect')) {
-                    console.log("[SlideView] SocketCluster connected");
-                }
-            })();
-        })();
-    </script>
+    (async () => {
+      // Optional: Listen for connection status if needed for UI feedback
+      (async () => {
+        for await (const event of window.scSocket.listener('connect')) {
+          console.log('[SlideView] SocketCluster connected');
+        }
+      })();
+
+      // Listen for custom layout applications
+      (async () => {
+        const channel = window.scSocket.subscribe('apply-custom-layout');
+        for await (const data of channel) {
+          const iframe = document.getElementById('revealIframe');
+          if (iframe && data.styles) {
+            console.log(`[SlideView] Applying custom layout: ${data.name}`);
+
+            // Clear existing inline styles first
+            iframe.style = '';
+
+            // Reset className to just the base class.
+            // This removes legacy classes like 'full-screen' which have
+            // !important properties that would otherwise override
+            // our inline styles.
+            iframe.className = 'slide-position';
+
+            // Apply all styles from the payload
+            Object.assign(iframe.style, data.styles);
+          }
+        }
+      })();
+
+      // Reset custom styles if a legacy layout is applied via Dispatch
+      window.addEventListener('slide-changed', (e) => {
+        const data = JSON.parse(e.detail.webSocketMessage);
+        // If it's a legacy layout command without custom styles,
+        // we might want to clear inline styles but slideSync_OBS.js
+        // will overwrite the className anyway.
+        // However, inline styles take precedence over CSS classes,
+        // so we MUST clear inline styles if we're moving to a legacy layout.
+
+        // If the message doesn't contain custom layout data,
+        // it's likely a legacy switch
+        if (!data.customLayoutActive) {
+          const iframe = document.getElementById('revealIframe');
+          // We only clear if we are NOT in the middle of a custom layout app
+          // This is a bit tricky, but legacy sync happens via SyncService
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

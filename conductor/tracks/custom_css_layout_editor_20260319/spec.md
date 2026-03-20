@@ -28,7 +28,7 @@ This track introduces a Custom CSS Layout Editor for the `slide-studio-app`. Thi
 - `slide-view` listens for this SocketCluster message and dynamically applies the corresponding CSS properties to the slide iframe.
 
 ### 4. File Correction & Migration
-- Rename `slide-studio-app/css/iframe_positioins.css` to `slide-studio-app/css/iframe_positions.css`.
+- Rename `slide-studio-app/css/iframe_positions.css` to `slide-studio-app/css/iframe_positions.css`.
 - Update all references in the project to the corrected filename.
 - The 4 existing hardcoded layouts in `iframe_positions.css` will be maintained as defaults.
 
@@ -42,7 +42,7 @@ This track introduces a Custom CSS Layout Editor for the `slide-studio-app`. Thi
 - [ ] User can save/load named layouts to/from `apps/slide-studio-app/layouts.json`.
 - [ ] Navigating slides in `studio.html` correctly identifies the layout from the tabulator data/OBS Scene name.
 - [ ] `slide-view` correctly receives SocketCluster messages and applies the custom CSS properties to the iframe.
-- [ ] `iframe_positioins.css` is renamed to `iframe_positions.css` and all imports are updated.
+- [ ] `iframe_positions.css` is renamed to `iframe_positions.css` and all imports are updated.
 
 ## Out of Scope
 - Modifying the existing 4 default layouts in `iframe_positions.css` via the GUI.

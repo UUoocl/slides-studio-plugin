@@ -120,7 +120,7 @@ main#preview {
     flex-grow: 1;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     background-color: #121212;
     padding: 20px;
     position: relative;
@@ -132,6 +132,7 @@ main#preview {
     position: relative;
     overflow: hidden; /* Simulates OBS canvas */
     transition: width 0.3s ease, height 0.3s ease;
+    transform-origin: left center;
 }
 
 #iframe-preview {
@@ -161,4 +162,48 @@ main#preview {
     right: -5px;
     cursor: nwse-resize;
     border-radius: 50%;
+}
+
+#status-message {
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    display: none;
+    margin-top: 10px;
+}
+
+#status-message.success {
+    background-color: #2b593f;
+    color: #e0e0e0;
+    display: block;
+}
+
+#status-message.error {
+    background-color: #592b2b;
+    color: #e0e0e0;
+    display: block;
+}
+
+#layout-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+#layout-list li {
+    padding: 8px;
+    border-bottom: 1px solid #333;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+#layout-list li:hover {
+    background-color: #3c3c3c;
+    color: #007acc;
+}
+
+#layout-list li:last-child {
+    border-bottom: none;
 }
