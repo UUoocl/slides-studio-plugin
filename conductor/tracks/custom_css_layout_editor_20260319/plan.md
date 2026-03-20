@@ -6,17 +6,17 @@
     - [x] Update imports/references in all HTML files within `slide-studio-app/` and any other references across the project.
 - [x] Task: Conductor - User Manual Verification 'Setup and File Corrections' (Protocol in workflow.md)
 
-## Phase 2: Custom Layout Editor App UI
-- [ ] Task: Create Editor UI Structure
-    - [ ] Create `apps/layout_editor/index.html` with basic HTML structure.
-    - [ ] Create `apps/layout_editor/styles.css` for the editor layout (sidebar for controls, main area for preview).
-    - [ ] Create `apps/layout_editor/app.js` to handle UI initialization.
-- [ ] Task: Implement Layout Controls
-    - [ ] Add input fields for Parent Window Width/Height in the UI.
-    - [ ] Add an interactive "Slide Iframe" preview area that supports drag-to-move and resize interactions.
-    - [ ] Add input controls (sliders/text fields) for: `top`, `left`, `width`, `height`, `z-index`, `aspect-ratio`, `object-fit`, `opacity`, `transform` (scale/rotate/skew), `border-radius`, `box-shadow`, `mix-blend-mode`.
-    - [ ] Implement event listeners in `app.js` to bind UI control changes to the preview iframe's live CSS styles.
-- [ ] Task: Conductor - User Manual Verification 'Custom Layout Editor App UI' (Protocol in workflow.md)
+## Phase 2: Custom Layout Editor App UI [checkpoint: 3a15668]
+- [x] Task: Create Editor UI Structure
+    - [x] Create `apps/layout_editor/index.html` with basic HTML structure.
+    - [x] Create `apps/layout_editor/styles.css` for the editor layout (sidebar for controls, main area for preview).
+    - [x] Create `apps/layout_editor/app.js` to handle UI initialization.
+- [x] Task: Implement Layout Controls
+    - [x] Add input fields for Parent Window Width/Height in the UI.
+    - [x] Add an interactive "Slide Iframe" preview area that supports drag-to-move and resize interactions.
+    - [x] Add input controls (sliders/text fields) for: `top`, `left`, `width`, `height`, `z-index`, `aspect-ratio`, `object-fit`, `opacity`, `transform` (scale/rotate/skew), `border-radius`, `box-shadow`, `mix-blend-mode`.
+    - [x] Implement event listeners in `app.js` to bind UI control changes to the preview iframe's live CSS styles.
+- [x] Task: Conductor - User Manual Verification 'Custom Layout Editor App UI' (Protocol in workflow.md)
 
 ## Phase 3: Persistence and Storage
 - [ ] Task: Implement Save/Load Logic
