@@ -1,10 +1,12 @@
 import { extractPathData } from './svg-parser.js';
 import { loadShapes, saveShapes } from './persistence.js';
+import { PathEditor } from './path-editor.js';
 
 class CameraShapeEditor {
     constructor() {
         this.shapes = {};
         this.currentShape = null;
+        this.pathEditor = null;
         
         // DOM Elements
         this.elements = {
@@ -32,6 +34,12 @@ class CameraShapeEditor {
 
     async init() {
         this.setupEventListeners();
+        
+        // Initialize Path Editor
+        this.pathEditor = new PathEditor(this.elements.previewSvg, this.elements.previewPath, (newPath) => {
+            // Optional: update something when points move (e.g. textarea if we want)
+        });
+
         await this.loadSavedShapes();
         this.updateCanvasSize();
         this.setStatus('Ready');
@@ -112,6 +120,9 @@ class CameraShapeEditor {
 
     updatePreview(pathData) {
         this.elements.previewPath.setAttribute('d', pathData);
+        if (this.pathEditor) {
+            this.pathEditor.refresh();
+        }
     }
 
     async handleSaveShape() {
