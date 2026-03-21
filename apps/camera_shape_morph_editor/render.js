@@ -45,19 +45,26 @@ class CameraShapeRender {
 
         console.log(`Transitioning to shape: ${shapeName}`);
         
+        const currentPath = this.elements.path.getAttribute('d');
+
         // Ensure MorphSVG is registered
         if (typeof gsap !== 'undefined' && typeof MorphSVGPlugin !== 'undefined') {
             gsap.registerPlugin(MorphSVGPlugin);
             
-            gsap.to(this.elements.path, {
-                duration: shape.duration || 1,
-                morphSVG: {
-                    shape: shape.path,
-                    shapeIndex: shape.shapeIndex || 'auto'
-                },
-                ease: shape.ease || 'power2.inOut',
-                overwrite: true
-            });
+            if (!currentPath || currentPath.trim() === "") {
+                // If no current path, set it directly so we have a starting point for future morphs
+                this.elements.path.setAttribute('d', shape.path);
+            } else {
+                gsap.to(this.elements.path, {
+                    duration: shape.duration || 1,
+                    morphSVG: {
+                        shape: shape.path,
+                        shapeIndex: shape.shapeIndex || 'auto'
+                    },
+                    ease: shape.ease || 'power2.inOut',
+                    overwrite: true
+                });
+            }
         } else {
             // Fallback if GSAP is not loaded (e.g. in some test environments or if scripts fail)
             this.elements.path.setAttribute('d', shape.path);
