@@ -61,4 +61,31 @@ describe('Render Page Synchronization', () => {
 
         expect(elementCache['mask-path'].setAttribute).toHaveBeenCalledWith('d', 'M10 10 L20 20');
     });
+
+    it('should trigger GSAP morph when GSAP is available', async () => {
+        const mockGsap = {
+            to: vi.fn(),
+            registerPlugin: vi.fn()
+        };
+        vi.stubGlobal('gsap', mockGsap);
+        vi.stubGlobal('MorphSVGPlugin', {});
+
+        await import('./render.js');
+        const loadCallback = mockWindow.addEventListener.mock.calls.find(call => call[0] === 'DOMContentLoaded')[1];
+        await loadCallback();
+
+        const syncCallback = subscribeSpy.mock.calls[0][0];
+
+        // Simulate sync event
+        syncCallback({ cameraShape: 'circle-mask' });
+
+        expect(mockGsap.to).toHaveBeenCalledWith(elementCache['mask-path'], expect.objectContaining({
+            morphSVG: {
+                shape: 'M10 10 L20 20',
+                shapeIndex: 'auto'
+            },
+            duration: 1,
+            ease: 'power2.inOut'
+        }));
+    });
 });
