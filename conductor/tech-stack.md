@@ -24,6 +24,8 @@
 - **webmidi**: For hardware-level MIDI device integration, supporting full SysEx and raw messaging for advanced controller features (LEDs, modes).
 - **tabulator-tables**: For interactive, high-performance table UI in the slide management views.
 - **@mediapipe/tasks-vision**: For high-performance computer vision tasks (pose and hand tracking) within the slide overlays.
+- **GSAP (GreenSock Animation Platform)**: Core animation engine used for UI transitions and SVG morphing.
+- **MorphSVGPlugin**: GSAP plugin for seamless morphing between complex SVG paths.
 
 ## Build & Tooling
 - **esbuild**: For extremely fast bundling and transpilation of TypeScript source code.

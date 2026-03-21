@@ -22,6 +22,7 @@ Slides Studio leverages a modern, high-performance architecture powered by **Soc
 - **Render/Settings Split**: A performance-optimized architecture where visual output (Render Pages) is decoupled from control interfaces (Settings Pages), synchronized via SocketCluster.
 - **OBS Source Manager**: A centralized management application to discover, configure, and apply presets to active OBS browser sources.
 - **Custom Layout Editor**: A visual GUI tool to design, save, and trigger complex CSS layouts for slide overlays, providing granular control over positioning, transforms, and styling.
+- **Camera Shape Morph Editor**: A visual tool for creating and morphing custom SVG masks for camera sources, featuring real-time path editing and GSAP-powered transitions.
 - **Multi-protocol Support**: Native bridging for OSC, MIDI (including full SysEx/LED control), and UVC devices via a unified SocketCluster messaging system.
 - **Real-time Event Streaming**: A centralized SocketCluster server for system-wide status, monitor data, and high-frequency hardware communication.
 - **Input Monitoring**: Python-based monitors for global mouse and keyboard tracking, integrated into the SocketCluster network.
