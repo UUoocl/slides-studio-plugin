@@ -7,9 +7,66 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id="app">
-        <h1>Camera Shape Morph Editor</h1>
-        <div id="status">Connecting to Slide Studio...</div>
+    <div id="editor-container">
+        <aside id="controls">
+            <h2>Shape Controls</h2>
+            
+            <div class="control-group">
+                <label for="shape-name">Shape Name:</label>
+                <input type="text" id="shape-name" placeholder="e.g. circle-mask">
+            </div>
+
+            <fieldset>
+                <legend>Canvas Dimensions</legend>
+                <div class="control-row">
+                    <label for="canvas-width">Width (px):</label>
+                    <input type="number" id="canvas-width" value="1920">
+                </div>
+                <div class="control-row">
+                    <label for="canvas-height">Height (px):</label>
+                    <input type="number" id="canvas-height" value="1080">
+                </div>
+                <button id="btn-update-canvas">Update Canvas</button>
+            </fieldset>
+
+            <fieldset>
+                <legend>SVG Input</legend>
+                <div class="control-group">
+                    <label for="svg-input">Paste SVG Code:</label>
+                    <textarea id="svg-input" rows="10" placeholder="<svg>...</svg>"></textarea>
+                </div>
+                <button id="btn-parse-svg">Parse & Preview</button>
+                <div class="control-group" style="margin-top: 10px;">
+                    <label for="file-input">Or Load SVG File:</label>
+                    <input type="file" id="file-input" accept=".svg">
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Saved Shapes</legend>
+                <select id="saved-shapes-list" size="5">
+                    <!-- Populated via JS -->
+                </select>
+                <div class="button-row">
+                    <button id="btn-load-shape">Load Selected</button>
+                    <button id="btn-delete-shape" class="btn-danger">Delete</button>
+                </div>
+            </fieldset>
+
+            <div class="actions">
+                <button id="btn-save-shape" class="btn-primary">Save Shape</button>
+            </div>
+
+            <div id="status-message">Ready</div>
+        </aside>
+
+        <main id="preview-area">
+            <div id="canvas-container">
+                <svg id="preview-svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet">
+                    <path id="preview-path" d=""></path>
+                </svg>
+            </div>
+        </main>
     </div>
 
     <!-- GSAP Libraries -->
