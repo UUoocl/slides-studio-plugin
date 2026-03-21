@@ -46,7 +46,7 @@
 - [x] Task: TDD - Studio Shape Discovery (c3ad5ba)
     - [x] Write tests for merging OBS-provided shapes with JSON-stored shapes
     - [x] Update `slide-studio-app/studio.html` (or its helper scripts) to fetch and merge shapes
-- [~] Task: Final UI Polish & Bug Fixes
-    - [ ] Refine styles for the Editor and Render pages
-    - [ ] Ensure smooth performance and handle edge cases (e.g., malformed SVG)
-- [ ] Task: Conductor - User Manual Verification 'Studio Integration' (Protocol in workflow.md)
+- [x] Task: Final UI Polish & Bug Fixes (6e4223d)
+    - [x] Refine styles for the Editor and Render pages
+    - [x] Ensure smooth performance and handle edge cases (e.g., malformed SVG)
+- [~] Task: Conductor - User Manual Verification 'Studio Integration' (Protocol in workflow.md)
