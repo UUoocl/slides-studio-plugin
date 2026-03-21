@@ -62,6 +62,30 @@ describe('Render Page Synchronization', () => {
         expect(elementCache['mask-path'].setAttribute).toHaveBeenCalledWith('d', 'M10 10 L20 20');
     });
 
+    it('should set path directly if current path is empty', async () => {
+        const mockGsap = {
+            to: vi.fn(),
+            registerPlugin: vi.fn()
+        };
+        vi.stubGlobal('gsap', mockGsap);
+        vi.stubGlobal('MorphSVGPlugin', {});
+
+        await import('./render.js');
+        const loadCallback = mockWindow.addEventListener.mock.calls.find(call => call[0] === 'DOMContentLoaded')[1];
+        await loadCallback();
+
+        // Mock empty current path
+        elementCache['mask-path'].getAttribute.mockReturnValue("");
+
+        const syncCallback = subscribeSpy.mock.calls[0][0];
+        syncCallback({ cameraShape: 'circle-mask' });
+
+        // Should NOT call gsap.to
+        expect(mockGsap.to).not.toHaveBeenCalled();
+        // Should call setAttribute directly
+        expect(elementCache['mask-path'].setAttribute).toHaveBeenCalledWith('d', 'M10 10 L20 20');
+    });
+
     it('should trigger GSAP morph when GSAP is available', async () => {
         const mockGsap = {
             to: vi.fn(),
