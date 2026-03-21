@@ -25,10 +25,10 @@
 - [x] Task: Conductor - User Manual Verification 'SVG Editor - Data & UI' (Protocol in workflow.md)
 
 ## Phase 3: SVG Editor - Path Manipulation & Morph Config
-- [ ] Task: TDD - Path Editing Interface
-    - [ ] Write tests for path point selection and modification logic
-    - [ ] Implement native SVG point manipulation (WYSIWYG)
-- [ ] Task: Implement MorphSVG Configuration UI
+- [x] Task: TDD - Path Editing Interface (a8d7c09)
+    - [x] Write tests for path point selection and modification logic
+    - [x] Implement native SVG point manipulation (WYSIWYG)
+- [~] Task: Implement MorphSVG Configuration UI
     - [ ] Add fields for `shapeIndex`, duration, and easing
     - [ ] Update persistence logic to include these configurations
 - [ ] Task: Conductor - User Manual Verification 'SVG Editor - Path & Config' (Protocol in workflow.md)
