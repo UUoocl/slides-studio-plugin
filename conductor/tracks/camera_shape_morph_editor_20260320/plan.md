@@ -42,7 +42,7 @@
     - [x] Implement the morph transition logic in `render.html`
 - [x] Task: Conductor - User Manual Verification 'Render Page - Morphing & Sync' (Protocol in workflow.md)
 
-## Phase 5: Studio Integration & Final Polish [checkpoint: c809edf]
+## Phase 5: Studio Integration & Final Polish [checkpoint: 533fc46]
 - [x] Task: TDD - Studio Shape Discovery (c3ad5ba)
     - [x] Write tests for merging OBS-provided shapes with JSON-stored shapes
     - [x] Update `slide-studio-app/studio.html` (or its helper scripts) to fetch and merge shapes
