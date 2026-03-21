@@ -20,6 +20,9 @@ class CameraShapeEditor {
             previewPath: document.getElementById('preview-path'),
             canvasContainer: document.getElementById('canvas-container'),
             statusMessage: document.getElementById('status-message'),
+            morphDuration: document.getElementById('morph-duration'),
+            morphEase: document.getElementById('morph-ease'),
+            morphShapeIndex: document.getElementById('morph-shape-index'),
             
             // Buttons
             btnUpdateCanvas: document.getElementById('btn-update-canvas'),
@@ -144,10 +147,9 @@ class CameraShapeEditor {
             path: pathData,
             width: parseInt(this.elements.canvasWidth.value),
             height: parseInt(this.elements.canvasHeight.value),
-            // Default GSAP config (Phase 3 will add UI for these)
-            duration: 1,
-            ease: 'power2.inOut',
-            shapeIndex: 'auto'
+            duration: parseFloat(this.elements.morphDuration.value) || 1,
+            ease: this.elements.morphEase.value,
+            shapeIndex: this.elements.morphShapeIndex.value
         };
 
         this.shapes[name] = shapeConfig;
@@ -169,6 +171,9 @@ class CameraShapeEditor {
         this.elements.shapeName.value = shape.name;
         this.elements.canvasWidth.value = shape.width || 1920;
         this.elements.canvasHeight.value = shape.height || 1080;
+        this.elements.morphDuration.value = shape.duration || 1;
+        this.elements.morphEase.value = shape.ease || 'power2.inOut';
+        this.elements.morphShapeIndex.value = shape.shapeIndex || 'auto';
         this.elements.svgInput.value = ''; // Clear input for clarity
         
         this.updateCanvasSize();

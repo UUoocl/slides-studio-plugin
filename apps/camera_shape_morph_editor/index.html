@@ -30,6 +30,31 @@
             </fieldset>
 
             <fieldset>
+                <legend>Morph Settings</legend>
+                <div class="control-row">
+                    <label for="morph-duration">Duration (s):</label>
+                    <input type="number" id="morph-duration" value="1" step="0.1" min="0">
+                </div>
+                <div class="control-row">
+                    <label for="morph-ease">Easing:</label>
+                    <select id="morph-ease">
+                        <option value="power2.inOut">Power2.inOut</option>
+                        <option value="power1.inOut">Power1.inOut</option>
+                        <option value="power3.inOut">Power3.inOut</option>
+                        <option value="power4.inOut">Power4.inOut</option>
+                        <option value="back.out">Back.out</option>
+                        <option value="elastic.out">Elastic.out</option>
+                        <option value="bounce.out">Bounce.out</option>
+                        <option value="none">None (Linear)</option>
+                    </select>
+                </div>
+                <div class="control-row">
+                    <label for="morph-shape-index">Shape Index:</label>
+                    <input type="text" id="morph-shape-index" value="auto" placeholder="auto or number">
+                </div>
+            </fieldset>
+
+            <fieldset>
                 <legend>SVG Input</legend>
                 <div class="control-group">
                     <label for="svg-input">Paste SVG Code:</label>
