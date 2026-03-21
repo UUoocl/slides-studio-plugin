@@ -6,9 +6,9 @@
     - [x] Create `index.html` (Editor) and `render.html` (Render) placeholders
     - [x] Create `styles.css` for basic layout
     - [x] Ensure GSAP and MorphSVG plugins are available in `apps/lib/` or equivalent
-- [ ] Task: Initialize SocketCluster connection
-    - [ ] Implement `sc-connection.js` integration in both pages
-    - [ ] Verify connection to the local Slides Studio server
+- [x] Task: Initialize SocketCluster connection (4908c95)
+    - [x] Implement `sc-connection.js` integration in both pages
+    - [x] Verify connection to the local Slides Studio server
 - [ ] Task: Conductor - User Manual Verification 'Foundation & Setup' (Protocol in workflow.md)
 
 ## Phase 2: SVG Editor - Data Management & Basic UI
