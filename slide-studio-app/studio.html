@@ -77,6 +77,23 @@
     // --- Function Definitions ---
 
     /**
+     * Fetches custom camera shapes from the JSON storage.
+     * @returns {Promise<Array<string>>}
+     */
+    async function fetchJsonCameraShapes() {
+      try {
+        const response = await window.scSocket.invoke('readFile', { 
+          path: 'apps/slide-studio-app/camera_shapes.json' 
+        });
+        if (response && response.content) {
+          const shapes = JSON.parse(response.content);
+          return Object.keys(shapes);
+        }
+      } catch (e) {}
+      return [];
+    }
+
+    /**
      * Centralized command handler and broadcaster.
      * @param {string} eventName The command/event name.
      * @param {Object} msgParam Payload.
@@ -158,27 +175,29 @@
 
         // Get Camera Shape options
         try {
+          const jsonShapes = await fetchJsonCameraShapes();
           const settings = await obsWss.call('GetInputSettings',
               {inputName: 'camera shapes'});
+          
+          let obsShapes = ['none', 'square', 'circle', 'pulsating-square',
+                    'pulsating-circle'];
+
           if (settings && settings.inputSettings && settings.inputSettings.css) {
             const regex = /\/\*(.*?)\*\//s;
             const match = settings.inputSettings.css.match(regex);
             if (match && match[1]) {
-              dropDownOptions.cameraShape = JSON.parse(match[1].trim());
-            } else {
-              dropDownOptions.cameraShape =
-                  ['none', 'square', 'circle', 'pulsating-square',
-                    'pulsating-circle'];
+              obsShapes = JSON.parse(match[1].trim());
             }
-          } else {
-            dropDownOptions.cameraShape =
-                ['none', 'square', 'circle', 'pulsating-square',
-                  'pulsating-circle'];
           }
+          
+          // Merge and de-duplicate
+          dropDownOptions.cameraShape = [...new Set([...obsShapes, ...jsonShapes])];
+          
         } catch (e) {
-          dropDownOptions.cameraShape =
-              ['none', 'square', 'circle', 'pulsating-square',
+          const jsonShapes = await fetchJsonCameraShapes();
+          const obsShapes = ['none', 'square', 'circle', 'pulsating-square',
                 'pulsating-circle'];
+          dropDownOptions.cameraShape = [...new Set([...obsShapes, ...jsonShapes])];
         }
 
         // Force refresh table if we have data
