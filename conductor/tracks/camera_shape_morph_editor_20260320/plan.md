@@ -24,14 +24,14 @@
     - [x] Add controls for loading/pasting and saving
 - [x] Task: Conductor - User Manual Verification 'SVG Editor - Data & UI' (Protocol in workflow.md)
 
-## Phase 3: SVG Editor - Path Manipulation & Morph Config
+## Phase 3: SVG Editor - Path Manipulation & Morph Config [checkpoint: 842f31d]
 - [x] Task: TDD - Path Editing Interface (a8d7c09)
     - [x] Write tests for path point selection and modification logic
     - [x] Implement native SVG point manipulation (WYSIWYG)
 - [x] Task: Implement MorphSVG Configuration UI (a61d546)
     - [x] Add fields for `shapeIndex`, duration, and easing
     - [x] Update persistence logic to include these configurations
-- [~] Task: Conductor - User Manual Verification 'SVG Editor - Path & Config' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'SVG Editor - Path & Config' (Protocol in workflow.md)
 
 ## Phase 4: Render Page - Morphing & Sync
 - [ ] Task: TDD - SocketCluster Synchronization
