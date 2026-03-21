@@ -28,10 +28,10 @@
 - [x] Task: TDD - Path Editing Interface (a8d7c09)
     - [x] Write tests for path point selection and modification logic
     - [x] Implement native SVG point manipulation (WYSIWYG)
-- [~] Task: Implement MorphSVG Configuration UI
-    - [ ] Add fields for `shapeIndex`, duration, and easing
-    - [ ] Update persistence logic to include these configurations
-- [ ] Task: Conductor - User Manual Verification 'SVG Editor - Path & Config' (Protocol in workflow.md)
+- [x] Task: Implement MorphSVG Configuration UI (a61d546)
+    - [x] Add fields for `shapeIndex`, duration, and easing
+    - [x] Update persistence logic to include these configurations
+- [~] Task: Conductor - User Manual Verification 'SVG Editor - Path & Config' (Protocol in workflow.md)
 
 ## Phase 4: Render Page - Morphing & Sync
 - [ ] Task: TDD - SocketCluster Synchronization
