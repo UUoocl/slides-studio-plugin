@@ -43,10 +43,10 @@
 - [x] Task: Conductor - User Manual Verification 'Render Page - Morphing & Sync' (Protocol in workflow.md)
 
 ## Phase 5: Studio Integration & Final Polish
-- [ ] Task: TDD - Studio Shape Discovery
-    - [ ] Write tests for merging OBS-provided shapes with JSON-stored shapes
-    - [ ] Update `slide-studio-app/studio.html` (or its helper scripts) to fetch and merge shapes
-- [ ] Task: Final UI Polish & Bug Fixes
+- [x] Task: TDD - Studio Shape Discovery (c3ad5ba)
+    - [x] Write tests for merging OBS-provided shapes with JSON-stored shapes
+    - [x] Update `slide-studio-app/studio.html` (or its helper scripts) to fetch and merge shapes
+- [~] Task: Final UI Polish & Bug Fixes
     - [ ] Refine styles for the Editor and Render pages
     - [ ] Ensure smooth performance and handle edge cases (e.g., malformed SVG)
 - [ ] Task: Conductor - User Manual Verification 'Studio Integration' (Protocol in workflow.md)
