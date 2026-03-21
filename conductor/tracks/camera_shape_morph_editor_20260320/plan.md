@@ -11,7 +11,7 @@
     - [x] Verify connection to the local Slides Studio server
 - [x] Task: Conductor - User Manual Verification 'Foundation & Setup' (Protocol in workflow.md)
 
-## Phase 2: SVG Editor - Data Management & Basic UI
+## Phase 2: SVG Editor - Data Management & Basic UI [checkpoint: 702d0ae]
 - [x] Task: TDD - SVG Input & Parsing Logic (7f240cf)
     - [x] Write tests for SVG text parsing and path extraction
     - [x] Implement `loadSvg` and `pasteSvg` functions to pass tests
@@ -22,7 +22,7 @@
     - [x] Build UI for setting canvas dimensions
     - [x] Implement SVG preview area with basic styling
     - [x] Add controls for loading/pasting and saving
-- [~] Task: Conductor - User Manual Verification 'SVG Editor - Data & UI' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'SVG Editor - Data & UI' (Protocol in workflow.md)
 
 ## Phase 3: SVG Editor - Path Manipulation & Morph Config
 - [ ] Task: TDD - Path Editing Interface
