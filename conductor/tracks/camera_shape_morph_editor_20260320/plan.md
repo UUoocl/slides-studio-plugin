@@ -12,10 +12,10 @@
 - [x] Task: Conductor - User Manual Verification 'Foundation & Setup' (Protocol in workflow.md)
 
 ## Phase 2: SVG Editor - Data Management & Basic UI
-- [ ] Task: TDD - SVG Input & Parsing Logic
-    - [ ] Write tests for SVG text parsing and path extraction
-    - [ ] Implement `loadSvg` and `pasteSvg` functions to pass tests
-- [ ] Task: TDD - Persistence Layer
+- [x] Task: TDD - SVG Input & Parsing Logic (7f240cf)
+    - [x] Write tests for SVG text parsing and path extraction
+    - [x] Implement `loadSvg` and `pasteSvg` functions to pass tests
+- [~] Task: TDD - Persistence Layer
     - [ ] Write tests for saving/loading shapes to `apps/slide-studio-app/camera_shapes.json` via SocketCluster `readFile`/`writeFile` invokes
     - [ ] Implement `saveShapes` and `loadShapes` functions to pass tests
 - [ ] Task: Implement Editor UI - Canvas & Basic Controls
