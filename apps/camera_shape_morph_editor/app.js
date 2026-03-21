@@ -29,7 +29,8 @@ class CameraShapeEditor {
             btnParseSvg: document.getElementById('btn-parse-svg'),
             btnSaveShape: document.getElementById('btn-save-shape'),
             btnLoadShape: document.getElementById('btn-load-shape'),
-            btnDeleteShape: document.getElementById('btn-delete-shape')
+            btnDeleteShape: document.getElementById('btn-delete-shape'),
+            btnClearCanvas: document.getElementById('btn-clear-canvas')
         };
 
         this.init();
@@ -54,6 +55,7 @@ class CameraShapeEditor {
         this.elements.btnSaveShape.addEventListener('click', () => this.handleSaveShape());
         this.elements.btnLoadShape.addEventListener('click', () => this.handleLoadSelected());
         this.elements.btnDeleteShape.addEventListener('click', () => this.handleDeleteSelected());
+        this.elements.btnClearCanvas.addEventListener('click', () => this.handleClearCanvas());
         
         this.elements.fileInput.addEventListener('change', (e) => this.handleFileLoad(e));
         
@@ -104,8 +106,16 @@ class CameraShapeEditor {
             this.updatePreview(pathData);
             this.setStatus('SVG parsed successfully');
         } else {
+            this.updatePreview('');
             this.setStatus('Error: No <path> found in SVG', true);
         }
+    }
+
+    handleClearCanvas() {
+        this.updatePreview('');
+        this.elements.svgInput.value = '';
+        this.elements.shapeName.value = '';
+        this.setStatus('Canvas cleared');
     }
 
     handleFileLoad(event) {
