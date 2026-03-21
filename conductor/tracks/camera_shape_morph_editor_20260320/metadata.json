@@ -1,0 +1,8 @@
+{
+  "track_id": "camera_shape_morph_editor_20260320",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-03-20T10:00:00Z",
+  "updated_at": "2026-03-20T10:00:00Z",
+  "description": "New app camera shape svg morph editor. This app will have 2 pages an evg editor page and a render page. similiar to @apps/layout_editor, create wysiwug gui where the user can edit svg. allow the user to load an svg image or paste in svg text. The load svg can be previewed, edited, and saved. Saved svgs will be stored in a json file. Allow the user to set the preview canvas height and width. \nThe svg will be used as an aplha mask in OBS.\nThe svgs will be options in the slide-studio-app speaker-view studio.html tabulator table camera shapes. \nThe render page will receive camera shape on slide navigation. Use the GSAP MorphSVG to swith between svg shapes."
+}
