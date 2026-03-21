@@ -34,10 +34,10 @@
 - [x] Task: Conductor - User Manual Verification 'SVG Editor - Path & Config' (Protocol in workflow.md)
 
 ## Phase 4: Render Page - Morphing & Sync
-- [ ] Task: TDD - SocketCluster Synchronization
-    - [ ] Write tests for handling `slide-changed` events on the `slide-state` channel
-    - [ ] Implement listener in `render.html` to identify `cameraShape` changes
-- [ ] Task: TDD - Morphing Execution
+- [x] Task: TDD - SocketCluster Synchronization (a581e76)
+    - [x] Write tests for handling `slide-changed` events on the `slide-state` channel
+    - [x] Implement listener in `render.html` to identify `cameraShape` changes
+- [~] Task: TDD - Morphing Execution
     - [ ] Write tests for triggering GSAP MorphSVG with the correct parameters
     - [ ] Implement the morph transition logic in `render.html`
 - [ ] Task: Conductor - User Manual Verification 'Render Page - Morphing & Sync' (Protocol in workflow.md)
