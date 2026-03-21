@@ -1,108 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Shape Morph Editor</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Camera Shape Morph Editor</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id="editor-container">
-        <aside id="controls">
-            <h2>Shape Controls</h2>
-            
-            <div class="control-group">
-                <label for="shape-name">Shape Name:</label>
-                <input type="text" id="shape-name" placeholder="e.g. circle-mask">
-            </div>
+  <div id="editor-container">
+    <aside id="controls">
+      <h2>Shape Controls</h2>
+      
+      <div class="control-group">
+        <label for="shape-name">Shape Name:</label>
+        <input type="text" id="shape-name" placeholder="e.g. circle-mask">
+      </div>
 
-            <fieldset>
-                <legend>Canvas Dimensions</legend>
-                <div class="control-row">
-                    <label for="canvas-width">Width (px):</label>
-                    <input type="number" id="canvas-width" value="1920">
-                </div>
-                <div class="control-row">
-                    <label for="canvas-height">Height (px):</label>
-                    <input type="number" id="canvas-height" value="1080">
-                </div>
-                <button id="btn-update-canvas">Update Canvas</button>
-            </fieldset>
+      <fieldset>
+        <legend>Canvas Dimensions</legend>
+        <div class="control-row">
+          <label for="canvas-width">Width (px):</label>
+          <input type="number" id="canvas-width" value="1920">
+        </div>
+        <div class="control-row">
+          <label for="canvas-height">Height (px):</label>
+          <input type="number" id="canvas-height" value="1080">
+        </div>
+        <button id="btn-update-canvas">Update Canvas</button>
+      </fieldset>
 
-            <fieldset>
-                <legend>Morph Settings</legend>
-                <div class="control-row">
-                    <label for="morph-duration">Duration (s):</label>
-                    <input type="number" id="morph-duration" value="1" step="0.1" min="0">
-                </div>
-                <div class="control-row">
-                    <label for="morph-ease">Easing:</label>
-                    <select id="morph-ease">
-                        <option value="power2.inOut">Power2.inOut</option>
-                        <option value="power1.inOut">Power1.inOut</option>
-                        <option value="power3.inOut">Power3.inOut</option>
-                        <option value="power4.inOut">Power4.inOut</option>
-                        <option value="back.out">Back.out</option>
-                        <option value="elastic.out">Elastic.out</option>
-                        <option value="bounce.out">Bounce.out</option>
-                        <option value="none">None (Linear)</option>
-                    </select>
-                </div>
-                <div class="control-row">
-                    <label for="morph-shape-index">Shape Index:</label>
-                    <input type="text" id="morph-shape-index" value="auto" placeholder="auto or number">
-                </div>
-            </fieldset>
+      <fieldset>
+        <legend>Morph Settings</legend>
+        <div class="control-row">
+          <label for="morph-duration">Duration (s):</label>
+          <input type="number" id="morph-duration" value="1" step="0.1" min="0">
+        </div>
+        <div class="control-row">
+          <label for="morph-ease">Easing:</label>
+          <select id="morph-ease">
+            <option value="power2.inOut">Power2.inOut</option>
+            <option value="power1.inOut">Power1.inOut</option>
+            <option value="power3.inOut">Power3.inOut</option>
+            <option value="power4.inOut">Power4.inOut</option>
+            <option value="back.out">Back.out</option>
+            <option value="elastic.out">Elastic.out</option>
+            <option value="bounce.out">Bounce.out</option>
+            <option value="none">None (Linear)</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <label for="morph-shape-index">Shape Index:</label>
+          <input type="text" id="morph-shape-index" value="auto" placeholder="auto or number">
+        </div>
+      </fieldset>
 
-            <fieldset>
-                <legend>SVG Input</legend>
-                <div class="control-group">
-                    <label for="svg-input">Paste SVG Code:</label>
-                    <textarea id="svg-input" rows="10" placeholder="<svg>...</svg>"></textarea>
-                </div>
-                <button id="btn-parse-svg">Parse & Preview</button>
-                <div class="control-group" style="margin-top: 10px;">
-                    <label for="file-input">Or Load SVG File:</label>
-                    <input type="file" id="file-input" accept=".svg">
-                </div>
-            </fieldset>
+      <fieldset>
+        <legend>SVG Input</legend>
+        <div class="control-group">
+          <label for="svg-input">Paste SVG Code:</label>
+          <textarea id="svg-input" rows="10" placeholder="<svg>...</svg>"></textarea>
+        </div>
+        <button id="btn-parse-svg">Parse & Preview</button>
+        <div class="control-group" style="margin-top: 10px;">
+          <label for="file-input">Or Load SVG File:</label>
+          <input type="file" id="file-input" accept=".svg">
+        </div>
+      </fieldset>
 
-            <fieldset>
-                <legend>Saved Shapes</legend>
-                <select id="saved-shapes-list" size="5">
-                    <!-- Populated via JS -->
-                </select>
-                <div class="button-row">
-                    <button id="btn-load-shape">Load Selected</button>
-                    <button id="btn-delete-shape" class="btn-danger">Delete</button>
-                </div>
-            </fieldset>
+      <fieldset>
+        <legend>Saved Shapes</legend>
+        <select id="saved-shapes-list" size="5">
+          <!-- Populated via JS -->
+        </select>
+        <div class="button-row">
+          <button id="btn-load-shape">Load Selected</button>
+          <button id="btn-delete-shape" class="btn-danger">Delete</button>
+        </div>
+      </fieldset>
 
-            <div class="actions">
-                <button id="btn-save-shape" class="btn-primary">Save Shape</button>
-                <button id="btn-clear-canvas" class="btn-secondary" style="margin-top: 0.5rem; background-color: #555;">Clear Canvas</button>
-            </div>
+      <div class="actions">
+        <button id="btn-save-shape" class="btn-primary">Save Shape</button>
+        <button id="btn-clear-canvas" class="btn-secondary" style="margin-top: 0.5rem; background-color: #555;">Clear Canvas</button>
+      </div>
 
-            <div id="status-message">Ready</div>
-        </aside>
+      <div id="status-message">Ready</div>
+    </aside>
 
-        <main id="preview-area">
-            <div id="canvas-container">
-                <svg id="preview-svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet">
-                    <path id="preview-path" d=""></path>
-                </svg>
-            </div>
-        </main>
-    </div>
+    <main id="preview-area">
+      <div id="canvas-container">
+        <svg id="preview-svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet">
+          <path id="preview-path" d=""></path>
+        </svg>
+      </div>
+    </main>
+  </div>
 
-    <!-- GSAP Libraries -->
-    <script src="../lib/gsap.min.js"></script>
-    <script src="../lib/MorphSVGPlugin.min.js"></script>
-    
-    <!-- SocketCluster Connection -->
-    <script type="module" src="sc-connection.js"></script>
-    
-    <!-- App Logic -->
-    <script type="module" src="app.js"></script>
+  <!-- GSAP Libraries -->
+  <script src="../lib/gsap.min.js"></script>
+  <script src="../lib/MorphSVGPlugin.min.js"></script>
+  
+  <!-- SocketCluster Connection -->
+  <script type="module" src="sc-connection.js"></script>
+  
+  <!-- App Logic -->
+  <script type="module" src="app.js"></script>
 </body>
 </html>

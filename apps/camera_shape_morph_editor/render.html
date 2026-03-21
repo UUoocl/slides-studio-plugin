@@ -1,49 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Shape Morph Render</title>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background: transparent;
-        }
-        #morph-container {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        svg {
-            width: 100%;
-            height: 100%;
-        }
-        #mask-path {
-            fill: white;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Camera Shape Morph Render</title>
+  <link rel="stylesheet" href="render.css">
 </head>
 <body>
-    <div id="morph-container">
-        <svg id="svg-mask" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
-            <path id="mask-path" d=""></path>
-        </svg>
-    </div>
+  <div id="morph-container">
+    <svg id="svg-mask" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+      <path id="mask-path" d=""></path>
+    </svg>
+  </div>
 
-    <!-- GSAP Libraries -->
-    <script src="../lib/gsap.min.js"></script>
-    <script src="../lib/MorphSVGPlugin.min.js"></script>
-    
-    <!-- SocketCluster Connection -->
-    <script type="module" src="sc-connection.js"></script>
-    
-    <!-- Render Logic -->
-    <script type="module" src="render.js"></script>
+  <!-- GSAP Libraries -->
+  <script src="../lib/gsap.min.js"></script>
+  <script src="../lib/MorphSVGPlugin.min.js"></script>
+  
+  <!-- SocketCluster Connection -->
+  <script type="module" src="sc-connection.js"></script>
+  
+  <!-- Render Logic -->
+  <script type="module" src="render.js"></script>
 </body>
 </html>
