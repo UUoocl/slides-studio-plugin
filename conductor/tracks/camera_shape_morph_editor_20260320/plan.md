@@ -18,11 +18,11 @@
 - [x] Task: TDD - Persistence Layer (a22325b)
     - [x] Write tests for saving/loading shapes to `apps/slide-studio-app/camera_shapes.json` via SocketCluster `readFile`/`writeFile` invokes
     - [x] Implement `saveShapes` and `loadShapes` functions to pass tests
-- [~] Task: Implement Editor UI - Canvas & Basic Controls
-    - [ ] Build UI for setting canvas dimensions
-    - [ ] Implement SVG preview area with basic styling
-    - [ ] Add controls for loading/pasting and saving
-- [ ] Task: Conductor - User Manual Verification 'SVG Editor - Data & UI' (Protocol in workflow.md)
+- [x] Task: Implement Editor UI - Canvas & Basic Controls (b651a0a)
+    - [x] Build UI for setting canvas dimensions
+    - [x] Implement SVG preview area with basic styling
+    - [x] Add controls for loading/pasting and saving
+- [~] Task: Conductor - User Manual Verification 'SVG Editor - Data & UI' (Protocol in workflow.md)
 
 ## Phase 3: SVG Editor - Path Manipulation & Morph Config
 - [ ] Task: TDD - Path Editing Interface
