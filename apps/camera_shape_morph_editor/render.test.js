@@ -27,7 +27,13 @@ vi.stubGlobal('window', mockWindow);
 // Mock persistence
 vi.mock('./persistence.js', () => ({
     loadShapes: vi.fn().mockResolvedValue({
-        'circle-mask': { path: 'M10 10 L20 20', duration: 1, ease: 'power2.inOut' }
+        'circle-mask': { 
+            path: 'M10 10 L20 20', 
+            duration: 1, 
+            ease: 'power2.inOut',
+            width: 1280,
+            height: 720
+        }
     })
 }));
 
@@ -59,6 +65,10 @@ describe('Render Page Synchronization', () => {
         // Simulate sync event
         syncCallback({ cameraShape: 'circle-mask' });
 
+        // Verify viewBox update
+        expect(elementCache['svg-mask'].setAttribute).toHaveBeenCalledWith('viewBox', '0 0 1280 720');
+        
+        // Fallback to setAttribute if GSAP is missing
         expect(elementCache['mask-path'].setAttribute).toHaveBeenCalledWith('d', 'M10 10 L20 20');
     });
 

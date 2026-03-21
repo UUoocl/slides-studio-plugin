@@ -45,6 +45,11 @@ class CameraShapeRender {
 
         console.log(`Transitioning to shape: ${shapeName}`);
         
+        // Update viewBox to match the saved shape dimensions
+        const w = shape.width || 1920;
+        const h = shape.height || 1080;
+        this.elements.svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+
         const currentPath = this.elements.path.getAttribute('d');
 
         // Ensure MorphSVG is registered
