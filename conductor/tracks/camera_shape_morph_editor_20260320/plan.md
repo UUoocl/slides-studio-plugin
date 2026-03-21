@@ -37,10 +37,10 @@
 - [x] Task: TDD - SocketCluster Synchronization (a581e76)
     - [x] Write tests for handling `slide-changed` events on the `slide-state` channel
     - [x] Implement listener in `render.html` to identify `cameraShape` changes
-- [~] Task: TDD - Morphing Execution
-    - [ ] Write tests for triggering GSAP MorphSVG with the correct parameters
-    - [ ] Implement the morph transition logic in `render.html`
-- [ ] Task: Conductor - User Manual Verification 'Render Page - Morphing & Sync' (Protocol in workflow.md)
+- [x] Task: TDD - Morphing Execution (a47dc74)
+    - [x] Write tests for triggering GSAP MorphSVG with the correct parameters
+    - [x] Implement the morph transition logic in `render.html`
+- [~] Task: Conductor - User Manual Verification 'Render Page - Morphing & Sync' (Protocol in workflow.md)
 
 ## Phase 5: Studio Integration & Final Polish
 - [ ] Task: TDD - Studio Shape Discovery
