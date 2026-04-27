@@ -1,62 +1,49 @@
-# OSC Monitor SC
+# OSC Monitor
 
-A real-time OSC (Open Sound Control) monitoring and control application built for the Cables Studio environment. This app uses **SocketCluster** to receive and send messages in a format compatible with Cables.gl SocketCluster extensions.
+A real-time OSC (Open Sound Control) monitoring and control application built for the Slides Studio environment. This app uses **WebSockets** to receive and send messages in a format compatible with the Slides Studio plugin.
 
 ## Usage
 
-The application is a standalone HTML file that connects to the local SocketCluster server (typically running on port 8000).
+The application is a standalone HTML file that connects to the local WebSocket server (typically running on port 57000).
 
-### Monitoring and Sending on Channels
-To see OSC messages flowing through a specific SocketCluster channel and send to another:
-- Open `osc_monitor_sc.html` in your browser.
-- Append `?inChannel=YOUR_INPUT_CHANNEL&outChannel=YOUR_OUTPUT_CHANNEL` to the URL.
-- **Example:** `osc_monitor_sc.html?inChannel=osc_recv&outChannel=myProject`
-- The status bar will show "Connected" when the SocketCluster link is active.
-- The app subscribes to `YOUR_INPUT_CHANNEL/objects` for monitoring.
-- The app publishes to `YOUR_OUTPUT_CHANNEL/objects` when interacting with UI controls.
+### Monitoring and Sending on Devices
+To see OSC messages flowing through a specific device and send to another:
+- Open `osc_monitor.html` in your browser.
+- Append `?deviceName=YOUR_DEVICE_NAME` to the URL.
+- **Example:** `osc_monitor.html?deviceName=MyiPhone`
+- The status bar will show "Connected" when the WebSocket link is active.
+- The app subscribes to `osc_in_YOUR_DEVICE_NAME` for monitoring.
+- The app publishes to `osc_out_YOUR_DEVICE_NAME` when interacting with UI controls.
 
 ### Features
 - **Live Logging:** Real-time display of messages including Topic, Address, and Arguments.
-- **Cables.gl Compatibility:** Listens for and sends data in the standard format used by Cables.gl SC extensions.
+- **WebSocket Transport:** Uses the native Slides Studio WebSocket protocol.
 - **Remote Control Demo:** A "Toggle OSC" button that sends an OSC-style payload to the output channel.
 
 ## Developer Overview
 
 ### Technical Stack
-- **Library:** `socketcluster-client` (v16+)
-- **Transport:** WebSockets (via SocketCluster protocol)
+- **Library:** `slides-studio-client.js` (Native WebSocket wrapper)
+- **Transport:** WebSockets
 - **Styling:** Vanilla CSS (VS Code dark theme inspired)
 
-### SocketCluster Communication
-The app follows the pattern used by `Ops.Extension.SocketCluster.SocketClusterClient`:
+### WebSocket Communication
+The app uses the `SlidesStudioClient` to handle messaging:
 
-- **Subscription:** Subscribes to `${inChannel}/objects`.
+- **Subscription:** Subscribes to `osc_in_${deviceName}`.
 - **Message Format:** Expects objects with the following structure:
   ```json
   {
-    "topic": "string",
-    "clientId": "string",
-    "payload": {
-      "address": "string",
-      "args": []
-    }
+    "deviceName": "string",
+    "message": ["address", ...args]
   }
   ```
 
 ### Remote Control Logic
-The "Toggle OSC" button publishes to `${outChannel}/objects` using the standard format:
+The "Toggle OSC" button publishes to `osc_out_${deviceName}` using the standard format:
 ```javascript
-socket.transmitPublish(`${outChannel}/objects`, {
-    topic: 'osc_send',
-    clientId: socket.clientId,
-    payload: {
-        address: '/4/toggle1',
-        args: [1] // or 0
-    }
+socket.publish(`osc_out_${deviceName}`, {
+    address: '/4/toggle1',
+    args: [1] // or 0
 });
 ```
-
-## Integration with Cables.gl
-1. Add a **SocketClusterClient** op to your Cables patch and set its **Channel** to `myProject`.
-2. Use **SocketClusterReceiveObject** to listen for messages with topic `osc_send`.
-3. Use **SocketClusterSendObject** to send messages to this monitor by setting the topic to `osc` (or any other) and providing a payload with `address` and `args` fields.

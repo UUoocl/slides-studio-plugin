@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Keyboard Monitor (SocketCluster)</title>
+    <title>Keyboard Monitor (WebSocket)</title>
     <style>
         body {
             margin: 0;
@@ -59,7 +59,7 @@
 </head>
 <body>
     <div id="info">
-        Keyboard Monitor (SocketCluster)<br>
+        Keyboard Monitor (WebSocket)<br>
         Status: Disconnected
     </div>
     
@@ -67,7 +67,7 @@
     <div class="history" id="history"></div>
 
     <script type="module">
-        import { create } from '../lib/socketcluster-client.min.js';
+        import { create } from '../lib/slides-studio-client.js';
 
         const keyDisplay = document.getElementById('key-display');
         const historyDisplay = document.getElementById('history');
@@ -79,19 +79,19 @@
         const socket = create({
             hostname: window.location.hostname,
             port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-            path: '/socketcluster/',
+            path: '/websocket/',
             authToken: { name: 'Keyboard-Monitor' }
         });
 
         (async () => {
             for await (let {error} of socket.listener('error')) {
-                console.error('SocketCluster error:', error);
+                console.error('WebSocket error:', error);
             }
         })();
 
         (async () => {
             for await (let event of socket.listener('connect')) {
-                console.log('Connected to SocketCluster');
+                console.log('Connected to WebSocket');
                 updateStatus('Connected');
                 socket.invoke('setInfo', { name: 'Keyboard Monitor' });
             }
@@ -99,14 +99,14 @@
 
         (async () => {
             for await (let event of socket.listener('disconnect')) {
-                console.log('Disconnected from SocketCluster');
+                console.log('Disconnected from WebSocket');
                 updateStatus('Disconnected');
             }
         })();
 
         function updateStatus(status) {
             if (!info) return;
-            info.innerHTML = `Keyboard Monitor (SocketCluster)<br>Status: ${status}`;
+            info.innerHTML = `Keyboard Monitor (WebSocket)<br>Status: ${status}`;
         }
 
         // Listen for keyboard events

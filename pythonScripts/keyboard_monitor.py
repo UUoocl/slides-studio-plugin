@@ -4,13 +4,17 @@ import time
 import threading
 import logging
 from pynput import keyboard
-from socketclusterclient import Socketcluster
+import websocket
 
-# Configure logging
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+# Configure logging to stdout
+logging.basicConfig(
+    format='%(levelname)s:%(message)s', 
+    level=logging.DEBUG,
+    stream=sys.stdout
+)
 
 # Configuration
-target_url = sys.argv[1] if len(sys.argv) > 1 else "ws://127.0.0.1:8000/socketcluster/"
+target_url = sys.argv[1] if len(sys.argv) > 1 else "ws://127.0.0.1:57000/websocket/"
 
 # Modifier tracking
 modifiers = {
@@ -28,11 +32,30 @@ modifiers = {
     keyboard.Key.cmd_r: False,
 }
 
-# SocketCluster state
-sc = None
+# WebSocket state
+ws = None
 connected = False
 
+def send_message(msg_type, **kwargs):
+    """Sends a message via WebSocket in the new protocol format."""
+    if not connected or not ws:
+        return
+    try:
+        msg = {"type": msg_type}
+        msg.update(kwargs)
+        ws.send(json.dumps(msg))
+    except Exception as e:
+        logging.error(f"Failed to send message: {e}")
+
+def heartbeat_loop():
+    """Sends periodic heartbeats to the server."""
+    while True:
+        time.sleep(20)
+        if connected:
+            send_message("call", id="hb-"+str(time.time()), method="heartbeat", data={"name": "Python-Keyboard-Monitor"})
+
 def get_modifier_string():
+    """Returns a string representation of currently active modifiers."""
     parts = []
     if modifiers[keyboard.Key.ctrl] or modifiers[keyboard.Key.ctrl_l] or modifiers[keyboard.Key.ctrl_r]:
         parts.append("ctrl")
@@ -44,24 +67,30 @@ def get_modifier_string():
         parts.append("cmd")
     return " + ".join(parts)
 
-def on_connect(socket):
-    global connected
+def on_open(ws_instance):
+    """Callback for successful WebSocket connection."""
+    global connected, ws
     connected = True
-    logging.info(f"CONNECTED to SocketCluster: {target_url}")
+    ws = ws_instance
+    logging.info(f"CONNECTED to WebSocket: {target_url}")
     # Identify this client
-    socket.emit("setInfo", {"name": "Python-Keyboard-Monitor"})
+    send_message("call", id="init", method="setInfo", data={"name": "Python-Keyboard-Monitor"})
     # Test publish
-    socket.publish("keyboardSettings", {"status": "connected", "test": True})
+    send_message("publish", channel="keyboardSettings", data={"status": "connected", "test": True})
 
-def on_disconnect(socket):
+def on_close(ws_instance, close_status_code, close_msg):
+    """Callback for WebSocket disconnection."""
     global connected
     connected = False
-    logging.warning("DISCONNECTED from SocketCluster")
+    logging.warning(f"DISCONNECTED from WebSocket: {close_msg}")
 
-def on_connect_error(socket, error):
+def on_error(ws_instance, error):
+    """Callback for WebSocket errors."""
     logging.error(f"CONNECTION ERROR: {error}")
 
 def on_press(key):
+    """Callback for keyboard press events."""
+    logging.debug(f"Key pressed: {key}")
     if key in modifiers:
         modifiers[key] = True
         return
@@ -84,9 +113,13 @@ def on_press(key):
     
     if connected:
         logging.debug(f"Publishing keyboardPress: {combo}")
-        sc.publish("keyboardPress", data)
+        send_message("publish", channel="keyboardPress", data=data)
+    else:
+        logging.warning(f"Not connected, cannot publish: {combo}")
 
 def on_release(key):
+    """Callback for keyboard release events."""
+    logging.debug(f"Key released: {key}")
     if key in modifiers:
         modifiers[key] = False
         return
@@ -109,17 +142,35 @@ def on_release(key):
     
     if connected:
         logging.debug(f"Publishing keyboardRelease: {combo}")
-        sc.publish("keyboardRelease", data)
+        send_message("publish", channel="keyboardRelease", data=data)
+    else:
+        logging.warning(f"Not connected, cannot publish: {combo}")
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for the Keyboard Monitor."""
     logging.info(f"Starting Keyboard Monitor targeting {target_url}...")
-    sc = Socketcluster.socket(target_url)
-    sc.setBasicListener(on_connect, on_disconnect, on_connect_error)
-    sc.setreconnection(True)
-    sc.connect()
+    
+    ws_app = websocket.WebSocketApp(target_url,
+                              on_open=on_open,
+                              on_error=on_error,
+                              on_close=on_close)
+    
+    connect_thread = threading.Thread(target=ws_app.run_forever, daemon=True)
+    connect_thread.start()
 
+    # Start heartbeat thread
+    hb_thread = threading.Thread(target=heartbeat_loop, daemon=True)
+    hb_thread.start()
+
+    logging.info("Starting keyboard listener...")
     try:
         with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
+            logging.info("Keyboard listener joined.")
             listener.join()
+    except Exception as e:
+        logging.error(f"Keyboard listener error: {e}")
     except KeyboardInterrupt:
         logging.info("Stopping Keyboard Monitor...")
+
+if __name__ == "__main__":
+    main()

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Audio FFT Visualizer (SocketCluster)</title>
+    <title>Audio FFT Visualizer</title>
     <style>
         body {
             margin: 0;
@@ -65,16 +65,16 @@
 </head>
 <body>
     <div id="info">
-        Audio FFT Visualizer (SocketCluster)<br>
+        Audio FFT Visualizer<br>
         Status: Disconnected
     </div>
 
     <div id="visualizers-container">
-        <div class="no-data" id="no-data-msg">Waiting for SocketCluster data...</div>
+        <div class="no-data" id="no-data-msg">Waiting for bridge data...</div>
     </div>
 
     <script type="module">
-        import { create } from '../lib/socketcluster-client.min.js';
+        import { create } from '../lib/slides-studio-client.js';
 
         const container = document.getElementById('visualizers-container');
         const noDataMsg = document.getElementById('no-data-msg');
@@ -84,33 +84,33 @@
         const socket = create({
             hostname: window.location.hostname,
             port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-            path: '/socketcluster/',
+            path: '/websocket/',
             authToken: { name: 'Audio-FFT-Viz' }
         });
 
         (async () => {
             for await (let {error} of socket.listener('error')) {
-                console.error('SocketCluster error:', error);
+                console.error('Bridge error:', error);
             }
         })();
 
         (async () => {
             for await (let event of socket.listener('connect')) {
-                console.log('Connected to SocketCluster');
+                console.log('Connected to bridge');
                 updateStatus('Connected');
             }
         })();
 
         (async () => {
             for await (let event of socket.listener('disconnect')) {
-                console.log('Disconnected from SocketCluster');
+                console.log('Disconnected from bridge');
                 updateStatus('Disconnected');
             }
         })();
 
         function updateStatus(status) {
             if (!info) return;
-            info.innerHTML = `Audio FFT Visualizer (SocketCluster)<br>Status: ${status}`;
+            info.innerHTML = `Audio FFT Visualizer<br>Status: ${status}`;
         }
 
         // Listen for audio FFT events

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SocketCluster Monitor</title>
+    <title>WebSocket Monitor</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -83,7 +83,7 @@
 </head>
 <body>
 
-    <h1>SocketCluster Monitor</h1>
+    <h1>WebSocket Monitor</h1>
 
     <div class="status-bar">
         <span>Server: <strong id="sc-status" class="status disconnected">Disconnected</strong></span>
@@ -93,7 +93,6 @@
     <table>
         <thead>
             <tr>
-                <th style="width: 50px;">#</th>
                 <th style="width: 250px;">Client ID</th>
                 <th style="width: 200px;">Name</th>
                 <th>Subscribed Channels</th>
@@ -101,26 +100,26 @@
         </thead>
         <tbody id="client-table-body">
             <tr>
-                <td colspan="4" class="no-clients">Waiting for server data...</td>
+                <td colspan="3" class="no-clients">Waiting for server data...</td>
             </tr>
         </tbody>
     </table>
 
     <script type="module">
-        import { create } from '../../lib/socketcluster-client.min.js';
+        import { create } from '../lib/slides-studio-client.js';
 
         const statusEl = document.getElementById('sc-status');
         const countEl = document.getElementById('client-count');
         const tableBody = document.getElementById('client-table-body');
 
         // Force 127.0.0.1 context for consistent origin
-        const hostname = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
+        const hostname = '127.0.0.1';
 
         const socket = create({
             hostname: hostname,
             port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-            path: '/socketcluster/',
-            authToken: { name: 'SC-Monitor' }
+            path: '/websocket/',
+            authToken: { name: 'WS-Monitor' }
         });
 
         (async () => {
@@ -128,11 +127,6 @@
                 statusEl.textContent = "Connected";
                 statusEl.className = "status connected";
                 
-                // Identify this client as the Monitor
-                try {
-                    await socket.invoke('setInfo', { name: 'SC Monitor' });
-                } catch (e) {}
-
                 // Subscribe to server state updates
                 const channel = socket.subscribe('serverState');
                 for await (let data of channel) {
@@ -146,13 +140,13 @@
                 statusEl.textContent = "Disconnected";
                 statusEl.className = "status disconnected";
                 countEl.textContent = "0";
-                tableBody.innerHTML = '<tr><td colspan="4" class="no-clients">Disconnected from server</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="3" class="no-clients">Disconnected from server</td></tr>';
             }
         })();
 
         function updateTable(clients) {
             if (!clients || clients.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4" class="no-clients">No active clients</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="3" class="no-clients">No active clients</td></tr>';
                 countEl.textContent = "0";
                 return;
             }
@@ -168,7 +162,6 @@
                     : '<span style="color: #555; font-size: 0.8em;">None</span>';
 
                 tr.innerHTML = `
-                    <td>${client.index}</td>
                     <td class="client-id">${client.id}</td>
                     <td>${client.name}</td>
                     <td>${channelsHtml}</td>

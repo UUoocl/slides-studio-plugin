@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Camera Mask Renderer v2.0</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: black; /* Luma Mask Base */
+        }
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+        #maskPath {
+            fill: white; /* Luma Mask Active Area */
+        }
+    </style>
+</head>
+<body>
+    <svg viewBox="0 0 1 1" preserveAspectRatio="none">
+        <path id="maskPath" d="M 0 0 L 1 0 L 1 1 L 0 1 Z" />
+    </svg>
+
+    <script src="../../slide-studio-app/lib/gsap.min.js"></script>
+    <script type="module">
+        import { create } from '../../slide-studio-app/lib/slides-studio-client.js';
+
+        const params = new URLSearchParams(window.location.search);
+        const componentId = params.get('id') || 'Camera';
+        const maskPath = document.getElementById('maskPath');
+
+        const socket = create({
+            hostname: window.location.hostname,
+            port: window.location.port,
+            path: '/websocket/',
+            authToken: { name: `CameraMask-${componentId}` }
+        });
+
+        socket.on('connect', async () => {
+            try {
+                const response = await fetch(`/api/init-state?id=${componentId}`);
+                const state = await response.json();
+                if (state.mask) applyMask(state.mask);
+            } catch (e) {}
+            
+            socket.subscribe('CHOREOGRAPHY_UPDATE');
+        });
+
+        socket.on('CHOREOGRAPHY_UPDATE', (data) => {
+            if (data.id === componentId && data.mask) {
+                applyMask(data.mask);
+            }
+        });
+
+        function applyMask(pathData) {
+            const normalized = pathData.replace(/([0-9\.]+)/g, (m) => parseFloat(m) / 100);
+            gsap.to(maskPath, {
+                duration: 0.6,
+                attr: { d: normalized },
+                ease: "power2.inOut"
+            });
+        }
+    </script>
+</body>
+</html>

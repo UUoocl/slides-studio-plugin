@@ -13,8 +13,8 @@
     </main>
     
     <script type="module">
-        import { create } from '../lib/socketcluster-client.min.js';
-        window.socketClusterClient = { create };
+        import { create } from '../lib/slides-studio-client.js?v=1.0.5';
+        window.slidesStudioClient = { create };
     </script>
 
     <script>
@@ -48,61 +48,57 @@
       let socket;
 
       async function initSocket() {
-          if (!window.socketClusterClient) {
+          if (!window.slidesStudioClient) {
               setTimeout(initSocket, 100);
               return;
           }
 
-          socket = window.socketClusterClient.create({
+          socket = window.slidesStudioClient.create({
               hostname: window.location.hostname,
-              port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-              path: '/socketcluster/',
+              port: window.location.port,
+              path: '/websocket/',
               authToken: { name: 'P5MagicWand' }
           });
 
-          (async () => {
-              for await (let {error} of socket.listener('error')) {
-                  console.error('SocketCluster error:', error);
-              }
-          })();
+          socket.on('error', (err) => {
+              console.error('WebSocket error:', err);
+          });
 
-          (async () => {
-              for await (let event of socket.listener('connect')) {
-                  console.log('Connected to SocketCluster');
-                  // Request bounds from other apps first
-                  desktopBoundsChannel.postMessage('request_bounds');
-                  // Fetch from OBS as fallback after a short delay if no one responded
-                  setTimeout(() => {
-                      if (displayXmax === 1920 && displayYmax === 1080) {
-                          fetchDesktopBounds();
-                      }
-                  }, 500);
-              }
-          })();
+          socket.on('connect', () => {
+              console.log('Connected to WebSocket');
+              // Request bounds from other apps first
+              desktopBoundsChannel.postMessage('request_bounds');
+              // Fetch from OBS as fallback after a short delay if no one responded
+              setTimeout(() => {
+                  if (displayXmax === 1920 && displayYmax === 1080) {
+                      fetchDesktopBounds();
+                  }
+              }, 500);
+          });
+
+          socket.on('disconnect', () => {
+              console.log('Disconnected from WebSocket');
+          });
 
           // Subscribe to mouse position updates
-          (async () => {
-              const channel = socket.subscribe('mousePosition');
-              for await (let data of channel) {
-                  mousePosX = Math.round(remap(data.x, displayXmin, displayXmax, 0, window.innerWidth));
-                  mousePosY = Math.round(remap(data.y, displayYmin, displayYmax, 0, window.innerHeight));
-              }
-          })();
+          const posChannel = socket.subscribe('mousePosition');
+          posChannel.on('message', (data) => {
+              mousePosX = Math.round(remap(data.x, displayXmin, displayXmax, 0, window.innerWidth));
+              mousePosY = Math.round(remap(data.y, displayYmin, displayYmax, 0, window.innerHeight));
+          });
 
           // Subscribe to mouse click updates
-          (async () => {
-              const channel = socket.subscribe('mouseClick');
-              for await (let data of channel) {
-                  if (data.pressed) {
-                      if (typeof mousePressed === 'function') {
-                          mousePressed(data.button);
-                      }
+          const clickChannel = socket.subscribe('mouseClick');
+          clickChannel.on('message', (data) => {
+              if (data.pressed) {
+                  if (typeof mousePressed === 'function') {
+                      mousePressed(data.button);
                   }
               }
-          })();
+          });
       }
 
-      // Logic to find desktop size directly via SocketCluster
+      // Logic to find desktop size directly via WebSocket
       async function fetchDesktopBounds() {
           if (!socket) return;
           try {
@@ -116,11 +112,11 @@
                       maxX: Math.max(...monitors.map(m => m.monitorPositionX + m.monitorWidth)),
                       minY: Math.min(...monitors.map(m => m.monitorPositionY)),
                       maxY: Math.max(...monitors.map(m => m.monitorPositionY + m.monitorHeight))
-                  };
+                   };
                   updateLocalBounds(bounds);
               }
           } catch (e) {
-              console.error("Failed to fetch desktop bounds from SocketCluster", e);
+              console.error("Failed to fetch desktop bounds from WebSocket", e);
           }
       }
 

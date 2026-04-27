@@ -30,14 +30,35 @@
 <body>
     <div id="container" class="none"></div>
     
-    <script type="module" src="../lib/sc-connection.js"></script>
+    <script type="module" src="../lib/slides-studio-connection.js"></script>
     
     <script type="module">
-        const container = document.getElementById("container");
+        function applyShape(config) {
+            const container = document.getElementById("container");
+            const shape = typeof config === 'string' ? config : (config ? config.path : null);
+            const style = config && typeof config === 'object' ? config.style : null;
 
-        function applyShape(shape) {
-            const finalShape = (shape && shape !== "none" && shape.trim() !== "") ? shape : "none";
-            container.className = finalShape;
+            if (!shape || shape === "none" || shape.trim() === "") {
+                container.className = "none";
+                container.style.clipPath = "";
+                container.style.backgroundColor = "rgb(255, 255, 255)";
+            } else if (shape.includes("(") || shape.includes(",")) {
+                container.className = "";
+                if (!shape.startsWith("path(") && !shape.startsWith("polygon(") && !shape.startsWith("circle(")) {
+                    container.style.clipPath = `path("${shape}")`;
+                } else {
+                    container.style.clipPath = shape;
+                }
+                container.style.backgroundColor = "rgb(255, 255, 255)";
+            } else {
+                container.className = shape;
+                container.style.clipPath = "";
+            }
+
+            // Apply arbitrary CSS styles (filters, borders, etc.)
+            if (style && typeof style === 'object') {
+                Object.assign(container.style, style);
+            }
         }
 
         // Handle BroadcastChannel (Local Sync)
@@ -47,39 +68,14 @@
         };
 
         window.addEventListener('DOMContentLoaded', async(event) => {
-            while (!window.scSocket) {
+            while (!window.ssSocket) {
                 await new Promise(r => setTimeout(r, 100));
             }
 
-            // Connection listener loop
+            // Connection listener loops (keep for status if needed, or remove)
             (async () => {
-                for await (let event of window.scSocket.listener('connect')) {
-                    // Connected
-                }
-            })();
-
-            // Disconnection listener loop
-            (async () => {
-                for await (let event of window.scSocket.listener('disconnect')) {
-                    // Disconnected
-                }
-            })();
-
-            // Subscribe to the broadcast channel for overrides
-            const channel = window.scSocket.subscribe('slides_navigation');
-            
-            (async () => {
-                for await (let data of channel) {
-                    try {
-                        const payload = data.msgParam || {};
-                        const shape = payload.cameraShape || (payload.attributes ? payload.attributes.cameraShape : null);
-                        
-                        if (shape !== null && shape !== undefined) {
-                            applyShape(shape);
-                        }
-                    } catch (err) {
-                        console.error("[CameraShape] Error parsing SC message:", err);
-                    }
+                for await (let event of window.ssSocket.listener('connect')) {
+                    console.log("[CameraShape] Socket connected.");
                 }
             })();
         })

@@ -4,7 +4,7 @@ A collection of interactive p5.js overlays that visualize MediaPipe vision task 
 
 ## Description
 
-The Pose Overlays app subscribes to SocketCluster channels broadcasted by the Slides-Studio plugin. It processes landmark data from MediaPipe vision tasks and renders them using various artistic "sketches" powered by p5.js. 
+The Pose Overlays app subscribes to WebSocket channels broadcasted by the Slides-Studio plugin. It processes landmark data from MediaPipe vision tasks and renders them using various artistic "sketches" powered by p5.js. 
 
 Current available overlays:
 - **r1b2**: A parabolic painting effect that creates flowing lines and "drips" based on joint movement.
@@ -27,7 +27,7 @@ To use these overlays in OBS:
 ## Developer Overview
 
 ### Architecture
-- **Data Input**: The overlays connect to the plugin's internal SocketCluster server. They subscribe to a specific channel to receive JSON payloads containing MediaPipe landmark results.
+- **Data Input**: The overlays connect to the plugin's internal WebSocket server. They subscribe to a specific channel to receive JSON payloads containing MediaPipe landmark results.
 - **Rendering**: p5.js is used for all drawing logic. The `cur_data` variable is updated on every message, and the `draw()` loop interpolates these coordinates to ensure smooth movement.
 - **State Management**: Settings are saved as JSON files in the user's vault via the plugin's `/api/file/save` and `/api/file/get` endpoints.
 

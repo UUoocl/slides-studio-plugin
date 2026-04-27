@@ -1,15 +1,15 @@
 // This script runs in index.html (the viewer host)
 // It handles synchronization of the local viewer iframes (current, upcoming, teleprompter)
-// based on messages from the Studio "brain" and SocketCluster events.
+// based on messages from the Studio "brain" and WebSocket events.
 
 (async () => {
-    // Wait for scSocket to be available
-    while (!window.scSocket) {
+    // Wait for ssSocket to be available
+    while (!window.ssSocket) {
         await new Promise(r => setTimeout(r, 100));
     }
 
     // Subscribe to commands specifically for this viewer instance
-    const channel = window.scSocket.subscribe('studio_to_currentSlide');
+    const channel = window.ssSocket.subscribe('studio_to_currentSlide');
     
     for await (let data of channel) {
         try {
@@ -36,7 +36,7 @@
                 }
             }
         } catch (err) {
-            console.error("[SpeakerViewerSync] Error processing SC message:", err);
+            console.error("[SpeakerViewerSync] Error processing WS message:", err);
         }
     }
 })();

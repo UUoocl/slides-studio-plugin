@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UVC Controller (SocketCluster)</title>
+    <title>UVC Controller (WebSocket)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -88,7 +88,7 @@
 
     <div class="status-bar">
         <span>Channel: <strong id="chan-display" style="color: #569cd6;">...</strong></span>
-        <span>SocketCluster: <strong id="sc-status" class="status disconnected">Disconnected</strong></span>
+        <span>WebSocket: <strong id="sc-status" class="status disconnected">Disconnected</strong></span>
         <button id="reconnect-btn">Reconnect</button>
     </div>
 
@@ -111,7 +111,7 @@
     </div>
 
     <script type="module">
-        import { create } from '../lib/socketcluster-client.min.js';
+        import { create } from '../lib/slides-studio-client.js';
 
         const urlParams = new URLSearchParams(window.location.search);
         const deviceName = urlParams.get('name');
@@ -139,7 +139,7 @@
             if (logBox.children.length > 50) logBox.removeChild(logBox.lastChild);
         }
 
-        async function initSocketCluster() {
+        async function initWebSocket() {
             if (socket) {
                 socket.disconnect();
             }
@@ -147,7 +147,7 @@
             socket = create({
                 hostname: window.location.hostname,
                 port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-                path: '/socketcluster/'
+                path: '/websocket/'
             });
             
             (async () => {
@@ -165,7 +165,7 @@
                 for await (let event of socket.listener('disconnect')) {
                     scStatus.textContent = "Disconnected";
                     scStatus.className = "status disconnected";
-                    log("SocketCluster Disconnected", "info");
+                    log("WebSocket Disconnected", "info");
                 }
             })();
 
@@ -189,7 +189,7 @@
                 return;
             }
             log(`TX (${OUT_CHAN}): ${data.action}`, "tx");
-            socket.transmitPublish(OUT_CHAN, data);
+            socket.publish(OUT_CHAN, data);
         }
 
         function handleMessage(msg) {
@@ -223,12 +223,16 @@
                     
                     const readBtn = document.createElement('button');
                     readBtn.textContent = 'Read';
-                    readBtn.onclick = () => sendCommand({ action: "get_value", control: c.name });
+                    readBtn.onclick = () => {
+                        window.lastReadControl = c.name;
+                        sendCommand({ action: "get_value", control: c.name });
+                    };
                     
                     const valSpan = document.createElement('span');
                     valSpan.className = 'control-val';
                     valSpan.style.fontSize = '0.8em';
                     valSpan.style.color = '#aaa';
+                    
                     valSpan.textContent = JSON.stringify(c["current-value"] || {});
                     
                     div.appendChild(nameSpan);
@@ -242,14 +246,24 @@
                     const row = document.getElementById(`ctrl-${c.name}`);
                     if (row) {
                         const valSpan = row.querySelector('.control-val');
-                        if (valSpan) valSpan.textContent = JSON.stringify(c["current-value"] || {});
+                        if (valSpan) {
+                            const valStr = JSON.stringify(c["current-value"] || {});
+                            valSpan.textContent = valStr;
+                            
+                            // If this was the last control we manually read, update the input fields
+                            if (window.lastReadControl === c.name) {
+                                document.getElementById('manual-control-name').value = c.name;
+                                document.getElementById('manual-control-val').value = valStr;
+                                window.lastReadControl = null;
+                            }
+                        }
                     }
                 });
             }
         }
 
         // Event Listeners
-        document.getElementById('reconnect-btn').onclick = initSocketCluster;
+        document.getElementById('reconnect-btn').onclick = initWebSocket;
         document.getElementById('get-controls-btn').onclick = () => sendCommand({ action: "get_controls" });
 
         document.getElementById('manual-set-btn').onclick = () => {
@@ -261,7 +275,7 @@
         };
 
         // Initial setup
-        initSocketCluster();
+        initWebSocket();
 
     </script>
 </body>

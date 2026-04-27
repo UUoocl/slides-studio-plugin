@@ -85,6 +85,10 @@ export class MidiManager {
                     controller: msg.controller ? msg.controller.number : null
                 };
 
+                if (setting.consoleLogEnabled) {
+                    console.warn(`[MidiManager] Received MIDI from ${setting.name}:`, payload);
+                }
+
                 if (this.onMidiMessageReceived) {
                     this.onMidiMessageReceived(setting.name, payload);
                 }
@@ -140,6 +144,10 @@ export class MidiManager {
 
         const type = messageData.type || "noteon";
         const channel = messageData.channel || 1;
+
+        if (deviceSetting.consoleLogEnabled) {
+            console.warn(`[MidiManager] Sending MIDI to ${deviceName} (${deviceSetting.outputName}):`, messageData);
+        }
         
         try {
             switch (type.toLowerCase()) {

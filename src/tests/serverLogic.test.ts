@@ -14,7 +14,7 @@ vi.mock('obsidian', () => {
 
 import { FileSystemAdapter } from 'obsidian';
 
-// Mock socketcluster-server before importing ServerManager
+// Mock WebSocket-server before importing ServerManager
 const mockScServer = {
     listener: vi.fn().mockImplementation((name) => {
         if (name === 'connection') {
@@ -45,7 +45,7 @@ const mockScServer = {
     close: vi.fn().mockResolvedValue(undefined)
 };
 
-vi.mock('socketcluster-server', () => {
+vi.mock('WebSocket-server', () => {
     return {
         __esModule: true,
         attach: vi.fn(() => mockScServer),
@@ -100,7 +100,7 @@ const mockApp = {
     }
 };
 
-describe('ServerManager SocketCluster Integration', () => {
+describe('ServerManager WebSocket Integration', () => {
     let serverManager: ServerManager;
     const port = 9999;
 
@@ -119,7 +119,7 @@ describe('ServerManager SocketCluster Integration', () => {
         // Give it a moment for the async connection loop to run
         await new Promise(resolve => setTimeout(resolve, 300));
 
-        const clientMetadata = (serverManager as any).clientMetadata;
+        const clientMetadata = (serverManager as unknown).clientMetadata;
         
         expect(clientMetadata.get('test-socket-id')).toBeDefined();
         expect(clientMetadata.get('test-socket-id')?.name).toBe('TestClient');

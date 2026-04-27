@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Zoom SDK Bidirectional Bridge Test</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .controls { background: #f0f0f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .log-container { display: flex; gap: 20px; }
+        .log { flex: 1; height: 400px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; background: #fafafa; }
+        .log h3 { margin-top: 0; position: sticky; top: 0; background: #fafafa; padding: 5px 0; border-bottom: 1px solid #eee; }
+        .commands { margin-bottom: 20px; }
+        button { padding: 10px 15px; cursor: pointer; }
+        .status { font-weight: bold; margin-bottom: 10px; }
+        .input-group { margin-bottom: 10px; }
+        label { display: inline-block; width: 100px; }
+    </style>
+</head>
+<body>
+    <h1>Zoom SDK Bidirectional Bridge Test</h1>
+    
+    <div class="controls">
+        <div class="input-group">
+            <label for="ip">Server IP:</label>
+            <input type="text" id="ip" value="127.0.0.1">
+        </div>
+        <div class="input-group">
+            <label for="port">Port:</label>
+            <input type="number" id="port" value="80">
+        </div>
+        <button id="connectBtn">Connect</button>
+        <p class="status" id="status">Status: Disconnected</p>
+    </div>
+
+    <div class="commands">
+        <h3>Zoom Commands (Send)</h3>
+        <button id="muteAllBtn" disabled>Mute All</button>
+        <button id="lowerHandsBtn" disabled>Lower All Hands</button>
+        <button id="unmuteAllBtn" disabled>Unmute All</button>
+    </div>
+
+    <div class="log-container">
+        <div class="log" id="zoomLog">
+            <h3>Zoom Events (Receive)</h3>
+            <div id="zoomEvents"></div>
+        </div>
+        <div class="log" id="inputLog">
+            <h3>Input Monitor (Receive)</h3>
+            <div id="inputEvents"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { create } from '../lib/slides-studio-client.js';
+
+        let socket = null;
+        const ipInput = document.getElementById('ip');
+        const portInput = document.getElementById('port');
+        const connectBtn = document.getElementById('connectBtn');
+        const statusText = document.getElementById('status');
+        const muteAllBtn = document.getElementById('muteAllBtn');
+        const lowerHandsBtn = document.getElementById('lowerHandsBtn');
+        const unmuteAllBtn = document.getElementById('unmuteAllBtn');
+        const zoomEvents = document.getElementById('zoomEvents');
+        const inputEvents = document.getElementById('inputEvents');
+
+        function logEvent(container, message) {
+            const div = document.createElement('div');
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            container.prepend(div);
+            if (container.children.length > 50) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        connectBtn.onclick = () => {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+                connectBtn.textContent = 'Connect';
+                statusText.textContent = 'Status: Disconnected';
+                statusText.style.color = 'black';
+                muteAllBtn.disabled = true;
+                lowerHandsBtn.disabled = true;
+                unmuteAllBtn.disabled = true;
+                return;
+            }
+
+            const hostname = ipInput.value;
+            const port = parseInt(portInput.value);
+
+            socket = create({ 
+                hostname, 
+                port,
+                path: '/websocket/'
+            });
+            statusText.textContent = 'Status: Connecting...';
+            statusText.style.color = 'orange';
+
+            (async () => {
+                for await (let event of socket.listener('error')) {
+                    statusText.textContent = `Error: ${event.message || 'Connection failed'}`;
+                    statusText.style.color = 'red';
+                }
+            })();
+
+            (async () => {
+                for await (let event of socket.listener('connect')) {
+                    statusText.textContent = `Status: Connected to ${hostname}:${port}`;
+                    statusText.style.color = 'green';
+                    connectBtn.textContent = 'Disconnect';
+                    muteAllBtn.disabled = false;
+                    lowerHandsBtn.disabled = false;
+                    unmuteAllBtn.disabled = false;
+                    
+                    // Subscribe to events
+                    subscribe('meetingStatus', zoomEvents);
+                    subscribe('userJoin', zoomEvents);
+                    subscribe('userLeft', zoomEvents);
+                    subscribe('audioStatus', zoomEvents);
+                    subscribe('videoStatus', zoomEvents);
+                    subscribe('handStatus', zoomEvents);
+                    subscribe('inputEvent', inputEvents);
+                }
+            })();
+        };
+
+        async function subscribe(channel, logContainer) {
+            let ch = socket.subscribe(channel);
+            for await (let data of ch) {
+                logEvent(logContainer, `${channel}: ${JSON.stringify(data)}`);
+            }
+        }
+
+        muteAllBtn.onclick = () => {
+            socket.publish('commands', { event: 'muteAll', data: { allowUnmute: false } });
+            logEvent(zoomEvents, 'Sent Command: muteAll');
+        };
+
+        lowerHandsBtn.onclick = () => {
+            socket.publish('commands', { event: 'lowerAllHands', data: {} });
+            logEvent(zoomEvents, 'Sent Command: lowerAllHands');
+        };
+
+        unmuteAllBtn.onclick = () => {
+            socket.publish('commands', { event: 'unmuteAll', data: {} });
+            logEvent(zoomEvents, 'Sent Command: unmuteAll');
+        };
+    </script>
+</body>
+</html>

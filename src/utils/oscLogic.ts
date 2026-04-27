@@ -19,6 +19,7 @@ interface OscClientWithDetails {
  */
 export class OscManager {
     private activeOscDevices: Map<string, ActiveOscConnection> = new Map();
+    private activeSettings: Map<string, OscDeviceSetting> = new Map();
     
     // Received messages from a Server are arrays: [address, ...args]
     private onOscMessageReceived: (name: string, msg: unknown[]) => void;
@@ -38,15 +39,39 @@ export class OscManager {
         new Notice(`Starting OSC: ${deviceSettings.name}`);
 
         try {
-            const oscClient = new Client(deviceSettings.ip, deviceSettings.outPort);
-            const oscServer = new Server(deviceSettings.inPort, '0.0.0.0');
+            const oscClient = new Client(deviceSettings.outputAddress, deviceSettings.outputPort);
+            const oscServer = new Server(deviceSettings.inputPort, '0.0.0.0');
             oscServer.on("listening", () => {
-                new Notice(`OSC Server: ${deviceSettings.name} is listening on ${deviceSettings.inPort}.`);
+                new Notice(`OSC Server: ${deviceSettings.name} is listening on ${deviceSettings.inputPort}.`);
+            });
+
+            oscServer.on("error", (err: any) => {
+                console.error(`[OscManager] Server error for ${deviceSettings.name}:`, err);
+                new Notice(`OSC Error: ${deviceSettings.name} - ${err.message || err}`);
+            });
+
+            // Handle bundles
+            oscServer.on("bundle", (bundle: any) => {
+                if (deviceSettings.consoleLogEnabled) {
+                    console.warn(`[OscManager] Received OSC Bundle for ${deviceSettings.name}:`, bundle);
+                }
+                
+                // Forward each message in the bundle
+                if (bundle.elements && this.onOscMessageReceived) {
+                    bundle.elements.forEach((el: any) => {
+                        if (Array.isArray(el)) {
+                            this.onOscMessageReceived(deviceSettings.name, el);
+                        }
+                    });
+                }
             });
 
             // FIX: Incoming messages are arrays, not Message instances
             oscServer.on("message", (msg: unknown[]) => {
-                console.warn(msg)
+                if (deviceSettings.consoleLogEnabled) {
+                    console.warn(`[OscManager] Received OSC Message for ${deviceSettings.name}:`, msg);
+                }
+
                 if (this.onOscMessageReceived) {
                     this.onOscMessageReceived(deviceSettings.name, msg);
                 }
@@ -56,6 +81,7 @@ export class OscManager {
                 client: oscClient,
                 server: oscServer
             });
+            this.activeSettings.set(deviceSettings.name, deviceSettings);
 
         } catch (err) {
             const errorMsg = err instanceof Error ? err.message : String(err);
@@ -76,6 +102,7 @@ export class OscManager {
             void active.client.close(); 
             void active.server.close(); 
             this.activeOscDevices.delete(name);
+            this.activeSettings.delete(name);
         }
     }
 
@@ -88,6 +115,7 @@ export class OscManager {
             void conn.server.close(); 
         });
         this.activeOscDevices.clear();
+        this.activeSettings.clear();
     }
 
     /**
@@ -117,12 +145,15 @@ export class OscManager {
             const host = client.host || 'unknown';
             const port = client.port || 'unknown';
 
-            console.warn(`[OscManager] Sending OSC to ${deviceName} at ${host}:${port}`, message);
+            const deviceSettings = this.activeSettings.get(deviceName);
+            if (deviceSettings?.consoleLogEnabled) {
+                console.warn(`[OscManager] Sending OSC to ${deviceName} at ${host}:${port}`, message);
+            }
 
             client.send(message, (err) => {
                 if (err) {
                     console.error(`[OscManager] Error sending to ${deviceName}:`, err);
-                } else {
+                } else if (deviceSettings?.consoleLogEnabled) {
                     console.warn(`[OscManager] Successfully sent OSC message to ${deviceName}`);
                 }
             });

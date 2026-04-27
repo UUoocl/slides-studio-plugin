@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UVC PTZF Poller & Mapper (SocketCluster)</title>
+    <title>UVC PTZF Poller & Mapper (WebSocket)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -82,7 +82,7 @@
 
     <div class="status-bar">
         <span>Device: <strong id="chan-display" style="color: #569cd6;">...</strong></span>
-        <span>SocketCluster: <strong id="sc-status" class="status disconnected">Disconnected</strong></span>
+        <span>WebSocket: <strong id="sc-status" class="status disconnected">Disconnected</strong></span>
         <span>Polling: <strong id="poll-status" style="color:#888;">Idle</strong></span>
     </div>
 
@@ -144,7 +144,7 @@
     </div>
 
     <script type="module">
-        import { create } from '../lib/socketcluster-client.min.js';
+        import { create } from '../lib/slides-studio-client.js';
 
         const urlParams = new URLSearchParams(window.location.search);
         const deviceName = urlParams.get('name');
@@ -191,13 +191,13 @@
             if (elements.log.children.length > 10) elements.log.removeChild(elements.log.lastChild);
         }
 
-        async function initSocketCluster() {
+        async function initWebSocket() {
             if (socket) socket.disconnect();
 
             socket = create({
                 hostname: window.location.hostname,
                 port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-                path: '/socketcluster/',
+                path: '/websocket/',
                 authToken: { name: `UVC-Poller: ${deviceName}` }
             });
             
@@ -205,7 +205,7 @@
                 for await (let event of socket.listener('connect')) {
                     elements.scStatus.textContent = "Connected";
                     elements.scStatus.className = "status connected";
-                    addLog("SocketCluster Connected");
+                    addLog("WebSocket Connected");
                     
                     // Identify this client for the SC Monitor
                     try {
@@ -222,7 +222,7 @@
                 for await (let event of socket.listener('disconnect')) {
                     elements.scStatus.textContent = "Disconnected";
                     elements.scStatus.className = "status disconnected";
-                    addLog("SocketCluster Disconnected");
+                    addLog("WebSocket Disconnected");
                     stopPolling();
                 }
             })();
@@ -243,7 +243,7 @@
 
         async function sendCommand(data) {
             if (!socket || socket.state !== 'open') return;
-            socket.transmitPublish(OUT_CHAN, data);
+            socket.publish(OUT_CHAN, data);
         }
 
         function handleMessage(msg) {
@@ -355,7 +355,7 @@
         document.getElementById('start-btn').onclick = startPolling;
         document.getElementById('stop-btn').onclick = stopPolling;
 
-        initSocketCluster();
+        initWebSocket();
     </script>
 </body>
 </html>

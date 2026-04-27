@@ -1,14 +1,14 @@
 # Rule Engine
 
-The Rule Engine is a SocketCluster middleware application that allows you to create dynamic routing logic for messages passing through the server.
+The Rule Engine is a WebSocket middleware application that allows you to create dynamic routing logic for messages passing through the server.
 
 ## Features
 
 - **If-Then Rules**: Define rules that trigger actions based on incoming message payloads.
-- **Dynamic Channel Discovery**: Automatically detects active channels on the SocketCluster server.
+- **Dynamic Channel Discovery**: Automatically detects active channels on the WebSocket server.
 - **Capture & Learn**: Use the "LISTEN" button to automatically capture the payload of the next message on a channel, making it easy to define matching criteria.
 - **Payload Matching**: Supports partial JSON matching and string inclusion for "If" conditions.
-- **Vault Persistence**: Rules are saved to and loaded from your Obsidian vault (`rules/socketcluster-rules.json`).
+- **Vault Persistence**: Rules are saved to and loaded from your Obsidian vault (`rules/websocket-rules.json`).
 
 ## Example Usage
 
@@ -22,5 +22,5 @@ The Rule Engine is a SocketCluster middleware application that allows you to cre
 ## Developer Info
 
 - **Entry Point**: `index.html`
-- **Dependencies**: `socketcluster-client`
+- **Dependencies**: `SlidesStudioClient` (Native WebSocket wrapper)
 - **Persistence**: Uses the Slides-Studio `/api/file/*` endpoints.

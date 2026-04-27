@@ -5,12 +5,12 @@ import ctypes
 import sys
 import argparse
 import time
-from socketclusterclient import Socketcluster
+import websocket
 
 # Global variables
 lib_path = os.path.join(os.path.dirname(__file__), "libuvcutil.dylib")
 uvc_lib = None
-sc = None
+ws = None
 connected = False
 configs = {} # name -> {index, polling, pps, last_poll, mapEnabled, mapMin, mapMax}
 lock = threading.Lock()
@@ -85,7 +85,12 @@ class UVCLib:
 
     def set_value(self, control, value):
         if not self.lib: return None
-        val_str = str(value)
+        # Use json.dumps for dicts/lists to ensure double quotes for the C library
+        if (isinstance(value, (dict, list))):
+            val_str = json.dumps(value, separators=(',', ':'))
+        else:
+            val_str = str(value)
+            
         res_ptr = self.lib.uvclib_set_value(control.encode('utf-8'), val_str.encode('utf-8'))
         if res_ptr:
             return json.loads(res_ptr.decode('utf-8'))
@@ -130,10 +135,21 @@ def _map_single_control(ctrl, out_min, out_max):
     elif isinstance(val, (int, float)):
         # Scalar value
         ctrl['mapped-value'] = lerp(val, c_min, c_max, out_min, out_max)
+        
+def send_message(msg_type, **kwargs):
+    """Sends a message via WebSocket in the new protocol format."""
+    global ws, connected
+    if not connected or not ws:
+        return
+    try:
+        msg = {"type": msg_type}
+        msg.update(kwargs)
+        ws.send(json.dumps(msg))
+    except Exception as e:
+        print(f"Failed to send message: {e}")
 
 def send_to_sc(channel, data):
-    if connected and sc:
-        sc.publish(channel, data)
+    send_message("publish", channel=channel, data=data)
 
 def process_command(payload, device_index=None, config=None):
     global uvc_lib, lock
@@ -162,11 +178,6 @@ def process_command(payload, device_index=None, config=None):
             if control:
                 val = uvc_lib.get_value(control)
                 if config:
-                    # We need the min/max to map get_value results too
-                    # The get_value from libuvcutil usually returns just the value or a dict
-                    # To map it properly we might need the full control metadata.
-                    # For now, let's just try to map if it's a known format.
-                    # Optimization: maybe the bridge should cache min/max for mapped devices.
                     controls = uvc_lib.get_controls()
                     ctrl_meta = next((c for c in controls if c['name'] == control), None)
                     if ctrl_meta:
@@ -180,13 +191,33 @@ def process_command(payload, device_index=None, config=None):
             control = payload.get("control")
             value = payload.get("value")
             if control and value is not None:
-                return {"action": "set_value", "control": control, "data": uvc_lib.set_value(control, value)}
+                # Try to parse string values as JSON if they look like objects
+                if isinstance(value, str) and value.strip().startswith('{'):
+                    try:
+                        value = json.loads(value)
+                    except Exception as e:
+                        print(f"[UVC Bridge] JSON parse error for value: {e}")
+                
+                res = uvc_lib.set_value(control, value)
+                return {"action": "set_value", "control": control, "data": res}
             return {"error": "Missing control name or value"}
             
     return {"error": "Unknown action"}
 
+def handle_message(ws_instance, message):
+    try:
+        data = json.loads(message)
+        if data.get("type") == "event":
+            channel = data.get("channel")
+            payload = data.get("data")
+            if channel == "uvcCommands":
+                on_uvc_command(channel, payload)
+            elif channel.startswith("uvc_out_"):
+                on_uvc_out(channel, payload)
+    except Exception as e:
+        print(f"Error handling message: {e}")
+
 def on_uvc_out(channel, data):
-    # channel is uvc_out_{name}
     name = channel.replace("uvc_out_", "")
     config = configs.get(name)
     if not config:
@@ -207,12 +238,12 @@ def on_uvc_command(channel, data):
         try:
             response = process_command(data)
             if response:
-                sc.emit("uvcResponse", response)
+                send_message("call", id="uvcResp-"+str(time.time()), method="uvcResponse", data=response)
         except Exception as e:
-            sc.emit("uvcResponse", {"error": str(e)})
+            send_message("call", id="uvcResp-"+str(time.time()), method="uvcResponse", data={"error": str(e)})
 
 def update_configs(device_list):
-    global configs, sc
+    global configs
     new_configs = {}
     for d in device_list:
         name = d['name']
@@ -228,8 +259,7 @@ def update_configs(device_list):
         # Subscribe to out channel if new
         if name not in configs:
             chan = f"uvc_out_{name}"
-            sc.subscribe(chan)
-            sc.onchannel(chan, on_uvc_out)
+            send_message("subscribe", channel=chan)
             print(f"Subscribed to {chan}")
             
     configs = new_configs
@@ -241,7 +271,6 @@ def polling_loop():
             continue
             
         now = time.time()
-        # Create a snapshot of configs to avoid dict size change during iteration
         items = list(configs.items())
         for name, config in items:
             if config['polling']:
@@ -251,36 +280,39 @@ def polling_loop():
                     try:
                         res = process_command({"action": "get_controls"}, device_index=config['index'], config=config)
                         if res and "data" in res:
+                            # print(f"Polling {name}: found {len(res['data'])} controls")
                             send_to_sc(f"uvc_in_{name}", {"action": "poll", "data": res['data']})
-                    except:
-                        pass
+                        else:
+                            print(f"Polling {name} failed: process_command returned {res}")
+                    except Exception as e:
+                        print(f"Polling loop error for {name}: {e}")
         time.sleep(0.01)
 
-def on_connect(socket):
-    global connected
+def on_open(ws_instance):
+    global connected, ws
     connected = True
-    print("Connected to SocketCluster")
+    ws = ws_instance
+    print("Connected to WebSocket")
     # Identify this client
-    socket.emit("setInfo", {"name": "Python-UVC-Bridge"})
-    sc.emit("uvcResponse", {"status": "connected", "lib_loaded": uvc_lib.is_loaded()})
+    send_message("call", id="init", method="setInfo", data={"name": "Python-UVC-Bridge"})
+    send_message("call", id="uvcInit", method="uvcResponse", data={"status": "connected", "lib_loaded": uvc_lib.is_loaded()})
     
     # Subscribe to general commands
-    socket.subscribe('uvcCommands')
-    socket.onchannel('uvcCommands', on_uvc_command)
+    send_message("subscribe", channel="uvcCommands")
 
-def on_disconnect(socket):
+def on_close(ws_instance, close_status_code, close_msg):
     global connected
     connected = False
-    print("Disconnected from SocketCluster")
+    print(f"Disconnected from WebSocket: {close_msg}")
 
-def on_connect_error(socket, error):
+def on_error(ws_instance, error):
     print(f"Connection Error: {error}")
 
 def main():
-    global uvc_lib, lib_path, sc
+    global uvc_lib, lib_path
     
-    parser = argparse.ArgumentParser(description="UVC Utility SocketCluster Bridge")
-    parser.add_argument("--url", type=str, default="ws://127.0.0.1:8000/socketcluster/", help="SocketCluster WebSocket URL")
+    parser = argparse.ArgumentParser(description="UVC Utility WebSocket Bridge")
+    parser.add_argument("--url", type=str, default="ws://127.0.0.1:57000/websocket/", help="WebSocket URL")
     parser.add_argument("--lib", type=str, default=lib_path, help="Path to libuvcutil.dylib")
     args = parser.parse_args()
     
@@ -294,16 +326,13 @@ def main():
     pt = threading.Thread(target=polling_loop, daemon=True)
     pt.start()
     
-    # Initialize SocketCluster
-    sc = Socketcluster.socket(target_url)
-    sc.setBasicListener(on_connect, on_disconnect, on_connect_error)
-    sc.connect()
-
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("\nStopping bridge...")
+    ws_app = websocket.WebSocketApp(target_url,
+                              on_open=on_open,
+                              on_message=handle_message,
+                              on_error=on_error,
+                              on_close=on_close)
+    
+    ws_app.run_forever()
 
 if __name__ == "__main__":
     main()

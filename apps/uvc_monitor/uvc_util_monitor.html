@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UVC Live Monitor (SocketCluster)</title>
+    <title>UVC Live Monitor (WebSocket)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -102,7 +102,7 @@
 
     <div class="status-bar">
         <span>Device: <strong id="chan-display" style="color: #569cd6;">...</strong></span>
-        <span>SocketCluster: <strong id="sc-status" class="status disconnected">Disconnected</strong></span>
+        <span>WebSocket: <strong id="sc-status" class="status disconnected">Disconnected</strong></span>
     </div>
 
     <div id="monitor-grid">
@@ -115,7 +115,7 @@
     </div>
 
     <script type="module">
-        import { create } from '../lib/socketcluster-client.min.js';
+        import { create } from '../lib/slides-studio-client.js';
 
         const urlParams = new URLSearchParams(window.location.search);
         const deviceName = urlParams.get('name');
@@ -140,11 +140,11 @@
             if (logBox.children.length > 10) logBox.removeChild(logBox.lastChild);
         }
 
-        async function initSocketCluster() {
+        async function initWebSocket() {
             socket = create({
                 hostname: window.location.hostname,
                 port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-                path: '/socketcluster/',
+                path: '/websocket/',
                 authToken: { name: `UVC-Monitor: ${deviceName}` }
             });
             
@@ -152,7 +152,7 @@
                 for await (let event of socket.listener('connect')) {
                     scStatus.textContent = "Connected";
                     scStatus.className = "status connected";
-                    addLog("SocketCluster Connected");
+                    addLog("WebSocket Connected");
                     
                     // Identify this client for the SC Monitor
                     try {
@@ -169,23 +169,30 @@
                 for await (let event of socket.listener('disconnect')) {
                     scStatus.textContent = "Disconnected";
                     scStatus.className = "status disconnected";
-                    addLog("SocketCluster Disconnected");
+                    addLog("WebSocket Disconnected");
                 }
             })();
         }
 
         async function subscribeToInChannel() {
+            addLog(`Subscribing to ${IN_CHAN}...`);
             const channel = socket.subscribe(IN_CHAN);
             for await (let msg of channel) {
+                console.log(`[UVC Monitor] Received:`, msg);
                 handleMessage(msg);
             }
         }
 
         function handleMessage(msg) {
             if (msg.action === "get_controls" || msg.action === "poll") {
+                if (!msg.data || msg.data.length === 0) {
+                    addLog("Warning: Received empty controls list.");
+                } else {
+                    addLog(`Received ${msg.data.length} controls.`);
+                }
                 renderControls(msg.data);
             } else if (msg.action === "get_value") {
-                updateSingleControl(msg);
+                handleSingleControl(msg);
             }
         }
 
@@ -287,7 +294,7 @@
             }
         }
 
-        initSocketCluster();
+        initWebSocket();
     </script>
 </body>
 </html>

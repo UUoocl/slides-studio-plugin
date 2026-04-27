@@ -117,6 +117,13 @@
         const actionContainer = document.getElementById('action-container');
         const statusArea = document.getElementById('status-area');
 
+        // Get channel from URL
+        const params = new URLSearchParams(window.location.search);
+        const channelParam = params.get('channel');
+        if (channelParam) {
+            eventInput.value = channelParam;
+        }
+
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
             statusMsg.textContent = "Error: Web Speech API not supported.";

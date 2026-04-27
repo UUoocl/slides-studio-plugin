@@ -3,10 +3,11 @@
  */
 export interface OscDeviceSetting {
     name: string;
-    ip: string;
-    inPort: number;
-    outPort: number;
+    outputAddress: string;
+    inputPort: number;
+    outputPort: number;
     autoStart?: boolean;
+    consoleLogEnabled?: boolean;
 }
 
 export interface MidiDeviceSetting {
@@ -14,6 +15,7 @@ export interface MidiDeviceSetting {
     inputName: string; // System Input Name (e.g. "Keystation 49")
     outputName: string;// System Output Name
     autoStart?: boolean;
+    consoleLogEnabled?: boolean;
 }
 
 export interface AudioDeviceSetting {
@@ -25,12 +27,14 @@ export interface AudioDeviceSetting {
     fftEnabled: boolean;
     sttEnabled: boolean;
     autoStart?: boolean;
+    consoleLogEnabled?: boolean;
 }
 
 export interface GamepadDeviceSetting {
     name: string;      // User defined alias (e.g. "Player 1")
     index: number;     // The gamepad index (0, 1, 2, 3)
     enabled: boolean;  // Whether this gamepad is broadcasting
+    consoleLogEnabled?: boolean;
 }
 
 export interface MediaPipeDeviceSetting {
@@ -41,6 +45,7 @@ export interface MediaPipeDeviceSetting {
     width: number;
     enabled: boolean;
     autoStart?: boolean;
+    consoleLogEnabled?: boolean;
 }
 
 export interface UvcDeviceSetting {
@@ -52,16 +57,27 @@ export interface UvcDeviceSetting {
     mapEnabled?: boolean;
     mapMin?: number;
     mapMax?: number;
+    consoleLogEnabled?: boolean;
 }
 
 /**
- * Main Plugin Settings
+ * Queued OBS request structure for centralized routing.
  */
+export interface QueuedObsRequest {
+    requestType?: string;
+    requestData?: unknown;
+    requests?: unknown[];
+    options?: unknown;
+    resolve?: (data: any) => void;
+    reject?: (error: string) => void;
+    clientId?: string;
+    requestId?: string;
+}
 export interface SlidesStudioPluginSettings {
+    obsAutoConnect: boolean;
     websocketIP_Text: string;
     websocketPort_Text: string;
     websocketPW_Text: string;
-    slidesPort_Text: string;
     slide_tags: string[];
     scene_tags: string[];
     camera_tags: string[];
@@ -83,12 +99,16 @@ export interface SlidesStudioPluginSettings {
     pythonPath: string;
     mouseMonitorEnabled: boolean;
     mouseMonitorPosition: boolean;
+    mouseMonitorPPS: number;
     mouseMonitorClicks: boolean;
     mouseMonitorScroll: boolean;
+    mouseConsoleLogPosition?: boolean;
+    mouseConsoleLogClicks?: boolean;
+    mouseConsoleLogScroll?: boolean;
     keyboardMonitorEnabled: boolean;
+    keyboardConsoleLogEnabled?: boolean;
     keyboardMonitorShowCombinations: boolean;
     uvcUtilEnabled: boolean;
-    uvcUtilLibPath: string;
     settingsFolder: string;
     settingsFile: string;
     oscDevices: OscDeviceSetting[];
@@ -98,6 +118,10 @@ export interface SlidesStudioPluginSettings {
     mediapipeDevices: MediaPipeDeviceSetting[];
     uvcDevices: UvcDeviceSetting[];
     all_sources: string[];
+    sttChannelName: string;
+    sttConsoleLogEnabled: boolean;
+    appleShortcutsEnabled: boolean;
+    appleShortcutsLoggingEnabled: boolean;
 }
 
 /**

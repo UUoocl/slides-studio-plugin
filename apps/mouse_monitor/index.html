@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mouse Monitor (SocketCluster)</title>
+    <title>Mouse Monitor (WebSocket)</title>
     <style>
         body {
             margin: 0;
@@ -53,12 +53,12 @@
 <body>
     <div id="cursor"></div>
     <div id="info">
-        Mouse Monitor (SocketCluster)<br>
+        Mouse Monitor (WebSocket)<br>
         Status: Disconnected
     </div>
 
     <script type="module">
-        import { create } from '../lib/socketcluster-client.min.js';
+        import { create } from '../lib/slides-studio-client.js';
 
         const cursor = document.getElementById('cursor');
         const info = document.getElementById('info');
@@ -66,13 +66,13 @@
         const socket = create({
             hostname: window.location.hostname,
             port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-            path: '/socketcluster/',
+            path: '/websocket/',
             authToken: { name: 'Mouse-Monitor' }
         });
 
         (async () => {
             for await (let {error} of socket.listener('error')) {
-                console.error('SocketCluster error:', error);
+                console.error('WebSocket error:', error);
             }
         })();
 
@@ -91,7 +91,7 @@
 
         function updateStatus(status) {
             if (!info) return;
-            info.innerHTML = `Mouse Monitor (SocketCluster)<br>Status: ${status}`;
+            info.innerHTML = `Mouse Monitor (WebSocket)<br>Status: ${status}`;
         }
 
         // Listen for mouse events

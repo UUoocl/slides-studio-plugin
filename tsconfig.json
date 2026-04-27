@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    // "outDir": "./build",
     "outDir": "./",
     "baseUrl": ".",
     "inlineSourceMap": true,
@@ -9,24 +8,29 @@
     "target": "es2022",
     "allowJs": true,
     "noImplicitAny": true,
+    "noImplicitThis": true,
+    "noImplicitReturns": true,
+    "strictNullChecks": true,
+    "strictBindCallApply": true,
+    "noUncheckedIndexedAccess": true,
+    "useUnknownInCatchVariables": true,
     "moduleResolution": "node",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "isolatedModules": false,
-    "strictNullChecks": false,
+    "isolatedModules": true,
     "skipLibCheck": true,
     "importHelpers": true,
     "lib": [
       "DOM",
       "es2022"
     ],
-        "types": [
-            "node",
-            "obsidian-typings",
-            "ws",
-            "node-osc"
-        ]
-    },
+    "types": [
+      "node",
+      "obsidian-typings",
+      "ws",
+      "node-osc"
+    ]
+  },
     "exclude": [
         "node_modules",
         "docs",

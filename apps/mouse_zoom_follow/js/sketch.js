@@ -36,7 +36,7 @@ async function initApp() {
     obsManager.onConnectionChange = (connected) => {
         const statusEl = document.getElementById('connection-status');
         if (connected) {
-            statusEl.textContent = 'Connected to OBS via SocketCluster';
+            statusEl.textContent = 'Connected to OBS via WebSocket';
             statusEl.className = 'status connected';
             refreshData();
         } else {
@@ -53,22 +53,18 @@ function setupInputSocket() {
     if (!obsManager.socket) return;
 
     // Subscribe to mouse position updates
-    (async () => {
-        const channel = obsManager.socket.subscribe('mousePosition');
-        for await (let data of channel) {
-            mousePos = data;
-            recordActivity();
-        }
-    })();
+    const posChannel = obsManager.socket.subscribe('mousePosition');
+    posChannel.on('message', (data) => {
+        mousePos = data;
+        recordActivity();
+    });
 
     // Subscribe to keyboard press events
-    (async () => {
-        const channel = obsManager.socket.subscribe('keyboardPress');
-        for await (let data of channel) {
-            handleKeyboard(data);
-            recordActivity();
-        }
-    })();
+    const kbChannel = obsManager.socket.subscribe('keyboardPress');
+    kbChannel.on('message', (data) => {
+        handleKeyboard(data);
+        recordActivity();
+    });
 }
 
 async function refreshData() {
@@ -240,6 +236,8 @@ async function syncBrowserSources(perimeter, layoutW, layoutH) {
 function draw() {
     clear();
     
+    if (!stageSize || !stageSize.width) return;
+
     let visualScale = min(width / stageSize.width, height / stageSize.height) * 0.8;
     push();
     translate(width / 2, height / 2);
@@ -379,4 +377,3 @@ function draw() {
 function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
 }
-

@@ -3,6 +3,8 @@ import process from "process";
 import { builtinModules } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
+import sveltePlugin from "esbuild-svelte";
+import sveltePreprocess from "svelte-preprocess";
 
 const banner =
 `/*
@@ -20,7 +22,7 @@ function copyFiles() {
         fs.mkdirSync(dir, { recursive: true });
     }
 
-    const itemsToCopy = ["manifest.json", "styles.css", "pythonScripts", "slide-studio-app", "mediapipe_models"];
+    const itemsToCopy = ["manifest.json", "styles.css", "pythonScripts", "slide-studio-app", "apps", "mediapipe_models"];
     
     for (const item of itemsToCopy) {
         if (fs.existsSync(item)) {
@@ -31,7 +33,8 @@ function copyFiles() {
     }
 }
 
-const context = await esbuild.context({
+// Plugin Build Context
+const pluginContext = await esbuild.context({
 	banner: {
 		js: banner,
 	},
@@ -62,11 +65,38 @@ const context = await esbuild.context({
 	minify: prod,
 });
 
+// Editor Build Context
+const editorContext = await esbuild.context({
+    entryPoints: ["slide-studio-app/editor/src/main.js"],
+    bundle: true,
+    outfile: "slide-studio-app/editor/bundle.js",
+    format: "esm",
+    minify: prod,
+    sourcemap: !prod,
+    plugins: [
+        sveltePlugin({
+            preprocess: sveltePreprocess(),
+            compilerOptions: { css: "injected" }
+        })
+    ],
+    logLevel: "info",
+});
+
 if (prod) {
-	await context.rebuild();
+	await pluginContext.rebuild();
+    await editorContext.rebuild();
     copyFiles();
 	process.exit(0);
 } else {
+    // In dev mode, we watch both
+    await pluginContext.watch();
+    await editorContext.watch();
     copyFiles();
-	await context.watch();
+    
+    // Watch slide-studio-app for changes to copy them
+    fs.watch("slide-studio-app", { recursive: true }, (event, filename) => {
+        if (filename && !filename.includes("bundle.js")) {
+            copyFiles();
+        }
+    });
 }

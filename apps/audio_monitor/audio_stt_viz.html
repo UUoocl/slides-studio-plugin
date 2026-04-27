@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Audio STT Visualizer (SocketCluster)</title>
+    <title>Audio STT Visualizer</title>
     <style>
         body {
             margin: 0;
@@ -96,57 +96,57 @@
 </head>
 <body>
     <div id="info">
-        Audio STT Visualizer (SocketCluster)<br>
+        Audio STT Visualizer<br>
         Status: Disconnected
     </div>
 
     <div id="visualizers-container">
-        <div class="no-data" id="no-data-msg">Waiting for SocketCluster data...</div>
+        <div class="no-data" id="no-data-msg">Waiting for bridge data...</div>
     </div>
 
     <script type="module">
-        import { create } from '../lib/socketcluster-client.min.js';
+        import { create } from '../lib/slides-studio-client.js';
 
         const container = document.getElementById('visualizers-container');
         const noDataMsg = document.getElementById('no-data-msg');
         const info = document.getElementById('info');
         const devices = new Map(); // name -> { card, transcriptEl, historyEl, lastUpdate, lastLoggedText }
 
-        const socket = create({
+        const bridge = create({
             hostname: window.location.hostname,
             port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-            path: '/socketcluster/',
+            path: '/websocket/',
             authToken: { name: 'Audio-STT-Viz' }
         });
 
         (async () => {
-            for await (let {error} of socket.listener('error')) {
-                console.error('SocketCluster error:', error);
+            for await (let {error} of bridge.listener('error')) {
+                console.error('Bridge error:', error);
             }
         })();
 
         (async () => {
-            for await (let event of socket.listener('connect')) {
-                console.log('Connected to SocketCluster');
+            for await (let event of bridge.listener('connect')) {
+                console.log('Connected to bridge');
                 updateStatus('Connected');
             }
         })();
 
         (async () => {
-            for await (let event of socket.listener('disconnect')) {
-                console.log('Disconnected from SocketCluster');
+            for await (let event of bridge.listener('disconnect')) {
+                console.log('Disconnected from bridge');
                 updateStatus('Disconnected');
             }
         })();
 
         function updateStatus(status) {
             if (!info) return;
-            info.innerHTML = `Audio STT Visualizer (SocketCluster)<br>Status: ${status}`;
+            info.innerHTML = `Audio STT Visualizer<br>Status: ${status}`;
         }
 
         // Listen for audio STT events
         (async () => {
-            const channel = socket.subscribe('audio_stt');
+            const channel = bridge.subscribe('audio_stt');
             for await (let data of channel) {
                 const { device, stt } = data;
 

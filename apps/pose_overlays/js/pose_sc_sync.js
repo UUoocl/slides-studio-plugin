@@ -1,4 +1,4 @@
-import { create } from '../../lib/socketcluster-client.min.js';
+import { create } from '../../lib/slides-studio-client.js';
 
 (async () => {
     const isSettingsPage = window.location.pathname.includes('_settings.html');
@@ -8,7 +8,7 @@ import { create } from '../../lib/socketcluster-client.min.js';
     const socket = create({
         hostname: window.location.hostname,
         port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-        path: '/socketcluster/',
+        path: '/websocket/',
         authToken: { name: `Pose-Sync: ${filename}${isSettingsPage ? ' (Settings)' : ''}` }
     });
 
@@ -16,9 +16,15 @@ import { create } from '../../lib/socketcluster-client.min.js';
     const urlParams = new URLSearchParams(window.location.search);
     let landmarkChannelName = urlParams.get('channel') || 'default_pose_channel';
     
-    // If the channel name doesn't have a prefix, assume it's a MediaPipe vision task name
-    if (!landmarkChannelName.includes('mediapipe_in_')) {
-        landmarkChannelName = `mediapipe_in_${landmarkChannelName}`;
+    // If the channel name doesn't have the correct prefix, resolve it
+    if (!landmarkChannelName.startsWith('mediapipe_in_')) {
+        if (landmarkChannelName.startsWith('mediapipe_')) {
+            // e.g. "mediapipe_pose" -> "mediapipe_in_pose"
+            landmarkChannelName = landmarkChannelName.replace('mediapipe_', 'mediapipe_in_');
+        } else {
+            // e.g. "pose" -> "mediapipe_in_pose"
+            landmarkChannelName = `mediapipe_in_${landmarkChannelName}`;
+        }
     }
 
     const landmarkChannel = socket.subscribe(landmarkChannelName);

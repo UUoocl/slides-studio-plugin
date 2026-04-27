@@ -4,7 +4,7 @@ This directory contains a suite of web-based tools for monitoring and controllin
 
 ## Overview
 
-The UVC-util bridge allows you to interact with camera hardware controls—such as Pan, Tilt, Zoom, Focus, Brightness, and Contrast—in real-time via SocketCluster. This enables cameras to be used as high-precision input sensors for visualizations and automation.
+The UVC-util bridge allows you to interact with camera hardware controls—such as Pan, Tilt, Zoom, Focus, Brightness, and Contrast—in real-time via WebSockets. This enables cameras to be used as high-precision input sensors for visualizations and automation.
 
 ## Included Apps
 
@@ -31,8 +31,8 @@ A legacy tool for high-frequency polling and local range mapping.
 The UVC control flow operates through several layers:
 1. **Hardware:** UVC-compliant camera.
 2. **C Layer (`libuvcutil.dylib`):** Low-level access to the macOS/Windows UVC stack.
-3. **Bridge Layer (`uvc_util_bridge.py`):** A Python process that loads the C library, connects to the plugin's SocketCluster server, and performs real-time value mapping.
-4. **Transport Layer (SocketCluster):** Routes messages between the bridge and the plugin/apps.
+3. Bridge Layer (`uvc_util_bridge.py`): A Python process that loads the C library, connects to the plugin's WebSocket server, and performs real-time value mapping.
+4. Transport Layer (WebSockets): Routes messages between the bridge and the plugin/apps.
 5. **App Layer:** Web-based monitors (this directory) or visualization sketches.
 
 ### Communication Protocol

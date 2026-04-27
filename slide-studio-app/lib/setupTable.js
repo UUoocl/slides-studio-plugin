@@ -7,14 +7,14 @@ let tableInstance = null;
 let isKeyPressed = false;
 
 // Register keyboard listeners
-document.addEventListener('keydown', function(event) {
+document.addEventListener('keydown', function (event) {
     if (!window.table) return;
-    
-    if (event.key === ' ' && !isKeyPressed){ 
+
+    if (event.key === ' ' && !isKeyPressed) {
         isKeyPressed = true;
-        
+
         event.preventDefault(); // Prevents page scrolling
-        
+
         const selectedRows = window.table.getSelectedRows();
         if (selectedRows.length > 0) {
             const nextRow = selectedRows[0].getNextRow();
@@ -36,10 +36,10 @@ document.addEventListener('keydown', function(event) {
                 }
             }
         }
-    }   
+    }
 });
 
-document.addEventListener('keyup', function(event) {
+document.addEventListener('keyup', function (event) {
     if (event.key === ' ') {
         isKeyPressed = false;
     }
@@ -48,13 +48,13 @@ document.addEventListener('keyup', function(event) {
 /**
  * Initializes or refreshes the Tabulator table.
  * @param {Object} options Dropdown options for OBS metadata
+ * @param {Array} data Optional slide data array
  */
-export function loadTable(options) {
+export function loadTable(options = {}, data = null) {
     try {
         if (typeof Tabulator === 'undefined') {
             throw new Error("Tabulator library not found. Ensure tabulator.min.js is loaded correctly via <script>.");
         }
-
         options = options || {};
         const dropDowns = {
             scene: options.scene || [],
@@ -70,8 +70,9 @@ export function loadTable(options) {
             window.table = null;
         }
 
-        let tableData = [];
-        if (currentDeckId) {
+        let tableData = data;
+
+        if (!tableData && currentDeckId) {
             try {
                 const saved = localStorage.getItem(currentDeckId);
                 if (saved) {
@@ -83,6 +84,8 @@ export function loadTable(options) {
         if (!tableData || tableData.length === 0) {
             tableData = window.slidesArray || [];
         }
+
+        console.log("[SetupTable] Loading table with data:", tableData.length, "rows");
 
         const container = document.querySelector("#slidesTable");
         if (!container) {
@@ -104,71 +107,34 @@ export function loadTable(options) {
                 { column: "slideState", dir: "asc" }
             ],
             columns: [
-                { 
-                    title: "Index", 
-                    field: "slideState", 
+                {
+                    title: "Index",
+                    field: "slideState",
                     sorter: "alphanum",
                     cellClick: (e, cell) => {
                         if (typeof window.filterRowData === 'function') {
                             window.filterRowData(cell.getRow().getData());
                         }
                     }
-                }, 
+                },
                 {
-                    title: "Scene", 
-                    field: "scene", 
-                    editor: "list", 
+                    title: "Scene",
+                    field: "scene",
+                    editor: "list",
                     editorParams: { values: dropDowns.scene },
                     cellEdited: (cell) => {
-                        matchSlidePositionToSceneName(cell);
                         broadcastChange(cell);
                         saveTableToLocalStorage();
                     }
                 },
-                {
-                    title: "Slide Position", 
-                    field: "slidePosition", 
-                    editor: "list", 
-                    editorParams: { values: dropDowns.slidePosition },
-                    cellEdited: (cell) => {
-                        broadcastChange(cell);
-                        saveTableToLocalStorage();
-                    },
-                    visible: false
-                },
-                {
-                    title: "Camera Position", 
-                    field: "cameraPosition", 
-                    editor: "list", 
-                    editorParams: { values: dropDowns.cameraPosition },
-                    cellEdited: (cell) => {
-                        broadcastChange(cell);
-                        saveTableToLocalStorage();
-                    },
-                    visible: false
-                },
-                {
-                    title: "Camera Shape", 
-                    field: "cameraShape",  
-                    editor: "list", 
-                    editorParams: { values: dropDowns.cameraShape },
-                    cellEdited: (cell) => {
-                        broadcastChange(cell);
-                        saveTableToLocalStorage();
-                    }
-                }
             ],
         });
 
-        function matchSlidePositionToSceneName(cell) {
-            const val = cell.getValue() || "";
-            if (val.includes("slides ")) {
-                const targetPos = val.split("slides ")[1];
-                if (dropDowns.slidePosition.includes(targetPos)) {
-                    cell.getRow().update({ "slidePosition": targetPos });
-                }
-            }
-        }
+        window.table.on("tableBuilt", () => {
+            window.isTableBuilt = true;
+            console.log("[SetupTable] Table initialized and built.");
+        });
+
 
         function broadcastChange(cell) {
             if (typeof window.filterRowData === 'function') {

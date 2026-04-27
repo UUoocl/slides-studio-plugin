@@ -39,7 +39,6 @@ export class MediaPipeManager {
         // In Obsidian (Electron), we might need to point to the local filesystem or a URL
         const wasmUrl = `http://127.0.0.1:${this.plugin.settings.serverPort}/mediapipe_models/wasm`;
         
-        console.warn(`[MediaPipe] Initializing vision tasks from ${wasmUrl}`);
         this.vision = await FilesetResolver.forVisionTasks(wasmUrl);
     }
 
@@ -93,7 +92,6 @@ export class MediaPipeManager {
                 eventSubscriptions: 0
             });
             this.isObsConnected = true;
-            console.warn("[MediaPipe] Connected to OBS WebSocket (No Events)");
         } catch (err) {
             console.error("[MediaPipe] Failed to connect to OBS", err);
         }
@@ -115,7 +113,6 @@ export class MediaPipeManager {
         if (this.activeLoops.get(setting.name)) return;
 
         this.activeLoops.set(setting.name, true);
-        console.warn(`[MediaPipe] Starting task: ${setting.name} (${setting.type}) on source: ${setting.sourceName}`);
 
         void this.runTaskLoop(setting);
     }

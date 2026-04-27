@@ -16,7 +16,7 @@ vi.mock('obsidian', () => {
 
 import { FileSystemAdapter } from 'obsidian';
 
-// Mock socketcluster-server
+// Mock WebSocket-server
 const mockScServer = {
     listener: vi.fn().mockImplementation(() => ({
         [Symbol.asyncIterator]: async function* () {}
@@ -31,7 +31,7 @@ const mockScServer = {
     close: vi.fn().mockResolvedValue(undefined)
 };
 
-vi.mock('socketcluster-server', () => {
+vi.mock('WebSocket-server', () => {
     return {
         __esModule: true,
         attach: vi.fn(() => mockScServer),
@@ -89,7 +89,7 @@ describe('Core Channels Mapping', () => {
         vi.clearAllMocks();
     });
 
-    it('should have a unified broadcast method that publishes to SocketCluster', () => {
+    it('should have a unified broadcast method that publishes to WebSocket', () => {
         const channel = 'testChannel';
         const data = { foo: 'bar' };
         

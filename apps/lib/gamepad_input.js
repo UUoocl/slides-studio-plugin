@@ -1,7 +1,7 @@
-import { create } from './socketcluster-client.min.js';
+import { create } from './slides-studio-client.js';
 
 /**
- * Initializes a Gamepad Monitor that subscribes to multiple SocketCluster channels.
+ * Initializes a Gamepad Monitor that subscribes to multiple WebSocket channels.
  * @param {string} containerId - The ID of the element to hold gamepad cards.
  * @param {string} statusId - The ID of the element to show connection status.
  */
@@ -23,19 +23,19 @@ export function initGamepadMonitor(containerId, statusId) {
     const socket = create({
         hostname: window.location.hostname,
         port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-        path: '/socketcluster/',
+        path: '/websocket/',
         authToken: { name: `Gamepad-Monitor: ${namesParam}` }
     });
 
     (async () => {
         for await (let {error} of socket.listener('error')) {
-            console.error('SocketCluster error:', error);
+            console.error('WebSocket error:', error);
         }
     })();
 
     (async () => {
         for await (let event of socket.listener('connect')) {
-            console.log('Connected to SocketCluster');
+            console.log('Connected to WebSocket');
             const statusEl = document.getElementById(statusId);
             if (statusEl) statusEl.textContent = 'Status: Connected';
             socket.invoke('setInfo', { name: `Gamepad Monitor: ${namesParam}` });
@@ -48,7 +48,7 @@ export function initGamepadMonitor(containerId, statusId) {
 
     (async () => {
         for await (let event of socket.listener('disconnect')) {
-            console.log('Disconnected from SocketCluster');
+            console.log('Disconnected from WebSocket');
             const statusEl = document.getElementById(statusId);
             if (statusEl) statusEl.textContent = 'Status: Disconnected';
         }

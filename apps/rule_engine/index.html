@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SocketCluster Rule Engine</title>
+    <title>WebSocket Rule Engine</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -226,7 +226,7 @@
 </head>
 <body>
 
-    <h1>SocketCluster Rule Engine</h1>
+    <h1>WebSocket Rule Engine</h1>
 
     <div class="status-bar">
         <span>Server: <strong id="sc-status" class="status disconnected">Disconnected</strong></span>
@@ -242,7 +242,7 @@
     <div class="actions-bar">
         <div class="save-group">
             <label>Save As:</label>
-            <input type="text" id="save-filename" class="filename-input" placeholder="socketcluster-rules.json" value="socketcluster-rules.json">
+            <input type="text" id="save-filename" class="filename-input" placeholder="WebSocket-rules.json" value="WebSocket-rules.json">
             <button onclick="saveRules()">SAVE TO VAULT</button>
         </div>
 
@@ -268,7 +268,7 @@
     </div>
 
     <script type="module">
-        import { create } from '../lib/socketcluster-client.min.js';
+        import { create } from '../lib/slides-studio-client.js';
 
         const statusEl = document.getElementById('sc-status');
         const countEl = document.getElementById('rule-count');
@@ -290,7 +290,7 @@
         socket = create({
             hostname: hostname,
             port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-            path: '/socketcluster/',
+            path: '/websocket/',
             authToken: { name: 'Rule-Engine' }
         });
 
@@ -599,7 +599,7 @@
         }
 
         window.saveRules = async function() {
-            const filename = saveFilenameInput.value.trim() || 'socketcluster-rules.json';
+            const filename = saveFilenameInput.value.trim() || 'WebSocket-rules.json';
             try {
                 const response = await fetch('/api/file/save', {
                     method: 'POST',

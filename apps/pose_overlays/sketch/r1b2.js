@@ -338,20 +338,20 @@ sketch = function(p) {
 
 
   p.draw = function() {
+    // Check if UI exists before accessing values
+    if (FPSslider) p.frameRate(FPSslider.value());
+    if (ephemeralCheckBox) EPHEMERAL = ephemeralCheckBox.checked();
+    if (ephemeralAlphaSlider) EPHEMERAL_ALPHA = ephemeralAlphaSlider.value();
 
-    //update colors
-    p.frameRate(FPSslider.value())
-
-    EPHEMERAL = ephemeralCheckBox.checked()
-    EPHEMERAL_ALPHA = ephemeralAlphaSlider.value()
-
-    PALETTE = ["Custom", 'rgba(0, 0, 0, 0)', [
-    inp1.value(), inp2.value(), inp3.value(), inp4.value(), inp5.value(), inp6.value(), inp7.value(),
-    inp1.value(), inp2.value(), inp3.value(), inp4.value(), inp5.value(), inp6.value(), inp7.value(),
-    inp1.value(), inp2.value(), inp3.value(), inp4.value(), inp5.value(), inp6.value(), inp7.value(),
-    inp1.value(), inp2.value(), inp3.value(), inp4.value(), inp5.value(), inp6.value(), inp7.value(),
-    inp1.value(), inp2.value(), inp3.value()
-    ]]
+    if (inp1 && inp2 && inp3 && inp4 && inp5 && inp6 && inp7) {
+        PALETTE = ["Custom", 'rgba(0, 0, 0, 0)', [
+        inp1.value(), inp2.value(), inp3.value(), inp4.value(), inp5.value(), inp6.value(), inp7.value(),
+        inp1.value(), inp2.value(), inp3.value(), inp4.value(), inp5.value(), inp6.value(), inp7.value(),
+        inp1.value(), inp2.value(), inp3.value(), inp4.value(), inp5.value(), inp6.value(), inp7.value(),
+        inp1.value(), inp2.value(), inp3.value(), inp4.value(), inp5.value(), inp6.value(), inp7.value(),
+        inp1.value(), inp2.value(), inp3.value()
+        ]];
+    }
 
     newPaintLines()
 

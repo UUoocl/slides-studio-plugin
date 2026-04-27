@@ -1,34 +1,33 @@
-# MIDI Monitor SC
+# MIDI Monitor
 
-A real-time MIDI monitoring and control application built for the Cables Studio environment. This app uses **SocketCluster** to receive and send MIDI-related messages in a format compatible with Cables.gl SocketCluster extensions.
+A real-time MIDI monitoring and control application built for the Cables Studio environment. This app uses **Native WebSockets** to receive and send MIDI-related messages in a format compatible with Cables.gl WebSocket extensions.
 
 ## Usage
 
-The application is a standalone HTML file that connects to the local SocketCluster server (typically running on port 8000).
+The application is a standalone HTML file that connects to the local WebSocket server (typically running on port 8000).
 
-### Monitoring and Sending on Channels
-To see MIDI messages flowing through a specific SocketCluster channel and send to another:
-- Open `midi_monitor_sc.html` in your browser.
+To see MIDI messages flowing through a specific WebSocket channel and send to another:
+- Open `midi_monitor.html` in your browser.
 - Append `?inChannel=YOUR_INPUT_CHANNEL&outChannel=YOUR_OUTPUT_CHANNEL` to the URL.
-- **Example:** `midi_monitor_sc.html?inChannel=midi_recv&outChannel=myProject`
-- The status bar will show "Connected" when the SocketCluster link is active.
+- **Example:** `midi_monitor.html?inChannel=midi_recv&outChannel=myProject`
+- The status bar will show "Connected" when the WebSocket link is active.
 - The app subscribes to `YOUR_INPUT_CHANNEL/objects` for monitoring.
 - The app publishes to `YOUR_OUTPUT_CHANNEL/objects` with the topic `midi_send` when interacting with the test buttons.
 
 ### Features
 - **Live Logging:** Real-time display of MIDI messages including Type (Note On/Off, CC), Channel, Note, Velocity, and Controller values.
-- **Cables.gl Compatibility:** Listens for and sends data in the standard object format `{ topic, clientId, payload }` used by Cables.gl SC extensions.
+- **Cables.gl Compatibility:** Listens for and sends data in the standard object format `{ topic, clientId, payload }` used by Cables.gl WebSocket extensions.
 - **Remote Control Test:** Buttons to send sample MIDI Note On, Note Off, and Control Change messages to the output channel.
 
 ## Developer Overview
 
 ### Technical Stack
-- **Library:** `socketcluster-client` (v16+)
-- **Transport:** WebSockets (via SocketCluster protocol)
+- **Library:** `SlidesStudioClient` (Native WebSocket wrapper)
+- **Transport:** WebSockets
 - **Styling:** Vanilla CSS (VS Code dark theme inspired)
 
-### SocketCluster Communication
-The app follows the pattern used by `Ops.Extension.SocketCluster.SocketClusterClient`:
+### WebSocket Communication
+The app follows the pattern used by standard WebSocket client implementations:
 
 - **Subscription:** Subscribes to `${inChannel}/objects`.
 - **Message Format:** Expects objects with the following structure:
@@ -63,6 +62,6 @@ socket.transmitPublish(`${outChannel}/objects`, {
 ```
 
 ## Integration with Cables.gl
-1. Add a **SocketClusterClient** op to your Cables patch and set its **Channel** to your project name.
-2. Use **SocketClusterReceiveObject** to listen for messages with the topic `midi_send`.
-3. Use **SocketClusterSendObject** to send MIDI data from your patch to this monitor by setting the topic appropriately and providing a payload with MIDI fields (`type`, `channel`, etc.).
+1. Add a **WebSocketClient** op to your Cables patch and set its **Channel** to your project name.
+2. Use **WebSocketReceiveObject** to listen for messages with the topic `midi_send`.
+3. Use **WebSocketSendObject** to send MIDI data from your patch to this monitor by setting the topic appropriately and providing a payload with MIDI fields (`type`, `channel`, etc.).

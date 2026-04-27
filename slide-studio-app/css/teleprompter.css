@@ -162,10 +162,34 @@ article .teleprompter.flip-xy {
   padding: 0;
 }
 
+.auto_scroll_label {
+  font-size: 10px;
+  color: #888;
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.auto_scroll_label input {
+  margin-left: 5px;
+  cursor: pointer;
+}
+
 .slider {
   width: 110px;
-  font-size: 12px;
+  height: 4px;
   display: inline-block;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+input[type="range"] {
+  accent-color: #4297d7;
+  background: #333;
+  border-radius: 5px;
+  height: 6px;
+  outline: none;
 }
 
 .button {
@@ -469,7 +493,7 @@ a.sponsor-project:hover, a.sponsor-project:focus {
   }
 
   .slider {
-    width: 60px;
+    width: 80px;
   }
 
   .button.small {

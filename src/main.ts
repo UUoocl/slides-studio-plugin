@@ -21,7 +21,8 @@ import {
     OBSSceneList, 
     OBSSceneItemList, 
     OBSCustomEvent,
-    OBSInputListResponse
+    OBSInputListResponse,
+    QueuedObsRequest
 } from './types';
 
 import { ConnectObsCommand } from './commands/connectObs';
@@ -33,10 +34,10 @@ import { SetObsReceiverCommand, UpdateBrowsersUrlCommand, RefreshObsBrowsersComm
 import { ConnectOscCommand, ConnectMidiCommand, ConnectAudioCommand } from './commands/deviceCommands';
 
 const DEFAULT_SETTINGS: Partial<SlidesStudioPluginSettings> = {
+    obsAutoConnect: true,
 	websocketIP_Text: "127.0.0.1",
 	websocketPort_Text: "4455",
 	websocketPW_Text: "password",
-	slidesPort_Text: "5000",
 	slide_tags: [],
 	scene_tags: [],
 	camera_tags: [],
@@ -56,12 +57,12 @@ const DEFAULT_SETTINGS: Partial<SlidesStudioPluginSettings> = {
     pythonPath: "python3",
     mouseMonitorEnabled: false,
     mouseMonitorPosition: true,
+    mouseMonitorPPS: 20,
     mouseMonitorClicks: true,
     mouseMonitorScroll: true,
     keyboardMonitorEnabled: false,
     keyboardMonitorShowCombinations: true,
     uvcUtilEnabled: false,
-    uvcUtilLibPath: "pythonScripts/uvc-util/libuvcutil.dylib",
     settingsFolder: "",
     settingsFile: "slides-studio-settings.md",
 	oscDevices: [],
@@ -70,6 +71,10 @@ const DEFAULT_SETTINGS: Partial<SlidesStudioPluginSettings> = {
     gamepadDevices: [],
     mediapipeDevices: [],
     uvcDevices: [],
+    sttChannelName: "stt_broadcast",
+    sttConsoleLogEnabled: false,
+    appleShortcutsEnabled: false,
+    appleShortcutsLoggingEnabled: false,
     all_sources: []
 };
 
@@ -86,6 +91,8 @@ export default class slidesStudioPlugin extends Plugin {
 	public serverManager: ServerManager | null = null; 
 	public obs: OBSWebSocket;
 	public isObsConnected = false;
+    private obsRequestQueue: QueuedObsRequest[] = [];
+    private obsQueueTimer: ReturnType<typeof setTimeout> | null = null;
 
     private gamepadLoopActive = false;
     private previousGamepadState: string[] = [];
@@ -98,6 +105,12 @@ export default class slidesStudioPlugin extends Plugin {
 		// Use casting to avoid unsafe assignment from loadData()
 		const loadedData = await this.loadData() as SlidesStudioPluginSettings | null;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
+
+        // If the password is still the default "password", regenerate it with a UUID for better security
+        if (this.settings.websocketPW_Text === "password") {
+            this.settings.websocketPW_Text = crypto.randomUUID();
+            await this.saveSettings();
+        }
 	}
 
 	/**
@@ -200,9 +213,20 @@ export default class slidesStudioPlugin extends Plugin {
         this.mediapipeManager = new MediaPipeManager(this);
 
 		this.setupObsEventListeners();
-
-        // Auto-connect devices
+        
+        // Auto-connect to OBS and other devices
         this.app.workspace.onLayoutReady(async () => {
+            // Auto-connect OBS
+            if (this.settings.obsAutoConnect) {
+                const wssDetails = {
+                    IP: this.settings.websocketIP_Text,
+                    PORT: this.settings.websocketPort_Text,
+                    PW: this.settings.websocketPW_Text
+                };
+                console.warn("[Plugin] Auto-connecting to OBS...");
+                void this.obsWSSconnect(wssDetails);
+            }
+
             this.settings.oscDevices.forEach(device => {
                 if (device.autoStart) {
                     console.warn(`[Plugin] Auto-connecting OSC device: ${device.name}`);
@@ -281,6 +305,23 @@ export default class slidesStudioPlugin extends Plugin {
         }
     }
 
+    public rumbleGamepad(name: string, data: { weakMagnitude?: number, strongMagnitude?: number, duration?: number }) {
+        const device = this.settings.gamepadDevices.find(d => d.name === name);
+        if (!device || !device.enabled) return;
+
+        const gamepads = navigator.getGamepads();
+        const gp = gamepads[device.index];
+        if (gp && (gp as any).vibrationActuator) {
+            (gp as any).vibrationActuator.playEffect("dual-rumble", {
+                startDelay: 0,
+                duration: data.duration || 1000,
+                weakMagnitude: data.weakMagnitude ?? 1.0,
+                strongMagnitude: data.strongMagnitude ?? 1.0,
+            });
+            console.warn(`[Gamepad] Rumbled ${name}:`, data);
+        }
+    }
+
     public handleUvcResponse(data: { action: string, data: unknown[] }) {
         if (data.action === "list_devices") {
             this.app.workspace.trigger("slides-studio:uvc-devices", data.data);
@@ -294,6 +335,7 @@ export default class slidesStudioPlugin extends Plugin {
 	private setupObsEventListeners(): void {
 		this.obs.on('ConnectionOpened', () => {
 			console.warn('[Plugin] Connection to OBS WebSocket successfully opened');
+			this.isObsConnected = true;
             this.serverManager?.broadcastObsEvent('ConnectionOpened', {});
 		});
 
@@ -318,14 +360,17 @@ export default class slidesStudioPlugin extends Plugin {
 				PW: this.settings.websocketPW_Text
 			};
 
-			void this.obs.call("CallVendorRequest", {
-				vendorName: "obs-browser",
-				requestType: "emit_event",
-				requestData: {
-					event_name: "ws-details",
-					event_data: { wssDetails },
-				},
-			});
+			void this.enqueueObsRequest({
+                requestType: "CallVendorRequest",
+                requestData: {
+                    vendorName: "obs-browser",
+                    requestType: "emit_event",
+                    requestData: {
+                        event_name: "ws-details",
+                        event_data: { wssDetails },
+                    },
+                }
+            });
 
 			// Use command IDs to trigger logic
 			const commands = [
@@ -344,7 +389,7 @@ export default class slidesStudioPlugin extends Plugin {
 			})();
 		});
 
-		// Forward common OBS events to SocketCluster
+		// Forward common OBS events to WebSocket
 		const commonEvents = [
             // General Events
             'ExitStarted', 'VendorEvent',
@@ -387,7 +432,7 @@ export default class slidesStudioPlugin extends Plugin {
 		this.obs.on("CustomEvent", (eventData) => {
 			const event = eventData as unknown as OBSCustomEvent;
 			
-			// Forward to SocketCluster
+			// Forward to WebSocket
 			this.serverManager?.broadcastObsEvent('CustomEvent', eventData);
 
 			if (event.event_name === `OSC-out` && event.address && event.osc_name) {
@@ -636,7 +681,7 @@ export default class slidesStudioPlugin extends Plugin {
 	/**
 	 * Converts collection JSON data to OBS WebSocket commands.
 	 */
-	private async recreateCollectionFromData(data: any): Promise<void> {
+	private async recreateCollectionFromData(data: unknown): Promise<void> {
 		const sources = data.sources || [];
 		const sceneOrder = [...(data.scene_order || [])].reverse(); // Reverse to ensure first item ends up at top
 		
@@ -644,7 +689,7 @@ export default class slidesStudioPlugin extends Plugin {
 		// OBS often inserts new scenes at the top, so creating in reverse preserves top-to-bottom order.
 		for (const sceneItem of sceneOrder) {
 			const sceneName = sceneItem.name;
-			const sceneDef = sources.find((s: any) => s.name === sceneName && s.id === 'scene');
+			const sceneDef = sources.find((s: unknown) => s.name === sceneName && s.id === 'scene');
 			if (sceneDef) {
 				try {
 					await this.obs.call("CreateScene", { sceneName: sceneName });
@@ -655,7 +700,7 @@ export default class slidesStudioPlugin extends Plugin {
 		}
 
 		// Fallback: Create any scenes defined in sources but missing from scene_order (also reversed)
-		const otherScenes = sources.filter((s: any) => s.id === 'scene' && !sceneOrder.find(so => so.name === s.name)).reverse();
+		const otherScenes = sources.filter((s: unknown) => s.id === 'scene' && !sceneOrder.find(so => so.name === s.name)).reverse();
 		for (const scene of otherScenes) {
 			try {
 				await this.obs.call("CreateScene", { sceneName: scene.name });
@@ -664,12 +709,12 @@ export default class slidesStudioPlugin extends Plugin {
 
 		// 2. Create inputs and add items to scenes
 		// We use the original sources list here as the scenes now exist in the correct order
-		const scenesToPopulate = sources.filter((s: any) => s.id === 'scene');
+		const scenesToPopulate = sources.filter((s: unknown) => s.id === 'scene');
 		for (const sceneDef of scenesToPopulate) {
 			const items = sceneDef.settings?.items || [];
 			for (const item of items) {
 				// Find the source definition for this item
-				const sourceDef = sources.find((s: any) => s.uuid === item.source_uuid || s.name === item.name);
+				const sourceDef = sources.find((s: unknown) => s.uuid === item.source_uuid || s.name === item.name);
 				if (!sourceDef) continue;
 
 				if (sourceDef.id === 'scene') {
@@ -705,6 +750,59 @@ export default class slidesStudioPlugin extends Plugin {
 			}
 		}
 	}
+
+    /**
+     * Centralized OBS request routing with rate limiting.
+     * All messages to OBS should be routed through this method.
+     */
+    public async enqueueObsRequest(req: Partial<QueuedObsRequest>): Promise<any> {
+        return new Promise((resolve, reject) => {
+            this.obsRequestQueue.push({
+                ...req,
+                resolve,
+                reject
+            });
+
+            if (!this.obsQueueTimer) {
+                this.startObsQueueProcessor();
+            }
+        });
+    }
+
+    private startObsQueueProcessor(): void {
+        const processQueue = async () => {
+            if (this.obsRequestQueue.length === 0) {
+                this.obsQueueTimer = null;
+                return;
+            }
+
+            const next = this.obsRequestQueue.shift();
+            if (!next) return;
+
+            try {
+                if (!this.isObsConnected || !this.obs) {
+                    next.reject?.('OBS not connected');
+                } else {
+                    let result: any;
+                    if (next.requests) {
+                        console.warn(`[Plugin] Sending Batch Request to OBS:`, next.requests.length, "items");
+                        result = await this.obs.callBatch(next.requests as any, next.options as any);
+                    } else if (next.requestType) {
+                        console.warn(`[Plugin] Sending Request to OBS: ${next.requestType}`, next.requestData);
+                        result = await this.obs.call(next.requestType as any, next.requestData as any);
+                    }
+                    next.resolve?.(result);
+                }
+            } catch (err) {
+                next.reject?.(err instanceof Error ? err.message : String(err));
+            }
+
+            const delay = 1000 / (this.settings.obsRequestLimit || 10);
+            this.obsQueueTimer = setTimeout(() => void processQueue(), delay);
+        };
+
+        void processQueue();
+    }
 
 	/**
 	 * Plugin cleanup routine.

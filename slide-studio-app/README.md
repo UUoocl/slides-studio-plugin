@@ -1,60 +1,137 @@
-# Slides Studio App
+# Slides Studio App v2.0
 
 ## Description
 Slides Studio is a specialized presentation environment built on top of the **Reveal.js** framework. It bridges the gap between digital slide decks and live broadcasting by enabling seamless control of **Open Broadcaster Software (OBS)** directly from the presentation interface.
 
-The application consists of two primary operational modes:
-1. **Speaker View**: An interactive control center for the presenter to manage navigation, notes, and OBS settings.
-2. **Slide View**: A clean, broadcast-ready view designed to be used as an OBS Browser Source.
-
-## Key Features
-- **Integrated OBS Control**: Remotely trigger scene changes and source visibility based on the current slide state.
-- **Dynamic Layout Control**: Automatically update Slide View positioning using `data-scene` attributes.
-- **Professional Teleprompter**: Auto-scrolling slide notes with adjustable font size and scroll speed.
-- **Real-time Synchronization**: All components stay in sync via SocketCluster, ensuring low-latency communication between the speaker's "brain" and the broadcast output.
+The application consists of three primary components:
+1. **Speaker View (`index.html`)**: The main control center for the presenter. It handles slide indexing, navigation, and orchestrates the synchronization across all views.
+2. **Studio View (`studio.html`)**: A data-driven dashboard that displays the compiled slide index and allows real-time triggering of OBS scenes and sources.
+3. **Slide View (`slide_view/`)**: Broadcast-ready overlays designed to be used as OBS Browser Sources. Includes built-in support for **Transparent Overlays** and dynamic CSS transforms.
+4. **Teleprompter (`teleprompter.html`)**: A dependency-free, vanilla JS prompter that syncs with your slide notes and supports auto-scrolling.
 
 ---
 
-## Usage
+## OBS Configuration Guide
 
-### 1. Launching the App
-The application is hosted by the Slides Studio plugin server (default: `http://127.0.0.1:57000`).
-- **Main Interface**: Open `index.html` in your browser. Enter the location of your Reveal.js slide deck to load the environment.
-- **OBS Integration**: Add the following URLs as Browser Sources in OBS:
-    - Slide View: `slide_view/slides_studio_slide_view.html`
-    - Camera Mask: `slide_view/camera_shape.html`
+To get the most out of Slides Studio, configure your OBS Scene Collection with the following components and production scenes.
 
-### 2. Navigation & Control
-- Use the **Studio** panel (`studio.html`) to index your deck and configure OBS metadata.
-- Navigate through slides using arrow keys or the Studio table.
-- Configured tags (Scene, Camera Position, Camera Shape) will automatically trigger in OBS as you move through the presentation.
+### Core Component URLs
+Use these URLs in your OBS Browser Sources. Ensure the height and width are set to **1920x1080**.
 
-### 3. Speaker Notes
-The **Teleprompter** view (`teleprompter.html`) automatically updates with notes from the current Reveal.js slide. Presenters can toggle auto-scroll and customize the display for a professional delivery.
+- **Slide Component**: `http://127.0.0.1:57000/slide-studio-app/slide_view/slides_studio_slide_view.html`
+- **Camera Component**: `http://127.0.0.1:57000/slide-studio-app/slide_view/camera_shape.html`
+
+### Recommended Production Scenes
+
+| Scene Name | Purpose | Layout Configuration (JSON) |
+| :--- | :--- | :--- |
+| **Slide Full Screen** | Standard presentation view. | `{"slideComponent": {"x": 0, "y": 0, "scaleX": 1, "scaleY": 1}}` |
+| **Slide Left Half** | Side-by-side view. | `{"slideComponent": {"x": 0, "y": 0, "scaleX": 0.5, "scaleY": 1}}` |
+| **Over The Shoulder** | Picture-in-picture view. | `{"slideComponent": {"x": 96, "y": 108, "scaleX": 0.4, "scaleY": 0.4}, "cameraComponent": {"path": "circle(50%)"}}` |
+
+### Setup Steps
+1. **Add the Slide View**: In every scene, add a Browser Source pointing to the **Slide Component URL**.
+2. **Add the Camera Mask**: In scenes where you want a dynamic camera, add a Browser Source pointing to the **Camera Component URL**.
+3. **Configure SceneConfig**: For each scene in OBS, create a **Text Source (GDI+ or FreeType2)** named `SceneConfig-{SceneName}` (e.g., `SceneConfig-Over The Shoulder`).
+4. **Save Layout Data**: Paste your JSON configuration (position, scale, and mask path) into the text source. Slides Studio will automatically apply these settings as you navigate.
 
 ---
 
-## Developer Overview
+## Architecture: The Synchronization Engine
 
-### Architecture: The "Studio" Brain
-The `studio.html` file acts as the central logic hub ("the brain") of the application. It handles:
-- **Metadata Discovery**: Fetching available scenes and sources from OBS via the `obsWss` proxy.
-- **Deck Indexing**: Parsing the Reveal.js structure to associate slide states with specific OBS commands.
-- **Command Orchestration**: Sending synchronization events to all other views.
+### Centralized Indexing (`index.html`)
+The main interface (`index.html`) acts as the logic hub. It traverses the Reveal.js structure via a hidden iframe to compile a `slidesArray`. This array contains the mapping of slide states to OBS scene names.
 
-### Communication Protocols
-- **SocketCluster**: Replaces legacy SSE for all real-time bidirectional messaging. The app primarily communicates over the `custom_slidesCommands` channel.
-- **Reveal.js API (postMessage)**: Used to communicate with the Reveal.js instances running inside iframes. This allows the app to trigger navigation (`slide`, `next`) and extract content like slide notes.
-- **BroadcastChannel**: Utilized for high-performance, same-origin communication (e.g., passing camera shape updates between the Slide View and the Camera Shape overlay).
+### Scene Choreography Engine
+- **Scene Switching**: When you navigate to a slide with a defined scene, `index.html` triggers the scene change in OBS.
+- **Dynamic Fetching**: Upon switching, the app fetches the `SceneConfig` from the scene-specific text source.
+- **CHOREOGRAPHY_UPDATE**: A broadcast event containing the component positions, scales, and SVG mask paths is sent to all overlays.
+- **Direct Transforms**: The Slide View applies absolute pixel coordinates and scaling, removing the need for static CSS classes.
+- **BroadcastChannel**: Used for ultra-low latency updates between the Slide View and the Camera component for mask path synchronization.
 
-### CSS Layout Engine
-Slides can define layouts using the `data-scene` attribute. The application logic splits this string on the keyword `"slides"` to identify the target CSS class. This class is then sent to the Slide View, which updates its iframe styling to reposition the content dynamically (e.g., shifting the slide to a corner for a head-shot overlay).
+### Data Persistence (Sidecar Model)
+Slides Studio uses a **Sidecar Persistence** model. When you configure slide-to-scene mappings in the Speaker View:
+- Data is saved to a `[deck-name].obs-map.json` file in the same folder as your presentation.
+- The app automatically creates this file on initial load.
+- No database or external configuration is required; your settings travel with your deck.
 
-### Core Components
-- `index.html`: The host container for the Speaker View environment.
-- `lib/obsApiProxy.js`: The primary interface for SocketCluster and OBS WebSocket communication.
-- `lib/slideSync_*.js`: Logic for maintaining state across local and remote views.
-- `slide_view/`: Optimized views for OBS Browser Source integration.
+---
+
+## SceneConfig Schema
+
+Scene-specific layouts are defined using JSON stored in OBS Text Sources named `SceneConfig-{SceneName}`.
+
+### Schema Structure
+```json
+{
+  "slideComponent": {
+    "x": number,          // Horizontal offset (px)
+    "y": number,          // Vertical offset (px)
+    "scaleX": number,     // Horizontal scale (1.0 = 100%)
+    "scaleY": number,     // Vertical scale
+    "style": object       // Optional: Arbitrary CSS properties (filter, border, etc.)
+  },
+  "cameraComponent": {
+    "path": string,       // SVG path, CSS shape (circle, polygon), or legacy class
+    "style": object       // Optional: Arbitrary CSS properties
+  }
+}
+```
+
+### Production Example
+**Scene: "Over The Shoulder"**
+```json
+{
+  "slideComponent": {
+    "x": 96,
+    "y": 108,
+    "scaleX": 0.4,
+    "scaleY": 0.4,
+    "style": {
+      "borderRadius": "24px",
+      "boxShadow": "0 20px 50px rgba(0,0,0,0.5)",
+      "border": "2px solid rgba(255,255,255,0.2)"
+    }
+  },
+  "cameraComponent": {
+    "path": "circle(50% at 50% 50%)",
+    "style": {
+      "filter": "contrast(1.1) brightness(1.1)"
+    }
+  }
+}
+```
+
+## Legacy CSS Migration
+
+If you are migrating from `iframe_positions.css`, use the following pixel-perfect mappings for a **1920x1080** canvas:
+
+| Legacy Class | New Configuration (JSON) |
+| :--- | :--- |
+| `.full-screen` | `{"x": 0, "y": 0, "scaleX": 1, "scaleY": 1}` |
+| `.side-by-side` | `{"x": 0, "y": 0, "scaleX": 0.5, "scaleY": 1}` |
+| `.over-the-shoulder` | `{"x": 96, "y": 108, "scaleX": 0.4, "scaleY": 0.4}` |
+
+### Note on Coordinate System
+- **X/Y**: Absolute pixel offsets from the top-left corner.
+- **Scale**: Replaces CSS `width`/`height` percentages (e.g., `0.5` = `50%`).
+- **Transforms**: Legacy rotation or skewing should now be placed inside the `style` object.
+
+---
+
+## Recent Production Improvements
+
+### Transparent Slide Overlays
+The Slide View now supports transparency injection. It automatically removes the default Reveal.js backgrounds, allowing you to layer slides directly over your camera in OBS. 
+- Individual slide backgrounds (images/colors) are preserved.
+- Enable by adding the Slide View as a Browser Source with "Shutdown source when not visible" disabled for best performance.
+
+### Vanilla Teleprompter
+The built-in teleprompter has been completely refactored to Vanilla JS for 2026 standards:
+- **Zero Dependencies**: Removed jQuery and jQuery UI.
+- **Auto-Scroll**: A new toggle allows the prompter to start scrolling automatically as soon as you switch slides.
+- **Smooth Performance**: Uses `requestAnimationFrame` and native range inputs for ultra-smooth speed and font adjustments.
+- **Remote Sync**: Fully synchronized with the Speaker View via WebSockets.
 
 ---
 *Inspired by reveal.js, OBS, and the creative coding community.*

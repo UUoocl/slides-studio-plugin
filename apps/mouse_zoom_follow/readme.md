@@ -4,10 +4,10 @@ A dynamic OBS Browser Source application that automates scene item transformatio
 
 ## Description
 
-The **Mouse Zoom & Follow** app provides a virtualized "stage" that mirrors your desktop layout in OBS. It tracks the system-wide mouse position and keyboard events via **SocketCluster**, allowing you to zoom into areas of interest. The app automatically calculates the necessary transformations (position and scale) for OBS scene items (such as Display Captures) so that the "camera" in OBS follows your cursor smoothly.
+The **Mouse Zoom & Follow** app provides a virtualized "stage" that mirrors your desktop layout in OBS. It tracks the system-wide mouse position and keyboard events via **WebSockets**, allowing you to zoom into areas of interest. The app automatically calculates the necessary transformations (position and scale) for OBS scene items (such as Display Captures) so that the "camera" in OBS follows your cursor smoothly.
 
 ### Key Features
-- **SocketCluster Integration**: High-performance, low-latency communication for real-time tracking and OBS control.
+- **WebSocket Integration**: High-performance, low-latency communication for real-time tracking and OBS control.
 - **Dynamic Mouse Tracking**: Real-time cursor following across multiple monitors.
 - **Rich Hotkey Support**: Support for complex key combinations (e.g., `ctrl + alt + =`) tracked globally via the host plugin.
 - **Smooth Interpolation**: Configurable smoothing for both movement and zoom transitions.
@@ -32,12 +32,11 @@ The **Mouse Zoom & Follow** app provides a virtualized "stage" that mirrors your
 
 ## Developer Overview
 
-### Architecture
-The application is built using **p5.js** for the internal visualization and **SocketCluster** for low-latency communication with the Obsidian plugin host.
+The application is built using **p5.js** for the internal visualization and **WebSockets** for low-latency communication with the Obsidian plugin host.
 
 - **`zoom_follow.html`**: The entry point. Loads dependencies and provides the settings UI overlay.
 - **`js/sketch.js`**: Core p5.js logic. Handles the rendering loop, coordinate remapping, and physics calculations. Also manages the dynamic UI for monitor mapping.
-- **`js/OBSManager.js`**: Managed SocketCluster client.
+- **`js/OBSManager.js`**: Managed WebSocket client.
     - **Identification**: Identifies as `Mouse_Zoom_and_Follow` on connection.
     - **Invocations**: Uses `obsRequest` to call OBS WebSocket methods.
     - **Subscriptions**: Listens to `mousePosition`, `keyboardPress`, and `obs:*` event channels.
@@ -49,5 +48,4 @@ The application is built using **p5.js** for the internal visualization and **So
 2. **App Calculation**: `sketch.js` lerps the `viewX` and `viewY` based on the mouse position relative to the configured `boundingBoxSize`.
 3. **App -> OBS**: `OBSManager.js` sends `SetSceneItemTransform` requests to OBS via the plugin's `obsRequest` procedure, updating the actual sources seen by the audience.
 
-### Local Development
-To modify the app, edit the files in `@apps/mouse_zoom_follow/**`. Since it relies on SocketCluster and the Slides-Studio API, it is best tested while the Obsidian plugin is active and serving the `/apps/` directory.
+To modify the app, edit the files in `@apps/mouse_zoom_follow/**`. Since it relies on WebSockets and the Slides-Studio API, it is best tested while the Obsidian plugin is active and serving the `/apps/` directory.

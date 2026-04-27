@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Slide Renderer v2.0</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: transparent;
+        }
+        #container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        iframe {
+            border: none;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        #mask {
+            position: absolute;
+            width: 0;
+            height: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <iframe id="slideFrame" src="about:blank"></iframe>
+    </div>
+
+    <svg id="mask">
+        <defs>
+            <clipPath id="clipPath" clipPathUnits="objectBoundingBox">
+                <path id="maskPath" d="M 0 0 L 1 0 L 1 1 L 0 1 Z" />
+            </clipPath>
+        </defs>
+    </svg>
+
+    <script src="../../slide-studio-app/lib/gsap.min.js"></script>
+    <script src="../../slide-studio-app/lib/MorphSVGPlugin.min.js"></script>
+    <script type="module">
+        import { create } from '../../slide-studio-app/lib/slides-studio-client.js';
+
+        const params = new URLSearchParams(window.location.search);
+        const componentId = params.get('id') || 'Slide';
+        const frame = document.getElementById('slideFrame');
+        const container = document.getElementById('container');
+        const maskPath = document.getElementById('maskPath');
+
+        // Sync iframe with Reveal.js URL
+        const deckUrl = params.get('url') || 'http://127.0.0.1:57000/slides.html';
+        frame.src = deckUrl;
+
+        const socket = create({
+            hostname: window.location.hostname,
+            port: window.location.port,
+            path: '/websocket/',
+            authToken: { name: `Renderer-${componentId}` }
+        });
+
+        socket.on('connect', async () => {
+            // Initial Sync
+            try {
+                const response = await fetch(`/api/init-state?id=${componentId}`);
+                const state = await response.json();
+                if (state.mask) applyMask(state.mask);
+                if (state.transform) applyTransform(state.transform);
+            } catch (e) {}
+            
+            socket.subscribe('CHOREOGRAPHY_UPDATE');
+        });
+
+        socket.on('CHOREOGRAPHY_UPDATE', (data) => {
+            if (data.id === componentId) {
+                if (data.mask) applyMask(data.mask);
+                if (data.transform) applyTransform(data.transform);
+            }
+        });
+
+        function applyMask(pathData) {
+            // GSAP MorphSVG (if available) or direct attribute update
+            // Since we're using objectBoundingBox, we need to normalize paths 0-1
+            // Our editor sends 0-100, so we scale it
+            const normalized = pathData.replace(/([0-9\.]+)/g, (m) => parseFloat(m) / 100);
+            gsap.to(maskPath, {
+                duration: 0.6,
+                attr: { d: normalized },
+                ease: "power2.inOut"
+            });
+            container.style.clipPath = "url(#clipPath)";
+        }
+
+        function applyTransform(transform) {
+            // Physically resize container to trigger iframe reflow
+            gsap.to(container, {
+                duration: 0.6,
+                width: transform.width || '100%',
+                height: transform.height || '100%',
+                x: transform.positionX || 0,
+                y: transform.positionY || 0,
+                scaleX: transform.scaleX || 1,
+                scaleY: transform.scaleY || 1,
+                ease: "power2.inOut"
+            });
+        }
+    </script>
+</body>
+</html>

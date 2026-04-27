@@ -122,12 +122,14 @@ async function refreshLoadList() {
         select.value = "select"
         
         //add saved presets
-        files.forEach((f) => {
-        const opt = document.createElement("option");
-        opt.value = f;
-        opt.innerText = f;
-        select.appendChild(opt);
-        });
+        if (Array.isArray(files)) {
+            files.forEach((f) => {
+                const opt = document.createElement("option");
+                opt.value = f;
+                opt.innerText = f;
+                select.appendChild(opt);
+            });
+        }
 
     }
   } catch (e) {

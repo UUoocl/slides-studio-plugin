@@ -42,8 +42,8 @@
   <p class="status"></p>
 
   <script type="module">
-    import { create } from '../lib/socketcluster-client.min.js';
-    window.socketClusterClient = { create };
+    import { create } from '../lib/slides-studio-client.js?v=1.0.5';
+    window.slidesStudioClient = { create };
   </script>
 
   <script>
@@ -51,39 +51,37 @@
     let socket;
 
     async function initSocket() {
-        if (!window.socketClusterClient) {
+        if (!window.slidesStudioClient) {
             setTimeout(initSocket, 100);
             return;
         }
 
-        socket = window.socketClusterClient.create({
+        socket = window.slidesStudioClient.create({
             hostname: window.location.hostname,
-            port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-            path: '/socketcluster/',
+            port: window.location.port,
+            path: '/websocket/',
             authToken: { name: 'JsTrassel' }
         });
 
-        (async () => {
-            for await (let {error} of socket.listener('error')) {
-                console.error('SocketCluster error:', error);
-            }
-        })();
+        socket.on('error', (err) => {
+            console.error('WebSocket error:', err);
+        });
 
-        (async () => {
-            for await (let event of socket.listener('connect')) {
-                console.log('Connected to SocketCluster');
-            }
-        })();
+        socket.on('connect', () => {
+            console.log('Connected to WebSocket');
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from WebSocket');
+        });
 
         // Subscribe to mouse scroll updates
-        (async () => {
-            const channel = socket.subscribe('mouseScroll');
-            for await (let data of channel) {
-                if (typeof data.dy !== 'undefined') {
-                    scrollChange = Math.round(data.dy);
-                }
+        const scrollChannel = socket.subscribe('mouseScroll');
+        scrollChannel.on('message', (data) => {
+            if (typeof data.dy !== 'undefined') {
+                scrollChange = Math.round(data.dy);
             }
-        })();
+        });
     }
 
     initSocket();

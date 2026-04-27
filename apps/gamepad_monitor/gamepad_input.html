@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gamepad Monitor (SocketCluster)</title>
+    <title>Gamepad Monitor (WebSocket)</title>
     <style>
         :root {
             font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -89,13 +89,13 @@
     <main>
         <h1>Gamepad Monitor</h1>
         <div id="status-area">
-            <h4 id="waitingMsg">Waiting for data from SocketCluster...</h4>
+            <h4 id="waitingMsg">Waiting for data from WebSocket...</h4>
         </div>
         <div id="gpData"></div>
     </main>
 
     <script type="module">
-        import { create } from '../lib/socketcluster-client.min.js';
+        import { create } from '../lib/slides-studio-client.js';
 
         const urlParams = new URLSearchParams(window.location.search);
         const namesParam = urlParams.get('name');
@@ -114,19 +114,19 @@
         const socket = create({
             hostname: window.location.hostname,
             port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-            path: '/socketcluster/',
+            path: '/websocket/',
             authToken: { name: `Gamepad-Monitor: ${namesParam}` }
         });
 
         (async () => {
             for await (let {error} of socket.listener('error')) {
-                console.error('SocketCluster error:', error);
+                console.error('WebSocket error:', error);
             }
         })();
 
         (async () => {
             for await (let event of socket.listener('connect')) {
-                console.log('Connected to SocketCluster');
+                console.log('Connected to WebSocket');
                 updateStatus('Connected');
                 socket.invoke('setInfo', { name: `Gamepad Monitor: ${namesParam}` });
                 
@@ -139,7 +139,7 @@
 
         (async () => {
             for await (let event of socket.listener('disconnect')) {
-                console.log('Disconnected from SocketCluster');
+                console.log('Disconnected from WebSocket');
                 updateStatus('Disconnected');
             }
         })();
@@ -184,6 +184,18 @@
                 b.appendChild(s);
             }
             d.appendChild(b);
+
+            const rumbleBtn = document.createElement("button");
+            rumbleBtn.textContent = "Rumble Test";
+            rumbleBtn.style.margin = "1em";
+            rumbleBtn.onclick = () => {
+                socket.publish(`gamepad_out_${deviceName}`, {
+                    weakMagnitude: 1.0,
+                    strongMagnitude: 1.0,
+                    duration: 500
+                });
+            };
+            d.appendChild(rumbleBtn);
 
             const a = document.createElement("div");
             a.className = "axes";

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Audio Monitor (SocketCluster)</title>
+    <title>Audio Monitor (WebSocket)</title>
     <style>
         body {
             background: #111;
@@ -131,11 +131,11 @@
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 204, 0.7); }
         }
     </style>
-    <script src="lib/socketcluster.js"></script>
+    <script src="lib/slides-studio-client.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Audio Monitor SC</h1>
+        <h1>Audio Monitor</h1>
         
         <!-- Microphone Selection & Monitoring -->
         <div class="control-group">
@@ -146,7 +146,7 @@
             <button id="btn-monitor" class="btn-monitor">Start Monitoring</button>
             <div class="status-bar">
                 <span>Device ID: <span id="current-device-id">None</span></span>
-                <span><span id="sc-dot" class="status-dot"></span> SC Status: <span id="sc-status">Disconnected</span></span>
+                <span><span id="ws-dot" class="status-dot"></span> Status: <span id="ws-status">Disconnected</span></span>
             </div>
         </div>
 
@@ -182,8 +182,8 @@
         const sttStatus = document.getElementById('stt-status');
         const sttActions = document.getElementById('stt-actions');
         const fftCanvas = document.getElementById('fft-canvas');
-        const scStatus = document.getElementById('sc-status');
-        const scDot = document.getElementById('sc-dot');
+        const wsStatus = document.getElementById('ws-status');
+        const wsDot = document.getElementById('ws-dot');
         const rateSlider = document.getElementById('rate-slider');
         const rateVal = document.getElementById('rate-val');
         const deviceIdText = document.getElementById('current-device-id');
@@ -200,26 +200,26 @@
         let sendRate = 100;
         let deviceLabel = "audio_monitor_1";
 
-        // SocketCluster Setup
+        // WebSocket Setup
         const options = {
             hostname: window.location.hostname,
             port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-            path: '/socketcluster/',
+            path: '/websocket/',
             authToken: { name: 'Audio-Send' }
         };
-        const socket = socketClusterClient.create(options);
+        const socket = create(options);
 
         (async () => {
             for await (let event of socket.listener('connect')) {
-                scStatus.textContent = 'Connected';
-                scDot.classList.add('connected');
+                wsStatus.textContent = 'Connected';
+                wsDot.classList.add('connected');
             }
         })();
 
         (async () => {
             for await (let event of socket.listener('disconnect')) {
-                scStatus.textContent = 'Disconnected';
-                scDot.classList.remove('connected');
+                wsStatus.textContent = 'Disconnected';
+                wsDot.classList.remove('connected');
             }
         })();
 

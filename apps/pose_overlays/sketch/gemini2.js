@@ -217,7 +217,7 @@ sketch = function(p) {
     EPHEMERAL = ephemeralCheckBox ? ephemeralCheckBox.checked() : true;
     EPHEMERAL_ALPHA = ephemeralAlphaSlider ? ephemeralAlphaSlider.value() : 10;
 
-    if (inp1) {
+    if (inp1 && inp2 && inp3 && inp4 && inp5 && inp6 && inp7) {
         let currentColors = [inp1.value(), inp2.value(), inp3.value(), inp4.value(), inp5.value(), inp6.value(), inp7.value()];
         if (PAINTLINES) {
             for (let i = 0; i < PAINTLINES.length; i++) {

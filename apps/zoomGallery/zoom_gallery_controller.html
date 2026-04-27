@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Zoom Gallery Controller</title>
     <script type="module">
-        import { create } from '../lib/socketcluster-client.min.js';
-        window.socketClusterClient = { create };
+        import { create } from '../lib/slides-studio-client.js';
+        window.slidesStudioClient = { create };
     </script>
     <style>
         body {
@@ -356,7 +356,7 @@
 
         // --- App Logic ---
         async function startApp() {
-            if (!window.socketClusterClient) {
+            if (!window.slidesStudioClient) {
                 setTimeout(startApp, 100);
                 return;
             }
@@ -369,16 +369,16 @@
             serverStatus.className = 'status-indicator waiting';
             serverStatusText.textContent = 'Connecting...';
             
-            socket = window.socketClusterClient.create({
+            socket = window.create({
                 hostname: window.location.hostname,
                 port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-                path: '/socketcluster/',
+                path: '/websocket/',
                 authToken: { name: 'Zoom-Gallery-Controller' }
             });
 
             (async () => {
                 for await (let {error} of socket.listener('error')) {
-                    console.error('SocketCluster error:', error);
+                    console.error('WebSocket error:', error);
                 }
             })();
 
@@ -386,7 +386,7 @@
                 for await (let event of socket.listener('connect')) {
                     serverStatus.className = 'status-indicator connected';
                     serverStatusText.textContent = 'Connected to Plugin';
-                    log('SocketCluster connected.');
+                    log('WebSocket connected.');
                     checkObsStatus();
                 }
             })();

@@ -25,7 +25,7 @@ export class ObsServer {
             }
 
             try {
-                const result = await this.plugin.obs.callBatch(requests, options);
+                const result = await this.plugin.enqueueObsRequest({ requests, options });
                 return result || [];
             } catch (error) {
                 const msg = error instanceof Error ? error.message : String(error);
@@ -39,17 +39,11 @@ export class ObsServer {
             const { name } = request.params;
             const data = request.body || {};
 
-            if (!this.plugin.isObsConnected) {
-                console.warn(`[ObsServer] Call to ${name} failed: OBS not connected`);
-                return reply.code(503).send({ error: 'OBS not connected' });
-            }
-
             try {
-                // request.body should be the arguments object for the call
-                const requestType = name as keyof OBSRequestTypes;
-                const requestData = data as OBSRequestTypes[typeof requestType];
-
-                const result = await this.plugin.obs.call(requestType, requestData);
+                const result = await this.plugin.enqueueObsRequest({
+                    requestType: name,
+                    requestData: data
+                });
                 return result || {};
             } catch (error) {
                 const msg = error instanceof Error ? error.message : String(error);

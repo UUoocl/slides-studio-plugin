@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>MIDI Monitor (SocketCluster)</title>
+    <title>MIDI Monitor (WebSocket)</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1e1e1e; color: #d4d4d4; padding: 20px; margin: 0; }
         #container { max-width: 800px; margin: 0 auto; }
@@ -56,15 +56,16 @@
             background: #555;
         }
         .status-dot.connected { background: #4ec9b0; box-shadow: 0 0 5px #4ec9b0; }
-        #sc-status { color: #888; }
+        #ws-status { color: #888; }
     </style>
 </head>
 <body>
     <div id="container">
-        <h1 id="title">MIDI Monitor (SocketCluster)</h1>
+        <h1 id="title">MIDI Monitor (WebSocket)</h1>
+        <div style="font-size: 0.7em; color: #555; margin-top: -10px; margin-bottom: 10px;">v1.0.5</div>
 
         <div id="status-bar">
-            <span><span id="sc-dot" class="status-dot"></span> SC: <span id="sc-status">Connecting...</span></span>
+            <span><span id="ws-dot" class="status-dot"></span> WebSocket: <span id="ws-status">Connecting...</span></span>
         </div>
 
         <div id="controls">
@@ -77,15 +78,15 @@
         <div id="messages"></div>
     </div>
 
-    <!-- Load SocketCluster Client -->
+    <!-- Load WebSocket Client -->
     <script type="module">
-        import { create } from '../lib/socketcluster-client.min.js';
+        import { create } from '../lib/slides-studio-client.js?v=1.0.5';
 
         const urlParams = new URLSearchParams(window.location.search);
         const targetDevice = urlParams.get('deviceName');
 
-        const scStatusEl = document.getElementById('sc-status');
-        const scDot = document.getElementById('sc-dot');
+        const wsStatusEl = document.getElementById('ws-status');
+        const wsDot = document.getElementById('ws-dot');
         const messagesEl = document.getElementById('messages');
         const titleEl = document.getElementById('title');
         const hintEl = document.getElementById('hint');
@@ -96,8 +97,6 @@
             cc: document.getElementById('ccBtn')
         };
 
-        let socket = null;
-
         if (targetDevice) {
             titleEl.textContent = `MIDI Monitor: ${targetDevice}`;
         } else {
@@ -106,52 +105,46 @@
             hintEl.textContent = "Specify ?deviceName=... in URL to enable sending and listening";
         }
 
-        // SocketCluster Setup
-        socket = create({
+        // WebSocket Setup
+        const socket = create({
             hostname: window.location.hostname,
-            port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-            path: '/socketcluster/',
+            port: window.location.port,
+            path: '/websocket/',
             authToken: { name: targetDevice ? `Midi-Monitor: ${targetDevice}` : 'Midi-Monitor' }
         });
 
-        (async () => {
-            for await (let {error} of socket.listener('error')) {
-                console.error('Socket Error:', error);
+        socket.on('connect', () => {
+            console.log('Connected to WebSocket');
+            wsStatusEl.textContent = 'Connected';
+            wsDot.classList.add('connected');
+            if (targetDevice) {
+                subscribeToMidi();
             }
-        })();
+        });
 
-        (async () => {
-            for await (let event of socket.listener('connect')) {
-                console.log('Connected to SocketCluster');
-                scStatusEl.textContent = 'Connected';
-                scDot.classList.add('connected');
-                if (targetDevice) {
-                    subscribeToMidi();
-                }
-            }
-        })();
+        socket.on('disconnect', () => {
+            console.log('Disconnected from WebSocket');
+            wsStatusEl.textContent = 'Disconnected';
+            wsDot.classList.remove('connected');
+        });
 
-        (async () => {
-            for await (let event of socket.listener('disconnect')) {
-                console.log('Disconnected from SocketCluster');
-                scStatusEl.textContent = 'Disconnected';
-                scDot.classList.remove('connected');
-            }
-        })();
+        socket.on('error', (err) => {
+            console.error('Socket Error:', err);
+        });
 
-        async function subscribeToMidi() {
+        function subscribeToMidi() {
             const channelName = `midi_in_${targetDevice}`;
             console.log(`Subscribing to ${channelName} (Hardware -> Plugin)`);
-            const scChannel = socket.subscribe(channelName);
+            const channel = socket.subscribe(channelName);
 
-            for await (let data of scChannel) {
+            channel.on('message', (data) => {
                 // data is { deviceName, message: MidiPayload }
                 addMessage(data);
-            }
+            });
         }
 
         async function sendMidi(payload) {
-            if (!socket || socket.state !== 'open') {
+            if (socket.state !== 'open') {
                 alert('Socket not connected');
                 return;
             }
@@ -160,11 +153,9 @@
                 return;
             }
             try {
-                // Use invokePublish to wait for server acknowledgement/errors
-                // Use _out_ channel to send from Plugin to Hardware
                 const channelName = `midi_out_${targetDevice}`;
                 console.log(`Publishing to ${channelName} (Plugin -> Hardware)`, payload);
-                await socket.invokePublish(channelName, payload);
+                socket.publish(channelName, payload);
             } catch (e) {
                 console.error('Socket publish error:', e);
                 alert(`Socket publish error: ${e.message || e}`);
@@ -214,5 +205,3 @@
     </script>
 </body>
 </html>
-
-

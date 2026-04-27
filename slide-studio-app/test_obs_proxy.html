@@ -54,7 +54,7 @@
 </head>
 <body>
 
-    <div class="header">OBS SocketCluster Proxy Tester</div>
+    <div class="header">OBS WebSocket Proxy Tester</div>
 
     <div class="controls">
         <button id="btn-connect">Connect Proxy</button>
@@ -68,7 +68,7 @@
     <div id="log">Waiting for connection...</div>
 
     <script type="module">
-        import { create } from './lib/socketcluster-client.min.js';
+        import { create } from './lib/slides-studio-client.js';
         // Note: obsApiProxy.js is also a module and expects to be imported or loaded as one.
         // But since it attaches itself to 'window', we can just import it.
         import './lib/obsApiProxy.js';

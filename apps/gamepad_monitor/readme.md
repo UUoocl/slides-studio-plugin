@@ -1,6 +1,6 @@
-# Gamepad Monitor (SocketCluster)
+# Gamepad Monitor
 
-This application monitors and visualizes gamepad input received from the Slides-Studio SocketCluster server.
+This application monitors and visualizes gamepad input received from the Slides Studio WebSocket server.
 
 ## Features
 - **Remote Monitoring**: View gamepad state from any device connected to the server.
@@ -18,4 +18,4 @@ Add this app to OBS as a **Browser Source** and append the gamepad's configured 
 
 ## Requirements
 - Slides-Studio plugin with Server enabled and Gamepad broadcasting enabled for the controller.
-- Connected to the SocketCluster server (handled automatically).
+- Connected to the WebSocket server (handled automatically).

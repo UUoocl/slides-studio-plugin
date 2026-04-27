@@ -1,4 +1,4 @@
-import { create } from '../../lib/socketcluster-client.min.js';
+import { create } from '../../lib/slides-studio-client.js';
 
 (async () => {
     const isSettingsPage = window.location.pathname.includes('_settings.html');
@@ -8,7 +8,7 @@ import { create } from '../../lib/socketcluster-client.min.js';
     const socket = create({
         hostname: window.location.hostname,
         port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-        path: '/socketcluster/',
+        path: '/websocket/',
         authToken: { name: `Stg-Sync: ${filename}${isSettingsPage ? ' (Settings)' : ''}` }
     });
 
@@ -17,7 +17,7 @@ import { create } from '../../lib/socketcluster-client.min.js';
     const inputSource = urlParams.get('inputSource') || 'keyboard';
 
     if (inputSource === 'audio') {
-        console.log(`STG: Subscribing to SocketCluster channel: audio_stt`);
+        console.log(`STG: Subscribing to WebSocket channel: audio_stt`);
         (async () => {
             const audioChannel = socket.subscribe('audio_stt');
             for await (let data of audioChannel) {
@@ -32,7 +32,7 @@ import { create } from '../../lib/socketcluster-client.min.js';
             }
         })();
     } else {
-        console.log(`STG: Subscribing to SocketCluster channel: keyboardPress`);
+        console.log(`STG: Subscribing to WebSocket channel: keyboardPress`);
         (async () => {
             const kbChannel = socket.subscribe('keyboardPress');
             for await (let data of kbChannel) {

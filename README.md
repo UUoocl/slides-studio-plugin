@@ -10,9 +10,8 @@ Slides Studio is the perfect companion for presenting Reveal.js slides with [Obs
 - **OBS Synchronization**: Automatically sync slide changes in Obsidian with OBS scene changes.
 - **Smart Tags**: Use slide tags to trigger complex OBS actions, camera transitions, and layout changes.
 - **Integrated Server**: A built-in Fastify server enables communication between Obsidian, OBS, and external devices.
-- **Real-time Control**: Low-latency support for MIDI and Open Sound Control (OSC) via dedicated WebSocket servers.
+- **Real-time Control**: Low-latency support for MIDI, OSC, and AI vision via a unified WebSocket architecture.
 - **On-Device Speech-to-Text**: Local, privacy-first transcription using Chrome's experimental Web Speech API (Chrome 142+).
-- **Unified SSE Support**: A single Server-Sent Events (SSE) endpoint at `/api/events` for real-time broadcasting of audio data, monitor events, and OBS status.
 
 ## Usage
 
@@ -22,7 +21,7 @@ Slides Studio is the perfect companion for presenting Reveal.js slides with [Obs
 - Use the `Connect OBS` command to establish the link.
 
 ### 2. Presentation Setup
-- Use **Slides Extended** or similar to create your Reveal.js content.
+- Create your Reveal.js content using tools like **Advanced Slides** (formerly Slides Extended) or other Reveal.js generators. Slides Studio is fully independent and works with any standard Reveal.js slide deck.
 - Add tags to your slides to define OBS behaviors (Scenes, Camera positions, etc.).
 - Use the "Open Slides Studio View" ribbon icon to manage your presentation tags.
 
@@ -39,8 +38,7 @@ Slides Studio is built as an Obsidian plugin with a modern TypeScript architectu
 - **Core (`src/main.ts`)**: Manages the plugin lifecycle, Obsidian command registration, and event orchestration.
 - **Server (`src/utils/serverLogic.ts`)**: Implements a **Fastify** server that runs locally within Obsidian. It provides:
     - **REST API**: For file management, device control, and status information.
-    - **Unified SSE**: A single stream at `/api/events` for system-wide status and monitor data.
-    - **WebSocket Servers**: Individual servers for high-frequency hardware communication (OSC, MIDI, UVC).
+    - **Unified WebSocket**: A single endpoint at `/websocket/` for system-wide status, hardware data, and AI vision landmarks.
 - **Device Management**:
     - **OSC (`src/utils/oscLogic.ts`)**: Bidirectional communication via `node-osc`.
     - **MIDI (`src/utils/midiLogic.ts`)**: Hardware interaction via `webmidi`.
@@ -55,35 +53,30 @@ The output will be available in the `/docs` directory.
 
 ## WebSockets
 
-High-frequency hardware data is handled via dedicated WebSocket servers to ensure maximum performance and isolation from the main SSE stream.
+All real-time data flows through a unified WebSocket server to ensure maximum performance and low-latency interaction between Obsidian and external clients.
 
-| Device Type | Connection Pattern | Description |
-| :--- | :--- | :--- |
-| **OSC** | `ws://localhost:PORT` | One server per device (configured via `wsPort`). |
-| **MIDI** | `ws://localhost:PORT` | One server per device (configured via `wsPort`). |
-| **UVC** | `ws://localhost:PORT` | Single server for all UVC commands (configured via global `uvcWsPort`). |
+### Connection
+**Endpoint**: `ws://localhost:59000/websocket/`
 
-### WebSocket Example (JavaScript)
+### Usage Pattern (JavaScript)
 ```javascript
-// Consuming MIDI data from a specific device
-const ws = new WebSocket('ws://localhost:59000');
-ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log(`MIDI from ${data.deviceName}:`, data.message);
-};
+import { create } from './lib/slides-studio-client.js';
+
+const socket = create({ port: 59000 });
+
+// Listen for connection
+socket.on('connect', () => {
+    console.log('Connected to Slides Studio');
+    
+    // Subscribe to a data channel
+    socket.subscribe('mousePosition');
+});
+
+// Handle incoming data
+socket.on('mousePosition', (data) => {
+    console.log('Mouse at:', data.x, data.y);
+});
 ```
-
-## Server-Sent Events (SSE)
-
-The unified stream at `/api/events` broadcasts system activity and monitor data. Use `eventSource.addEventListener(eventName, ...)` to listen for specific topics.
-
-| Event Name | Description |
-| :--- | :--- |
-| `audioData` | FFT frequency arrays (`fft`) or STT transcriptions (`stt`). |
-| `mousePosition`, `mouseClick` | Real-time global mouse tracking data. |
-| `keyboardPress`, `keyboardRelease`| Real-time global keyboard monitoring. |
-| `ConnectionOpened`, `Identified`| OBS WebSocket connection status events. |
-| `CustomEvent` | Dynamic OBS events or custom messages from `/api/custom/message`. |
 
 ## Server Routes (REST)
 
@@ -101,6 +94,51 @@ The unified stream at `/api/events` broadcasts system activity and monitor data.
 | `POST` | `/api/midi/send` | Send a MIDI message. |
 | `POST` | `/api/stt/result` | Post transcription results from worker. |
 | `GET` | `/api/audio/stt-devices` | List configured STT audio devices. |
+
+## Interfaces
+
+Slides Studio provides a rich set of interfaces to bridge Obsidian with external devices, software, and AI vision tasks. All real-time data flows through a unified WebSocket at `ws://localhost:59000/websocket/`.
+
+### 1. Core Controls
+| Interface | Description | APIs | Client Events | Requests |
+| :--- | :--- | :--- | :--- | :--- |
+| **Open OBS** | Launches OBS with specific args (collection, profile, debug). | Command: `Open OBS` | N/A | N/A |
+| **Connect OBS** | Establishes plugin link to OBS WebSocket. | Command: `Connect OBS` | `ConnectionOpened`, `Identified` | `isObsConnected`, `obsRequest` |
+
+### 2. Hardware & Device Bridges
+| Interface | Query Params | REST APIs | Publish (to App) | Subscribe (from App) |
+| :--- | :--- | :--- | :--- | :--- |
+| **OSC** | `?name={alias}` | `POST /api/osc/send` | `osc_in_{name}` | `osc_out_{name}` |
+| **MIDI** | `?name={alias}` | `POST /api/midi/send` | `midi_in_{name}` | `midi_out_{name}` |
+| **Gamepad** | `?name={alias}` | N/A | `gamepad_in_{name}` | `gamepad_out_{name}` |
+| **UVC** | `?name={alias}` | N/A | `uvc_in_{name}` | `uvc_out_{name}` |
+
+### 3. Monitoring & Input
+| Interface | Query Params | REST APIs | Publish (to App) |
+| :--- | :--- | :--- | :--- |
+| **Keyboard** | N/A | N/A | `keyboardPress`, `keyboardRelease` |
+| **Mouse** | N/A | N/A | `mousePosition`, `mouseClick`, `mouseScroll` |
+| **Audio FFT** | N/A | N/A | `audio_fft` |
+| **STT** | N/A | `POST /api/stt/result` | `stt_result` |
+
+### 4. Advanced Integrations
+| Interface | Query Params | REST APIs | Publish (to App) |
+| :--- | :--- | :--- | :--- |
+| **Shortcuts** | `?id={reqId}`* | `POST /api/shortcuts/run` | `shortcuts_result` |
+| **MediaPipe** | `?channel={task}`| N/A | `mediapipe_in_{task}` |
+| **Vault Files**| N/A | `/api/file/get`, `/save` | N/A |
+
+*\* The `id` parameter is used in the macOS callback URL to route results back to the specific requester.*
+
+### WebSocket Protocol Example
+All data uses a JSON format. To receive Apple Shortcuts results, for example:
+```javascript
+const socket = slidesStudio.create({ port: 59000 });
+socket.subscribe('shortcuts_result');
+socket.on('shortcuts_result', (data) => {
+    console.log('Shortcut completed:', data);
+});
+```
 
 ## OBS Proxy API (v1)
 

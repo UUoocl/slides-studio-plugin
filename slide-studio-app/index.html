@@ -239,12 +239,12 @@
   <body>
     <div id="connection-status" class="connection-status">
       <h2>Slide Studio Viewer</h2>
-      <p>Enter the location of your slide deck to begin.</p>
+      <p>Enter the path to your slide deck (relative to vault root).</p>
       <input
         type="text"
         id="location"
         class="location-input"
-        placeholder="export/Welcome/index.html"
+        placeholder="Presentations/MyDeck/index.html"
         value="export/Welcome/index.html"
       />
       <button id="loadDeckButton" class="load-button">Load Presentation</button>
@@ -264,7 +264,7 @@
       <select class="speaker-layout-dropdown"></select>
     </div>
 
-    <script type="module" src="lib/sc-connection.js"></script>
+    <script type="module" src="lib/slides-studio-connection.js"></script>
     <script type="module" src="lib/obsApiProxy.js"></script>
 
 
@@ -278,15 +278,20 @@
     <script id="setupSpeakerView" type="module">
 
         let notesIframe,
-        studioIframe,
-        layoutLabel,
-        layoutDropdown,
-        lastRevealApiCallId = 0,
-        connected = false,
-        slideDeck,
-        slideDeckURL;
+            studioIframe,
+            layoutLabel,
+            layoutDropdown,
+            lastRevealApiCallId = 0,
+            connected = false,
+            currentActiveScene = "",
+            validScenes = [], // Cache of available OBS scenes
+            sidecarMappings = {}; // Cache of slideId/slideState -> sceneName from .obs-map.json
 
+        let slidesArray = [];
         let slidesLoaded = false;
+        let tableLoaded = false;
+        let slideDeck;
+        let slideDeckURL;
 
         // Expose to window for other modules
         window.currentSlide = undefined;
@@ -302,13 +307,22 @@
         };
 
         window.loadSpeakerView = async function(){
-          if (slidesLoaded) return;
-          
-          slidesLoaded = true;
+          if (window.isViewLoaded) return;
+          window.isViewLoaded = true;
 
           // Connect to OBS via proxy
           try {
               await obsWss.connect();
+              // Fetch valid scenes once on connection
+              try {
+                  const sceneList = await window.obsWss.call('GetSceneList');
+                  if (sceneList && sceneList.scenes) {
+                      validScenes = sceneList.scenes.map(s => (s.sceneName || s).trim());
+                      console.log(`[Choreography] Found ${validScenes.length} valid scenes in OBS.`);
+                  }
+              } catch (sceneListErr) {
+                  console.warn("[Choreography] Could not fetch scene list from OBS. Safe-switch disabled.", sceneListErr);
+              }
           } catch (e) {
               console.warn("Continuing without OBS connection:", e);
           }
@@ -327,30 +341,63 @@
           }
 
           try {
-              slideDeckURL = new URL(locationValue)
-              slideDeck = `${locationValue}`
+              // Extract a deck ID from the original relative path for storage purposes
+              let relativePath = locationValue;
+              if (relativePath.startsWith(window.location.origin)) {
+                  relativePath = relativePath.replace(window.location.origin + "/", "");
+              }
+              const deckId = relativePath.replace(/\.(html|md)$/, '');
+              window.currentDeckId = deckId;
 
-              // Extract a deck ID from the URL for storage purposes
-              const deckId = slideDeckURL.pathname.split('/').filter(p => p && p !== 'index.html').pop() || 'default-deck';
+              slideDeckURL = new URL(locationValue.startsWith("http") ? locationValue : `${window.location.origin}/${locationValue}`)
+              slideDeck = slideDeckURL.href
 
               setupLayout();
               setupIframes();
 
-              // Send initialization data to other views (Studio, etc.) via SocketCluster
+              // Send initialization data to other views (Studio, etc.) via WebSocket
               setTimeout(() => {
+                  console.log("[SpeakerView] Broadcasting deck info:", deckId);
                   window.broadcastSlidesCommand("set-slides-studio-url", {url: slideDeck});
                   window.broadcastSlidesCommand("set-deck-id", { deckId: deckId });
               }, 1000);
 
           } catch (e) {
               alert("Please enter a valid URL or deck path.");
-              slidesLoaded = false;
+              window.isViewLoaded = false;
               document.getElementById("connection-status").style.display = 'flex';
               return;
           }
 
           handleConnectMessage();
           window.document.getElementById("speaker-controls").focus();
+
+          // Load sidecar mappings if deckId is available
+          if (window.currentDeckId) {
+              await window.loadFromSidecar();
+          }
+        }
+
+        window.loadFromSidecar = async function() {
+            if (!window.currentDeckId) return;
+            
+            console.log(`[SpeakerView] Attempting to load sidecar for ${window.currentDeckId}...`);
+            try {
+                const response = await fetch(`/api/file/get?folder=&filename=${window.currentDeckId}.obs-map.json`);
+                if (response.ok) {
+                    const sidecarData = await response.json();
+                    console.log(`[SpeakerView] Loaded sidecar mappings:`, sidecarData);
+                    
+                    // Convert array [{id, scene}] to object {id: scene}
+                    if (Array.isArray(sidecarData)) {
+                        sidecarData.forEach(mapping => {
+                            sidecarMappings[mapping.id] = mapping.scene;
+                        });
+                    }
+                }
+            } catch (e) {
+                console.log("[SpeakerView] No sidecar found or failed to load. Using slide attributes.");
+            }
         }
 
     // Helper to get attributes from the current slide in the iframe
@@ -364,9 +411,10 @@
         if (!slideEl) return {};
 
         const getAttr = (name) => {
-          if (slideEl.getAttribute(name)) return slideEl.getAttribute(name);
+          const attr = slideEl.getAttribute(name);
+          if (attr) return attr.trim();
           const subEl = slideEl.querySelector(`[${name}]`);
-          return subEl ? subEl.getAttribute(name) : "";
+          return subEl ? subEl.getAttribute(name).trim() : "";
         };
 
         const fragmentEl = slideEl.querySelector('.current-fragment');
@@ -387,28 +435,205 @@
         };
     }
 
-    // Listen for messages from Reveal.js iframes
+    // Listen for messages from Reveal.js iframes and the Studio brain
     window.addEventListener('message', event => {
         try {
           const data = JSON.parse(event.data);
           
+          if (data.namespace === 'tabulator' && data.message === "slides-data") {
+            if (studioIframe && studioIframe.contentWindow) {
+                studioIframe.contentWindow.postMessage(JSON.stringify({
+                    namespace: "speakerview",
+                    message: "slides-data-response",
+                    slidesData: slidesArray
+                }), "*");
+            }
+          }
+
           if (data.namespace === 'reveal') {
+            // --- Indexing Logic (Example Project Pattern) ---
+            if (!slidesLoaded && !tableLoaded) {
+                if (data.eventName === 'ready') {
+                    console.log("[Indexing] Slides ready, starting collection...");
+                    slidesArray = [];
+                    addSlideToSlideArray(data);
+                } else if (data.eventName === 'slidechanged') {
+                    addSlideToSlideArray(data);
+                } else if (['fragmentshown', 'fragmenthidden'].includes(data.eventName)) {
+                    addFragmentToSlideArray(data);
+                } else if (data.eventName === 'callback' && data.method === 'getProgress') {
+                    const progress = data.result;
+                    if (progress === 1) {
+                        console.log("[Indexing] Complete! Compiled Slides Array:", slidesArray);
+                        slidesLoaded = true;
+                        tableLoaded = true;
+                        // Return to start
+                        window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'slide', args: [0, 0] }), "*");
+                        // Send to Studio
+                        if (studioIframe && studioIframe.contentWindow) {
+                            studioIframe.contentWindow.postMessage(JSON.stringify({
+                                namespace: "speakerview",
+                                message: "slides-data-response",
+                                slidesData: slidesArray
+                            }), "*");
+                        }
+                    } else {
+                        // Get next
+                        window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'next' }), "*");
+                    }
+                }
+            }
+            // --- End Indexing Logic ---
+
             if (typeof window.broadcastSlidesCommand === 'function') {
-                if (data.eventName === 'slidechanged') {
+                if (data.eventName === 'slidechanged' || data.eventName === 'ready') {
                     // Request notes for the teleprompter
                     window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: 'getSlideNotes' }), "*");
+                } else if (data.method === 'getSlideNotes') {
+                    console.log("[SpeakerView] Received notes from iframe, broadcasting to Teleprompter...");
+                    window.broadcastSlidesCommand('reveal-event', { eventName: 'callback', method: 'getSlideNotes', result: data.result });
                 } else if (['overviewhidden', 'overviewshown'].includes(data.eventName)) {
                     window.obsWss.publish('studio_to_currentSlide', 'overview-toggled', data.state);
                 }
                 
                 // Publish reveal events specifically to the Studio "brain" to prevent loops
-                obsWss.publish('currentSlide_to_studio', 'reveal-event', data);
+                console.log("[SpeakerView] Forwarding reveal event to Studio:", data.eventName);
+                const enrichedData = { ...data, attributes: window.getSlideAttributes() };
+                obsWss.publish('currentSlide_to_studio', 'reveal-event', enrichedData);
+                
+                // Broadcast navigation for synced views (OBS View, etc.)
+                if (data.eventName === 'slidechanged' || data.eventName === 'fragmentshown') {
+                    obsWss.publish('slides_navigation', 'slide-changed', data.state);
+                }
+
+                // --- Scene Choreography Logic ---
+                if (slidesLoaded && (data.eventName === 'slidechanged' || data.eventName === 'fragmentshown')) {
+                    const stateStr = `${data.state.indexh},${data.state.indexv}${data.state.indexf !== undefined && data.state.indexf !== -1 ? ',' + data.state.indexf : ''}`;
+                    
+                    // Search recursively in slidesArray
+                    let foundSlide = null;
+                    const findInArray = (arr, state) => {
+                        for (const s of arr) {
+                            if (s.slideState === state) return s;
+                            if (s._children) {
+                                const found = findInArray(s._children, state);
+                                if (found) return found;
+                            }
+                        }
+                        return null;
+                    };
+
+                    foundSlide = findInArray(slidesArray, stateStr);
+
+                    if (foundSlide) {
+                        const slideKey = foundSlide.slideId || foundSlide.slideState;
+                        const targetScene = sidecarMappings[slideKey] || foundSlide.scene;
+
+                        if (targetScene) {
+                            (async () => {
+                                try {
+                                    // 1. Change scene if explicitly defined and exists
+                                    if (targetScene && currentActiveScene !== targetScene) {
+                                        const isLegacyScene = targetScene.startsWith("Scene camera") || targetScene.startsWith("SceneConfig-");
+
+                                        // Safe switch: check if scene exists in OBS
+                                        if (validScenes.length > 0 && !validScenes.includes(targetScene)) {
+                                            if (!isLegacyScene) {
+                                                console.warn(`[Choreography] Scene "${targetScene}" not found in current OBS collection. Available scenes:`, validScenes);
+                                            }
+                                        } else {
+                                            console.log(`[Choreography] Switching to scene: "${targetScene}"`);
+                                            try {
+                                                await window.obsWss.call('SetCurrentProgramScene', { sceneName: targetScene });
+                                                currentActiveScene = targetScene;
+                                                console.log(`[Choreography] Successfully switched to: "${targetScene}"`);
+                                            } catch (sceneErr) {
+                                                if (!isLegacyScene) {
+                                                    console.warn(`[Choreography] Scene switch to "${targetScene}" failed.`, sceneErr.message || sceneErr);
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // 2. Fetch SceneConfig-{sceneName} - Silently handle missing config
+                                    if (targetScene) {
+                                        const configResp = await window.obsWss.call('GetInputSettings', { 
+                                            inputName: `SceneConfig-${targetScene}` 
+                                        }).catch(e => null);
+                                    
+                                    if (configResp && configResp.inputSettings && configResp.inputSettings.text) {
+                                        try {
+                                            const sceneConfig = JSON.parse(configResp.inputSettings.text);
+                                            console.log(`[Choreography] Applying config for ${foundSlide.scene}`);
+                                            
+                                            window.broadcastSlidesCommand("CHOREOGRAPHY_UPDATE", {
+                                                scene: foundSlide.scene,
+                                                config: sceneConfig
+                                            });
+                                        } catch (jsonErr) {
+                                            console.warn("[Choreography] Invalid JSON in SceneConfig", jsonErr);
+                                        }
+                                    }
+                                }
+                            } catch (err) {
+                                console.warn("[Choreography] OBS Sync Failed:", err);
+                            }
+                            })();
+                        }
+                    }
+                }
             }
           }
         } catch (e) {
             // Silently ignore non-JSON messages
         }
     });
+
+    async function addSlideToSlideArray(data) {
+        if (!data.state) return;
+        const attrs = window.getSlideAttributes();
+        const state = `${data.state.indexh},${data.state.indexv}`;
+        
+        // Prevent duplicates
+        if (slidesArray.find(s => s.slideState === state)) return;
+
+        slidesArray.push({
+            slideId: attrs.slideId || `slide-${state}`,
+            slideState: state,
+            slideName: attrs.slideName || "",
+            slidePosition: attrs.slidePosition || "",
+            cameraPosition: attrs.cameraPosition || "",
+            cameraShape: attrs.cameraShape || "",
+            scene: attrs.scene || ""
+        });
+        
+        window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: "getProgress" }), "*");
+    }
+
+    async function addFragmentToSlideArray(data) {
+        if (!data.state) return;
+        const state = `${data.state.indexh},${data.state.indexv}`;
+        const foundSlide = slidesArray.find(s => s.slideState === state);
+        
+        if (foundSlide) {
+            if (!foundSlide._children) foundSlide._children = [];
+            const attrs = window.getSlideAttributes();
+            const fragState = `${state},${data.state.indexf}`;
+            
+            if (!foundSlide._children.find(f => f.slideState === fragState)) {
+                foundSlide._children.push({
+                    slideId: `frag-${fragState}`,
+                    slideState: fragState,
+                    slideName: attrs.fragmentName || attrs.slideName || "",
+                    slidePosition: attrs.fragmentPosition || attrs.slidePosition || "",
+                    cameraPosition: attrs.fragmentCameraPosition || attrs.cameraPosition || "",
+                    cameraShape: attrs.fragmentCameraShape || attrs.cameraShape || "",
+                    scene: attrs.fragmentScene || attrs.scene || ""
+                });
+            }
+        }
+        window.currentSlide.contentWindow.postMessage(JSON.stringify({ method: "getProgress" }), "*");
+    }
 
     // #region Iframe setup
     function setupIframes() {
@@ -550,6 +775,6 @@
       }
 //#endregion
     </script>
-    <script type="module" src="lib/slideSync_SpeakerView_Browser.js"></script> 
+    <script type="module" src="lib/slideSync_SpeakerView_Browser.js"></script>
   </body>
 </html>

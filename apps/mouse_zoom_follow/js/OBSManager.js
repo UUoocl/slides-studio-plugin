@@ -4,7 +4,7 @@ class OBSManager {
         this.currentScene = "";
         this.lastUpdateTimes = {};
         
-        // SocketCluster
+        // WebSocket
         this.socket = null;
         
         // Callbacks
@@ -15,41 +15,41 @@ class OBSManager {
     async connect() {
         if (this.socket) return;
 
-        this.socket = socketClusterClient.create({
+        if (!window.slidesStudioClient) {
+            console.error('slidesStudioClient not loaded yet');
+            setTimeout(() => this.connect(), 100);
+            return;
+        }
+
+        this.socket = window.slidesStudioClient.create({
             hostname: window.location.hostname,
-            port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-            path: '/socketcluster/',
+            port: window.location.port,
+            path: '/websocket/',
             authToken: { name: 'Mouse-Zoom-Follow' }
         });
 
         // Error handling
-        (async () => {
-            for await (let {error} of this.socket.listener('error')) {
-                console.error('SocketCluster error:', error);
-            }
-        })();
+        this.socket.on('error', (error) => {
+            console.error('WebSocket error:', error);
+        });
 
         // Connect handling
-        (async () => {
-            for await (let event of this.socket.listener('connect')) {
-                console.warn('SocketCluster connected');
-                try {
-                    await this.socket.invoke('setInfo', { name: 'Mouse_Zoom_and_Follow' });
-                } catch (e) {
-                    console.error('Failed to set SocketCluster info:', e);
-                }
-                await this.checkObsConnection();
+        this.socket.on('connect', async () => {
+            console.warn('WebSocket connected');
+            try {
+                await this.socket.invoke('setInfo', { name: 'Mouse_Zoom_and_Follow' });
+            } catch (e) {
+                console.error('Failed to set WebSocket info:', e);
             }
-        })();
+            await this.checkObsConnection();
+        });
 
         // Disconnect handling
-        (async () => {
-            for await (let event of this.socket.listener('disconnect')) {
-                console.warn('SocketCluster disconnected');
-                this.isConnected = false;
-                if (this.onConnectionChange) this.onConnectionChange(false);
-            }
-        })();
+        this.socket.on('disconnect', () => {
+            console.warn('WebSocket disconnected');
+            this.isConnected = false;
+            if (this.onConnectionChange) this.onConnectionChange(false);
+        });
 
         // Listen for OBS events
         this.setupEventListeners();
@@ -60,6 +60,7 @@ class OBSManager {
     }
 
     async checkObsConnection() {
+        if (!this.socket) return;
         try {
             const status = await this.socket.invoke('isObsConnected');
             this.isConnected = status.connected;
@@ -76,40 +77,34 @@ class OBSManager {
     }
 
     setupEventListeners() {
+        if (!this.socket) return;
+
         // Listen for connection opened
-        (async () => {
-            const channel = this.socket.subscribe('obs:ConnectionOpened');
-            for await (let data of channel) {
-                this.isConnected = true;
-                if (this.onConnectionChange) this.onConnectionChange(true);
-            }
-        })();
+        const connOpenChannel = this.socket.subscribe('obs:ConnectionOpened');
+        connOpenChannel.on('message', (data) => {
+            this.isConnected = true;
+            if (this.onConnectionChange) this.onConnectionChange(true);
+        });
 
         // Listen for connection closed
-        (async () => {
-            const channel = this.socket.subscribe('obs:ConnectionClosed');
-            for await (let data of channel) {
-                this.isConnected = false;
-                if (this.onConnectionChange) this.onConnectionChange(false);
-            }
-        })();
+        const connCloseChannel = this.socket.subscribe('obs:ConnectionClosed');
+        connCloseChannel.on('message', (data) => {
+            this.isConnected = false;
+            if (this.onConnectionChange) this.onConnectionChange(false);
+        });
 
         // Listen for scene change
-        (async () => {
-            const channel = this.socket.subscribe('obs:CurrentProgramSceneChanged');
-            for await (let data of channel) {
-                this.currentScene = data.sceneName;
-                if (this.onSceneChange) this.onSceneChange(data.sceneName);
-            }
-        })();
+        const sceneChangeChannel = this.socket.subscribe('obs:CurrentProgramSceneChanged');
+        sceneChangeChannel.on('message', (data) => {
+            this.currentScene = data.sceneName;
+            if (this.onSceneChange) this.onSceneChange(data.sceneName);
+        });
 
         // Listen for identified (re-check status)
-        (async () => {
-            const channel = this.socket.subscribe('obs:Identified');
-            for await (let data of channel) {
-                await this.checkObsConnection();
-            }
-        })();
+        const identifiedChannel = this.socket.subscribe('obs:Identified');
+        identifiedChannel.on('message', async (data) => {
+            await this.checkObsConnection();
+        });
     }
 
     async refreshCurrentScene() {

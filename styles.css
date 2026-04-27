@@ -1,8 +1,53 @@
 /*
-
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
-
-If your plugin does not need CSS, delete this file.
-
+Slides Studio Plugin Styles
 */
+
+.slides-studio-settings-section {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 0 15px 10px 15px;
+    margin-bottom: 20px;
+    background-color: var(--background-secondary-alt);
+    transition: border-color 0.2s ease;
+}
+
+.slides-studio-settings-section summary {
+    padding: 15px 0;
+    font-weight: 600;
+    font-size: 1.1em;
+    cursor: pointer;
+    color: var(--text-normal);
+    outline: none;
+    user-select: none;
+    display: block; /* Hide default arrow in some browsers */
+}
+
+.slides-studio-settings-section summary:hover {
+    color: var(--interactive-accent);
+}
+
+.slides-studio-settings-section[open] {
+    border-color: var(--interactive-accent);
+}
+
+.slides-studio-settings-section summary::-webkit-details-marker {
+    display: none;
+}
+
+.slides-studio-settings-section summary::before {
+    content: '\25B6';
+    display: inline-block;
+    margin-right: 10px;
+    font-size: 0.8em;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+    transform: rotate(0deg);
+}
+
+.slides-studio-settings-section[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.slides-studio-settings-section summary span {
+    vertical-align: middle;
+}
