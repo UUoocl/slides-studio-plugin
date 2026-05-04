@@ -200,7 +200,6 @@ export class ServerManager {
         void this.startUvcUtilBridge();
       }
 
-      this.startObsQueueProcessor();
     } catch (err) {
       console.error('Failed to start server', err);
       new Notice(`Slides Studio: Failed to start server on port ${this.port}`);
@@ -955,7 +954,6 @@ export class ServerManager {
     this.stopMouseMonitor();
     this.stopKeyboardMonitor();
     this.stopUvcUtilBridge();
-    if (this.obsQueueTimer) clearTimeout(this.obsQueueTimer);
     
     if (this.server) {
       await this.server.close();

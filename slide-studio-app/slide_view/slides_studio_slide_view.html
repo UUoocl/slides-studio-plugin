@@ -68,7 +68,8 @@
     <script type="module" src="../lib/slides-studio-connection.js"></script>
     <script type="module" src="../lib/slideSync_OBS.js"></script>
 
-    <script type="module">
+        const urlParams = new URLSearchParams(window.location.search);
+        const componentId = urlParams.get('id') || 'slideComponent';
         const broadcastChannels = {}; 
 
         (async () => {
@@ -97,15 +98,33 @@
             (async () => {
                 for await (let data of cmdChannel) {
                     if (data.eventName === 'CHOREOGRAPHY_UPDATE') {
-                        const { config } = data.msgParam;
-                        console.log("[SlideView] Choreography Update:", config);
+                        const { config, transitions } = data.msgParam;
+                        console.log(`[SlideView] Choreography Update for ${componentId}:`, config);
                         
-                        if (config.slideComponent) {
-                            applySlideComponentConfig(config.slideComponent);
+                        let myConfig = null;
+                        if (config.components) {
+                            myConfig = config.components.find(c => c.id === componentId);
+                        } else if (componentId === 'slideComponent') {
+                            myConfig = config.slideComponent;
                         }
                         
-                        if (config.cameraComponent && broadcastChannels.cameraShapes) {
+                        if (myConfig) {
+                            const myTransition = (transitions || []).find(t => (t.sources || []).includes(componentId));
+                            applySlideComponentConfig(myConfig, myTransition);
+                        }
+
+                        // Also check for legacy cameraComponent broadcast if we are the main slide view
+                        if (config.cameraComponent && componentId === 'slideComponent' && broadcastChannels.cameraShapes) {
                             broadcastChannels.cameraShapes.postMessage(config.cameraComponent);
+                        }
+
+                        // Broadcast mask updates for components of type 'mask'
+                        if (config.components && broadcastChannels.cameraShapes) {
+                            config.components.forEach(c => {
+                                if (c.type === 'mask') {
+                                    broadcastChannels.cameraShapes.postMessage(c);
+                                }
+                            });
                         }
                     }
                 }
@@ -116,17 +135,38 @@
             broadcastChannels.cameraShapes = new BroadcastChannel("cameraShapes_channel");
         });
         
-        function applySlideComponentConfig(config) {
+        function applySlideComponentConfig(config, transition) {
             const iframe = document.getElementById("revealIframe");
             if (!iframe) return;
 
-            // Apply direct transform and scaling from Editor
-            const { x, y, scaleX, scaleY, style } = config;
-            iframe.style.left = `${x}px`;
-            iframe.style.top = `${y}px`;
-            iframe.style.width = "100%"; // Base width
-            iframe.style.height = "100%"; // Base height
-            iframe.style.transform = `scale(${scaleX || 1}, ${scaleY || 1})`;
+            // Apply direct transform and scaling
+            const { x, y, scaleX, scaleY, style, transform } = config;
+            
+            // Support both old {x, y, scaleX, scaleY} and new {transform: {x, y, scale, rotation}}
+            const finalX = transform?.x ?? x ?? 0;
+            const finalY = transform?.y ?? y ?? 0;
+            const finalScaleX = transform?.scale ?? scaleX ?? 1;
+            const finalScaleY = transform?.scale ?? scaleY ?? 1;
+            const finalRotation = transform?.rotation ?? 0;
+
+            // Apply smooth transition if specified
+            if (transition) {
+                const { duration = 500, ease = 'ease-out' } = transition;
+                // Map custom ease names to CSS equivalents
+                let cssEase = ease;
+                if (ease === 'bounce') cssEase = 'cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                if (ease === 'linear') cssEase = 'linear';
+                
+                iframe.style.transition = `all ${duration}ms ${cssEase}`;
+            } else {
+                iframe.style.transition = "none";
+            }
+
+            iframe.style.left = `${finalX}px`;
+            iframe.style.top = `${finalY}px`;
+            iframe.style.width = "100%"; 
+            iframe.style.height = "100%"; 
+            iframe.style.transform = `scale(${finalScaleX}, ${finalScaleY}) rotate(${finalRotation}deg)`;
             iframe.style.transformOrigin = "top left";
             
             // Apply arbitrary CSS styles (filters, borders, etc.)
@@ -134,7 +174,6 @@
                 Object.assign(iframe.style, style);
             }
 
-            // Remove all classes, only use inline styles for dynamic positioning
             iframe.className = "slide-position"; 
         }
     </script>

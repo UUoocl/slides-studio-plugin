@@ -43,9 +43,13 @@
 </head>
 <body>
 
-    <div id="controls" style="margin-bottom: 10px;">
+    <div id="controls" style="margin-bottom: 10px; display: flex; align-items: center; flex-wrap: wrap;">
         <button type="button" id="editComponentsButton" class="form-button" style="background: #007acc; color: white;">Edit Components</button>
         <button type="button" id="setSlideSceneButton" class="form-button" style="background: #4ec9b0; color: white;">Set Slide Scene</button>
+        <div style="margin: 10px 10px 0 0; display: flex; align-items: center;">
+            <input type="text" id="newSceneName" placeholder="New Scene Name" style="width: 150px; padding: 4px; background: #252526; color: white; border: 1px solid #454545; border-radius: 4px; margin-right: 5px;">
+            <button type="button" id="createSceneButton" class="form-button" style="background: #ce9178; color: white; margin: 0;">Create Scene</button>
+        </div>
     </div>
     <div id="slidesTable" >
         <h3>Slides tags</h3>
@@ -238,6 +242,13 @@
                 // Auto-save to sidecar when data changes
                 window.saveToSidecar();
 
+                // Notify parent of live mapping update
+                window.parent.postMessage(JSON.stringify({
+                    namespace: "studio",
+                    message: "update-mapping",
+                    data: row
+                }), "*");
+
                 // Broadcast to both viewer and broadcast overlays
                 window.broadcastSlidesCommand('slide-changed', row);
             }
@@ -416,6 +427,66 @@
                 await window.saveToSidecar();
                 
                 console.log(`Mapped slide to scene: ${activeSlide.scene}`);
+            });
+
+            document.getElementById('createSceneButton').addEventListener('click', async () => {
+                let sceneName = document.getElementById('newSceneName').value.trim();
+                if (!sceneName) return alert('Enter a scene name');
+                
+                // Prefix with "Scene " if it doesn't start with "Scene"
+                if (!sceneName.startsWith('Scene')) {
+                    sceneName = 'Scene ' + sceneName;
+                }
+                
+                // Duplicate check
+                if (window.dropDownOptions && window.dropDownOptions.scene && window.dropDownOptions.scene.includes(sceneName)) {
+                    return alert('A scene with this name already exists.');
+                }
+
+                try {
+                    // Get platform for correct text source kind
+                    const version = await window.obsWss.call('GetVersion');
+                    const platform = (version.platform || '').toLowerCase();
+                    const inputKind = platform === 'windows' ? 'text_gdiplus_v2' : 'text_ft2_source_v2';
+
+                    console.log(`[Studio] Creating scene "${sceneName}" on platform: ${platform}`);
+
+                    // 1. Create the scene
+                    await window.obsWss.call('CreateScene', { sceneName });
+                    
+                    // 2. Create the SceneConfig source
+                    await window.obsWss.call('CreateInput', {
+                        sceneName: sceneName,
+                        inputName: `SceneConfig-${sceneName}`,
+                        inputKind: inputKind,
+                        inputSettings: { text: '{}' }
+                    });
+
+                    // 3. Update UI
+                    if (window.dropDownOptions && window.dropDownOptions.scene) {
+                        if (!window.dropDownOptions.scene.includes(sceneName)) {
+                            window.dropDownOptions.scene.push(sceneName);
+                            window.dropDownOptions.scene.sort();
+                        }
+                    }
+                    
+                    // Notify parent to update its validScenes
+                    window.parent.postMessage(JSON.stringify({
+                        namespace: "studio",
+                        message: "new-scene-created",
+                        sceneName: sceneName
+                    }), "*");
+
+                    // Refresh table to show new scene in dropdowns
+                    loadTable(window.dropDownOptions, window.slidesArray);
+                    
+                    document.getElementById('newSceneName').value = '';
+                    alert(`Scene "${sceneName}" created successfully.`);
+                    
+                } catch (err) {
+                    console.error("Failed to create scene:", err);
+                    alert(`Error: ${err.message || err}`);
+                }
             });
         </script>
 </body>

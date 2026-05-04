@@ -287,6 +287,177 @@
             validScenes = [], // Cache of available OBS scenes
             sidecarMappings = {}; // Cache of slideId/slideState -> sceneName from .obs-map.json
 
+        const sourceStateCache = new Map();
+        
+        const EASING = {
+            linear: t => t,
+            'ease-in': t => t * t,
+            'ease-out': t => t * (2 - t),
+            bounce: t => {
+                if (t < (1 / 2.75)) {
+                    return 7.5625 * t * t;
+                } else if (t < (2 / 2.75)) {
+                    return 7.5625 * (t -= (1.5 / 2.75)) * t + 0.75;
+                } else if (t < (2.5 / 2.75)) {
+                    return 7.5625 * (t -= (2.25 / 2.75)) * t + 0.9375;
+                } else {
+                    return 7.5625 * (t -= (2.625 / 2.75)) * t + 0.984375;
+                }
+            }
+        };
+
+        async function cacheAllSourceTransforms(sceneName) {
+            try {
+                const response = await window.obsWss.call('GetSceneItemList', { sceneName });
+                if (response && response.sceneItems) {
+                    // Fetch all transforms in parallel to minimize blocking
+                    await Promise.all(response.sceneItems.map(async (item) => {
+                        try {
+                            const response = await window.obsWss.call('GetSceneItemTransform', {
+                                sceneName,
+                                sceneItemId: item.sceneItemId
+                            });
+                            const transform = response.sceneItemTransform;
+                            if (transform) {
+                                sourceStateCache.set(item.sourceName, transform);
+                            }
+                        } catch (e) {}
+                    }));
+                }
+            } catch (err) {
+                console.warn(`[Move] Failed to cache transforms for ${sceneName}:`, err);
+            }
+        }
+
+        /**
+         * Prepares sources in the target scene by snapping them to their previous positions.
+         * Returns an array of animation data for the subsequent lerp.
+         */
+        async function prepareMoveTransition(targetScene, moveConfig) {
+            if (!moveConfig || !moveConfig.sources || !Array.isArray(moveConfig.sources)) return null;
+            
+            const { sources } = moveConfig;
+            try {
+                const response = await window.obsWss.call('GetSceneItemList', { sceneName: targetScene });
+                const sceneItems = response.sceneItems;
+                const animations = [];
+                const snapBatch = [];
+
+                for (const sourceName of sources) {
+                    const item = sceneItems.find(i => i.sourceName === sourceName);
+                    const prevTransform = sourceStateCache.get(sourceName);
+                    
+                    if (item && prevTransform) {
+                        try {
+                            const response = await window.obsWss.call('GetSceneItemTransform', {
+                                sceneName: targetScene,
+                                sceneItemId: item.sceneItemId
+                            });
+                            const targetTransform = response.sceneItemTransform;
+                            
+                            if (targetTransform) {
+                                // Check if there's actually a difference worth animating
+                                const diff = Math.abs(targetTransform.positionX - prevTransform.positionX) + 
+                                             Math.abs(targetTransform.positionY - prevTransform.positionY);
+                                
+                                if (diff > 1) { // 1px threshold
+                                    animations.push({
+                                        sourceName,
+                                        itemId: item.sceneItemId,
+                                        start: prevTransform,
+                                        end: targetTransform
+                                    });
+
+                                    // 1. Hide source in target scene to prevent flicker
+                                    snapBatch.push({
+                                        requestType: 'SetSceneItemEnabled',
+                                        requestData: {
+                                            sceneName: targetScene,
+                                            sceneItemId: item.sceneItemId,
+                                            sceneItemEnabled: false
+                                        }
+                                    });
+
+                                    // 2. Snap to previous position
+                                    snapBatch.push({
+                                        requestType: 'SetSceneItemTransform',
+                                        requestData: {
+                                            sceneName: targetScene,
+                                            sceneItemId: item.sceneItemId,
+                                            sceneItemTransform: prevTransform
+                                        }
+                                    });
+                                } else {
+                                    console.log(`[Move] Skipping ${sourceName} - no significant change (Diff: ${diff})`);
+                                }
+                            }
+                        } catch (e) {}
+                    } else {
+                        console.log(`[Move] Could not animate ${sourceName}: Item found? ${!!item}, Prev state? ${!!prevTransform}`);
+                    }
+                }
+
+                if (snapBatch.length > 0) {
+                    await window.obsWss.callBatch(snapBatch);
+                    console.log(`[Move] Pre-snapped and hid ${snapBatch.length} sources in ${targetScene}`);
+                }
+
+                return animations;
+            } catch (err) {
+                console.warn("[Move] Preparation failed:", err);
+                return null;
+            }
+        }
+
+        async function runMoveTransition(targetScene, moveConfig, animations) {
+            if (!animations || animations.length === 0) return;
+            
+            const { duration = 500, steps = 15, ease = 'linear' } = moveConfig;
+            const easingFn = EASING[ease] || EASING.linear;
+            const sleepMillis = Math.floor(duration / steps);
+            
+            console.log(`[Move] Starting animation for ${animations.length} sources over ${duration}ms (${ease})...`);
+            
+            try {
+                const batch = [];
+
+                // 1. Re-enable and start animation
+                for (let i = 0; i <= steps; i++) {
+                    const t = easingFn(i / steps);
+                    
+                    animations.forEach(anim => {
+                        const intermediate = {};
+                        ['positionX', 'positionY', 'scaleX', 'scaleY', 'rotation'].forEach(prop => {
+                            const startVal = anim.start[prop] ?? 0;
+                            const endVal = anim.end[prop] ?? 0;
+                            intermediate[prop] = startVal + (endVal - startVal) * t;
+                        });
+                        
+                        batch.push({
+                            requestType: 'SetSceneItemTransform',
+                            requestData: {
+                                sceneName: targetScene,
+                                sceneItemId: anim.itemId,
+                                sceneItemTransform: intermediate
+                            }
+                        });
+                    });
+
+                    if (i < steps) {
+                        batch.push({
+                            requestType: 'Sleep',
+                            requestData: { sleepMillis }
+                        });
+                    }
+                }
+                
+                await window.obsWss.callBatch(batch);
+                console.log(`[Move] Animation complete for ${targetScene}`);
+            } catch (err) {
+                console.warn("[Move] Lerp failed:", err);
+            }
+        }
+
         let slidesArray = [];
         let slidesLoaded = false;
         let tableLoaded = false;
@@ -319,6 +490,14 @@
                   if (sceneList && sceneList.scenes) {
                       validScenes = sceneList.scenes.map(s => (s.sceneName || s).trim());
                       console.log(`[Choreography] Found ${validScenes.length} valid scenes in OBS.`);
+
+                      // Capture initial state for Move transitions
+                      try {
+                          const currentScene = await window.obsWss.call('GetCurrentProgramScene');
+                          currentActiveScene = currentScene.currentProgramSceneName;
+                          await cacheAllSourceTransforms(currentActiveScene);
+                          console.log(`[Move] Initialized state cache with scene: ${currentActiveScene}`);
+                      } catch (initErr) {}
                   }
               } catch (sceneListErr) {
                   console.warn("[Choreography] Could not fetch scene list from OBS. Safe-switch disabled.", sceneListErr);
@@ -450,6 +629,22 @@
             }
           }
 
+          if (data.namespace === 'studio') {
+            if (data.message === 'update-mapping') {
+                const row = data.data;
+                const slideKey = row.slideId || row.slideState;
+                sidecarMappings[slideKey] = row.scene;
+                console.log(`[SpeakerView] Updated live mapping for ${slideKey}: ${row.scene}`);
+            } else if (data.message === 'new-scene-created') {
+                const sceneName = data.sceneName;
+                if (!validScenes.includes(sceneName)) {
+                    validScenes.push(sceneName);
+                    validScenes.sort();
+                    console.log(`[SpeakerView] Added new scene to validScenes: ${sceneName}`);
+                }
+            }
+          }
+
           if (data.namespace === 'reveal') {
             // --- Indexing Logic (Example Project Pattern) ---
             if (!slidesLoaded && !tableLoaded) {
@@ -532,52 +727,183 @@
                         if (targetScene) {
                             (async () => {
                                 try {
-                                    // 1. Change scene if explicitly defined and exists
-                                    if (targetScene && currentActiveScene !== targetScene) {
-                                        const isLegacyScene = targetScene.startsWith("Scene camera") || targetScene.startsWith("SceneConfig-");
+                                    // 0. Cache current scene state before switching
+                                    if (currentActiveScene) {
+                                        await cacheAllSourceTransforms(currentActiveScene);
+                                    }
 
-                                        // Safe switch: check if scene exists in OBS
-                                        if (validScenes.length > 0 && !validScenes.includes(targetScene)) {
-                                            if (!isLegacyScene) {
-                                                console.warn(`[Choreography] Scene "${targetScene}" not found in current OBS collection. Available scenes:`, validScenes);
+                                    // 1. Fetch SceneConfig to see if we need to pre-snap
+                                    let moveConfig = null;
+                                    let sceneConfig = null;
+                                    try {
+                                        // Try scene-specific config first
+                                        let configResp = await window.obsWss.call('GetInputSettings', { 
+                                            inputName: `SceneConfig-${targetScene}` 
+                                        }).catch(e => null);
+                                        
+                                        // Fallback to global SceneConfig
+                                        if (!configResp || !configResp.inputSettings || !configResp.inputSettings.text) {
+                                            configResp = await window.obsWss.call('GetInputSettings', { 
+                                                inputName: 'SceneConfig' 
+                                            }).catch(e => null);
+                                        }
+
+                                        // 3. Last resort: scan the target scene items for anything containing "SceneConfig"
+                                        if (!configResp || !configResp.inputSettings || !configResp.inputSettings.text) {
+                                            const itemsRes = await window.obsWss.call('GetSceneItemList', { sceneName: targetScene }).catch(e => ({sceneItems:[]}));
+                                            const foundConfig = itemsRes.sceneItems.find(i => i.sourceName.includes('SceneConfig'));
+                                            if (foundConfig) {
+                                                console.log(`[Choreography] Discovered SceneConfig via scan: ${foundConfig.sourceName}`);
+                                                configResp = await window.obsWss.call('GetInputSettings', { 
+                                                    inputName: foundConfig.sourceName 
+                                                }).catch(e => null);
                                             }
+                                        }
+
+                                        if (configResp && configResp.inputSettings && configResp.inputSettings.text) {
+                                            sceneConfig = JSON.parse(configResp.inputSettings.text);
+                                            moveConfig = sceneConfig.moveTransition;
+                                            console.log(`[Choreography] Found Move config in ${targetScene}:`, moveConfig);
                                         } else {
-                                            console.log(`[Choreography] Switching to scene: "${targetScene}"`);
-                                            try {
-                                                await window.obsWss.call('SetCurrentProgramScene', { sceneName: targetScene });
-                                                currentActiveScene = targetScene;
-                                                console.log(`[Choreography] Successfully switched to: "${targetScene}"`);
-                                            } catch (sceneErr) {
-                                                if (!isLegacyScene) {
-                                                    console.warn(`[Choreography] Scene switch to "${targetScene}" failed.`, sceneErr.message || sceneErr);
+                                            console.log(`[Choreography] No SceneConfig found for ${targetScene}`);
+                                        }
+                                    } catch (e) {
+                                        console.warn("[Choreography] Failed to fetch SceneConfig:", e);
+                                    }
+
+                                    // 2. Sequential Transition (Hide/Snap/Show -> Delay -> Switch -> Lerp)
+                                    try {
+                                        const itemsRes = await window.obsWss.call('GetSceneItemList', { sceneName: targetScene });
+                                        const sceneItems = itemsRes.sceneItems;
+                                        
+                                        let moveConfigs = [];
+                                        if (sceneConfig && sceneConfig.moveTransition) {
+                                            moveConfigs = Array.isArray(sceneConfig.moveTransition) ? sceneConfig.moveTransition : [sceneConfig.moveTransition];
+                                        }
+
+                                        const allAnimations = []; // Array of { config, animations }
+                                        const snapBatch = [];
+                                        let minDelay = 300;
+                                        let hasAnyAnimation = false;
+
+                                        if (moveConfigs.length > 0) {
+                                            const delays = moveConfigs.map(c => typeof c.delay !== 'undefined' ? c.delay : 300);
+                                            minDelay = Math.min(...delays);
+
+                                            for (const config of moveConfigs) {
+                                                if (!config || !config.sources) continue;
+                                                const configAnimations = [];
+                                                
+                                                for (const sourceName of config.sources) {
+                                                    // Check if this is a CSS-driven browser component
+                                                    const component = (sceneConfig.components || []).find(c => c.id === sourceName);
+                                                    if (component && component.type === 'browser') {
+                                                        // Handled by CSS, skip OBS lerp
+                                                        hasAnyAnimation = true; // Still consider it an animation for delay purposes
+                                                        continue;
+                                                    }
+
+                                                    const item = sceneItems.find(i => i.sourceName === sourceName);
+                                                    const prevTransform = sourceStateCache.get(sourceName);
+                                                    
+                                                    if (item && prevTransform) {
+                                                        const transformRes = await window.obsWss.call('GetSceneItemTransform', {
+                                                            sceneName: targetScene,
+                                                            sceneItemId: item.sceneItemId
+                                                        });
+                                                        const targetTransform = transformRes.sceneItemTransform;
+
+                                                        if (targetTransform) {
+                                                            const diff = Math.abs(targetTransform.positionX - prevTransform.positionX) + 
+                                                                         Math.abs(targetTransform.positionY - prevTransform.positionY);
+
+                                                            if (diff > 1) {
+                                                                configAnimations.push({
+                                                                    sourceName,
+                                                                    itemId: item.sceneItemId,
+                                                                    start: prevTransform,
+                                                                    end: targetTransform
+                                                                });
+
+                                                                // Sequence: Hide -> Snap -> Show
+                                                                snapBatch.push({
+                                                                    requestType: 'SetSceneItemEnabled',
+                                                                    requestData: {
+                                                                        sceneName: targetScene,
+                                                                        sceneItemId: item.sceneItemId,
+                                                                        sceneItemEnabled: false
+                                                                    }
+                                                                });
+
+                                                                const hiddenTransform = { ...prevTransform, scaleX: 0, scaleY: 0 };
+                                                                snapBatch.push({
+                                                                    requestType: 'SetSceneItemTransform',
+                                                                    requestData: {
+                                                                        sceneName: targetScene,
+                                                                        sceneItemId: item.sceneItemId,
+                                                                        sceneItemTransform: hiddenTransform
+                                                                    }
+                                                                });
+                                                                
+                                                                snapBatch.push({
+                                                                    requestType: 'SetSceneItemEnabled',
+                                                                    requestData: {
+                                                                        sceneName: targetScene,
+                                                                        sceneItemId: item.sceneItemId,
+                                                                        sceneItemEnabled: true
+                                                                    }
+                                                                });
+                                                                
+                                                                hasAnyAnimation = true;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                if (configAnimations.length > 0) {
+                                                    allAnimations.push({ config, animations: configAnimations });
                                                 }
                                             }
                                         }
-                                    }
 
-                                    // 2. Fetch SceneConfig-{sceneName} - Silently handle missing config
-                                    if (targetScene) {
-                                        const configResp = await window.obsWss.call('GetInputSettings', { 
-                                            inputName: `SceneConfig-${targetScene}` 
-                                        }).catch(e => null);
-                                    
-                                    if (configResp && configResp.inputSettings && configResp.inputSettings.text) {
-                                        try {
-                                            const sceneConfig = JSON.parse(configResp.inputSettings.text);
-                                            console.log(`[Choreography] Applying config for ${foundSlide.scene}`);
+                                        // Step 1: Execute Hide & Snap
+                                        if (snapBatch.length > 0) {
+                                            console.log(`[Choreography] Step 1: Hiding, Snapping, and Showing ${hasAnyAnimation} transitions...`);
+                                            await window.obsWss.callBatch(snapBatch);
                                             
+                                            // Step 2: Wait for min delay
+                                            console.log(`[Choreography] Step 2: Waiting for min delay: ${minDelay}ms`);
+                                            await new Promise(r => setTimeout(r, minDelay));
+                                        }
+
+                                        // Step 3: Switch Scene
+                                        if (targetScene && currentActiveScene !== targetScene) {
+                                            console.log(`[Choreography] Step 3: Switching to ${targetScene}...`);
+                                            await window.obsWss.call('SetCurrentProgramScene', { sceneName: targetScene });
+                                            currentActiveScene = targetScene;
+                                        }
+
+                                        // Step 4: Run Lerps in parallel
+                                        if (allAnimations.length > 0) {
+                                            // Short extra pause to ensure transition is fully engaged
+                                            await new Promise(r => setTimeout(r, 100));
+                                            allAnimations.forEach(group => {
+                                                runMoveTransition(targetScene, group.config, group.animations);
+                                            });
+                                        }
+
+                                        if (sceneConfig) {
                                             window.broadcastSlidesCommand("CHOREOGRAPHY_UPDATE", {
                                                 scene: foundSlide.scene,
-                                                config: sceneConfig
+                                                config: sceneConfig,
+                                                transitions: moveConfigs
                                             });
-                                        } catch (jsonErr) {
-                                            console.warn("[Choreography] Invalid JSON in SceneConfig", jsonErr);
                                         }
+                                    } catch (err) {
+                                        console.warn("[Choreography] Transition Logic Failed:", err);
                                     }
+                                } catch (err) {
+                                    console.warn("[Choreography] OBS Sync Failed:", err);
                                 }
-                            } catch (err) {
-                                console.warn("[Choreography] OBS Sync Failed:", err);
-                            }
                             })();
                         }
                     }

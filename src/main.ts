@@ -811,6 +811,7 @@ export default class slidesStudioPlugin extends Plugin {
 	onunload(): void {
 		new Notice("Disabled slides studio plugin");
         this.gamepadLoopActive = false;
+        if (this.obsQueueTimer) clearTimeout(this.obsQueueTimer);
 		if (this.serverManager) void this.serverManager.stop();
 		if (this.oscManager) this.oscManager.disconnectAll();
 		if (this.midiManager) this.midiManager.disconnectAll(this.settings.midiDevices);

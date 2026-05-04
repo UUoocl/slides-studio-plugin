@@ -64,17 +64,30 @@ Scene-specific layouts are defined using JSON stored in OBS Text Sources named `
 ### Schema Structure
 ```json
 {
-  "slideComponent": {
-    "x": number,          // Horizontal offset (px)
-    "y": number,          // Vertical offset (px)
-    "scaleX": number,     // Horizontal scale (1.0 = 100%)
-    "scaleY": number,     // Vertical scale
-    "style": object       // Optional: Arbitrary CSS properties (filter, border, etc.)
-  },
-  "cameraComponent": {
-    "path": string,       // SVG path, CSS shape (circle, polygon), or legacy class
-    "style": object       // Optional: Arbitrary CSS properties
-  }
+  "components": [
+    {
+      "id": "string",          // Unique identifier
+      "type": "browser",      // Type: "browser" (CSS transform) or "mask" (OBS transform)
+      "transform": {
+        "x": number,          // Horizontal translation (px)
+        "y": number,          // Vertical translation (px)
+        "scale": number,      // Uniform scale (1.0 = 100%)
+        "rotation": number    // Rotation in degrees
+      },
+      "style": object,        // Optional: Arbitrary CSS properties
+      "obsSource": "string",  // (For type 'mask') The OBS source name to transform
+      "maskSource": "string", // (For type 'mask') The browser source providing the mask
+      "path": "string"        // (For type 'mask') SVG path or CSS shape
+    }
+  ],
+  "moveTransition": [
+    {
+      "sources": ["string"],  // IDs or OBS source names to animate
+      "duration": number,
+      "ease": "string",
+      "delay": number
+    }
+  ]
 }
 ```
 
@@ -82,23 +95,29 @@ Scene-specific layouts are defined using JSON stored in OBS Text Sources named `
 **Scene: "Over The Shoulder"**
 ```json
 {
-  "slideComponent": {
-    "x": 96,
-    "y": 108,
-    "scaleX": 0.4,
-    "scaleY": 0.4,
-    "style": {
-      "borderRadius": "24px",
-      "boxShadow": "0 20px 50px rgba(0,0,0,0.5)",
-      "border": "2px solid rgba(255,255,255,0.2)"
+  "components": [
+    {
+      "id": "MainSlide",
+      "type": "browser",
+      "transform": { "x": 96, "y": 108, "scale": 0.4, "rotation": -5 },
+      "style": { "borderRadius": "24px", "boxShadow": "0 20px 50px rgba(0,0,0,0.5)" }
+    },
+    {
+      "id": "CameraOne",
+      "type": "mask",
+      "obsSource": "Main Camera",
+      "maskSource": "CameraMask",
+      "path": "circle(50% at 50% 50%)",
+      "style": { "filter": "contrast(1.1) brightness(1.1)" }
     }
-  },
-  "cameraComponent": {
-    "path": "circle(50% at 50% 50%)",
-    "style": {
-      "filter": "contrast(1.1) brightness(1.1)"
+  ],
+  "moveTransition": [
+    {
+      "sources": ["MainSlide", "Main Camera"],
+      "duration": 600,
+      "ease": "ease-out"
     }
-  }
+  ]
 }
 ```
 
